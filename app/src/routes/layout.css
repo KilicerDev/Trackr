@@ -28,6 +28,7 @@
 @layer theme {
 	/* Supabase-style dark theme with your accent (#ff4867) instead of green */
 	.dark {
+		color-scheme: dark;
 		--color-sidebar-icon: #8b8b8b;
 		--color-sidebar-label: #8b8b8b;
 		--color-sidebar-border: #2e2e2e;
