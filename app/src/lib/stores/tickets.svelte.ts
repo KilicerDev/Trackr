@@ -28,7 +28,7 @@ class TicketStore {
   error = $state<string | null>(null);
   activeTicket = $state<Ticket | null>(null);
 
-  async load(orgId: string, filters?: TicketFilters, page = 1) {
+  async load(orgId?: string | null, filters?: TicketFilters, page = 1) {
     this.loading = true;
     this.error = null;
 

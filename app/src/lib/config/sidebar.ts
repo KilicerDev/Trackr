@@ -31,7 +31,7 @@ export const sidebarSections: SidebarSection[] = [
 		title: 'Routes',
 		items: [
 			{ label: 'Dashboard', icon: LayoutDashboard, href: '/' },
-			{ label: 'Tickets', icon: Ticket, href: '/tickets' },
+			{ label: 'Support Tickets', icon: Ticket, href: '/tickets' },
 			{ label: 'Projects', icon: Files, href: '/projects' },
 			{ label: '(Teams)', icon: Users, href: '/teams' },
 			{ label: '(Chats)', icon: MessageCircle, href: '/chats' }

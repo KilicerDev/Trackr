@@ -23,7 +23,7 @@ export type CreateTicketInput = {
 
 export const tickets = {
   async getAll(
-    orgId: string,
+    orgId?: string | null,
     filters?: TicketFilters,
     page = 1,
     perPage = 25
@@ -35,8 +35,9 @@ export const tickets = {
     let q = supabase
       .from("support_tickets")
       .select(TICKET_SELECT, { count: "exact" })
-      .eq("organization_id", orgId)
       .is("deleted_at", null);
+
+    if (orgId) q = q.eq("organization_id", orgId);
 
     if (filters?.status) q = q.eq("status", filters.status);
     if (filters?.priority) q = q.eq("priority", filters.priority);
