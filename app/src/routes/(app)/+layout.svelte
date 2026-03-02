@@ -7,7 +7,7 @@
 </script>
 
 <Sidebar bind:pinned />
-<div class="min-h-screen transition-[margin-left] duration-200 ease-in-out" style="margin-left: {pinned ? '240px' : '64px'}">
+<div class="min-h-screen bg-page-bg transition-[margin-left] duration-200 ease-in-out" style="margin-left: {pinned ? '240px' : '64px'}">
     <Header />
 	{@render children()}
 </div>

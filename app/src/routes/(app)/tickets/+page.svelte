@@ -39,12 +39,12 @@
 			use:clickOutside={{ onClickOutside: () => (dropdownOpen = false), enabled: dropdownOpen }}
 		>
 			<button
-				class="flex cursor-pointer items-center gap-2 border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium transition-colors hover:border-gray-300"
+				class="flex cursor-pointer items-center gap-2 border border-surface-border bg-surface px-3 py-1.5 text-xs font-medium text-sidebar-text transition-colors hover:bg-surface-hover"
 				onclick={() => (dropdownOpen = !dropdownOpen)}
 			>
-				<span class="text-gray-700">{selectedOrg?.name ?? 'All Organizations'}</span>
+				<span>{selectedOrg?.name ?? 'All Organizations'}</span>
 				<svg
-					class="h-4 w-4 text-gray-400 transition-transform {dropdownOpen ? 'rotate-180' : ''}"
+					class="h-4 w-4 text-sidebar-icon transition-transform {dropdownOpen ? 'rotate-180' : ''}"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -60,17 +60,17 @@
 
 			{#if dropdownOpen}
 				<div
-					class="absolute left-0 z-10 mt-1 min-w-[200px] overflow-hidden border border-gray-200 bg-white shadow-lg"
+					class="absolute left-0 z-10 mt-1 min-w-[200px] overflow-hidden border border-surface-border bg-surface shadow-lg"
 				>
 					<button
-						class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-gray-50 {selectedOrgId === null ? 'font-medium text-accent' : 'text-gray-600'}"
+						class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
 					onmousedown={(e) => { e.preventDefault(); selectOrg(null); }}
 				>
 					All Organizations
 				</button>
 					{#each organizations as org (org.id)}
 						<button
-							class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-gray-50 {selectedOrgId === org.id ? 'font-medium text-accent' : 'text-gray-600'}"
+							class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 							onmousedown={(e) => { e.preventDefault(); selectOrg(org.id); }}
 						>
 							{org.name}
@@ -90,11 +90,11 @@
 	</div>
 
 	{#if ticketStore.loading}
-		<p class="px-4 py-8 text-center text-sm text-gray-400">Loading...</p>
+		<p class="px-4 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else if ticketStore.error}
 		<p class="px-4 py-8 text-center text-sm text-red-500">{ticketStore.error}</p>
 	{:else}
-		<div class="border-t border-gray-100">
+		<div class="border-t border-surface-border">
 			{#each ticketStore.items as ticket (ticket.id)}
 				<TaskRow
 					task={{
@@ -116,6 +116,6 @@
 			{/each}
 		</div>
 
-		<p class="px-4 py-3 text-xs text-gray-400">{ticketStore.count} tickets total</p>
+		<p class="px-4 py-3 text-xs text-muted">{ticketStore.count} tickets total</p>
 	{/if}
 </div>

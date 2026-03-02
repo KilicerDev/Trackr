@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@variant dark (&:where(.dark, .dark *));
+
 @font-face {
 	font-family: 'JetBrains Mono';
 	src: url('/fonts/jetbrains-mono/JetBrainsMono[wght].ttf') format('truetype');
@@ -15,5 +17,27 @@
 	--color-sidebar-bg: #ffffff;
 	--color-sidebar-hover-bg: #f8f8f8;
 	--color-sidebar-text: #000000;
+	--color-page-bg: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-border: #e4e4e4;
+	--color-surface-hover: #f5f5f5;
+	--color-muted: #71717a;
 	--font-sans: 'JetBrains Mono', monospace;
+}
+
+@layer theme {
+	/* Supabase-style dark theme with your accent (#ff4867) instead of green */
+	.dark {
+		--color-sidebar-icon: #8b8b8b;
+		--color-sidebar-label: #8b8b8b;
+		--color-sidebar-border: #2e2e2e;
+		--color-sidebar-bg: #1c1c1c;
+		--color-sidebar-hover-bg: #252525;
+		--color-sidebar-text: #ededed;
+		--color-page-bg: #18181b;
+		--color-surface: #252525;
+		--color-surface-border: #2e2e2e;
+		--color-surface-hover: #2a2a2a;
+		--color-muted: #8b8b8b;
+	}
 }

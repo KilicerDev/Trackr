@@ -5,11 +5,18 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import type { LayoutData } from './$types';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { theme } from '$lib/stores/theme.svelte';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
 	$effect(() => {
 		auth.init(data.user, data.role, data.permissions);
+	});
+
+	$effect(() => {
+		if (typeof document === 'undefined') return;
+		theme.init();
+		document.documentElement.classList.toggle('dark', theme.mode === 'dark');
 	});
 </script>
 
