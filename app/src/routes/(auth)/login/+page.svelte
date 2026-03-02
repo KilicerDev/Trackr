@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Eye, EyeOff } from '@lucide/svelte';
 	import logo from '$lib/assets/logo.png';
 	import * as m from '$lib/paraglide/messages';
 	import { localizeHref } from '$lib/paraglide/runtime';
@@ -6,6 +7,7 @@
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
+	let showPassword = $state(false);
 
 	function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -45,13 +47,27 @@
 			<label for="password" class="mb-1.5 block text-xs font-semibold tracking-wide text-accent">
 				{m.auth_password()}
 			</label>
-			<input
-				id="password"
-				type="password"
-				placeholder={m.auth_password()}
-				bind:value={password}
-				class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
-			/>
+			<div class="relative">
+				<input
+					id="password"
+					type={showPassword ? 'text' : 'password'}
+					placeholder={m.auth_password()}
+					bind:value={password}
+					class="w-full rounded-lg bg-gray-100 px-4 py-3 pr-11 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+				/>
+				<button
+					type="button"
+					class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-gray-400 transition-colors hover:text-gray-600"
+					onclick={() => (showPassword = !showPassword)}
+					tabindex={-1}
+				>
+					{#if showPassword}
+						<EyeOff size={18} />
+					{:else}
+						<Eye size={18} />
+					{/if}
+				</button>
+			</div>
 		</div>
 
 		<button

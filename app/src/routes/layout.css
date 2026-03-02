@@ -9,5 +9,11 @@
 
 @theme {
 	--color-accent: #ff4867;
+	--color-sidebar-icon: #b2b2b2;
+	--color-sidebar-label: #b4b4b4;
+	--color-sidebar-border: #e4e4e4;
+	--color-sidebar-bg: #ffffff;
+	--color-sidebar-hover-bg: #f8f8f8;
+	--color-sidebar-text: #000000;
 	--font-sans: 'JetBrains Mono', monospace;
 }
