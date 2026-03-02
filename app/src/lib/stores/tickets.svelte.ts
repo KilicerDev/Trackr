@@ -27,19 +27,24 @@ class TicketStore {
   loading = $state(false);
   error = $state<string | null>(null);
   activeTicket = $state<Ticket | null>(null);
+  filters = $state<TicketFilters>({});
+  page = $state(1);
 
   async load(orgId?: string | null, filters?: TicketFilters, page = 1) {
     this.loading = true;
     this.error = null;
+    const f = filters ?? this.filters;
 
     try {
       const { data, count } = await api.tickets.getAll(
         orgId,
-        filters,
+        f,
         page
       );
       this.items = data as Ticket[];
       this.count = count;
+      this.filters = f;
+      this.page = page;
     } catch (e) {
       this.error =
         e instanceof Error ? e.message : "Failed to load tickets";
@@ -81,8 +86,17 @@ class TicketStore {
     try {
       await api.tickets.resolve(ticketId);
     } catch {
-      await this.load(this.items[0]?.organization_id as string);
+      const orgId = this.items[0]?.organization_id as string | undefined;
+      await this.load(orgId, this.filters);
     }
+  }
+
+  setFilters(filters: TicketFilters) {
+    this.filters = filters;
+  }
+
+  clearFilters() {
+    this.filters = {};
   }
 
   clear() {
@@ -90,6 +104,7 @@ class TicketStore {
     this.count = 0;
     this.activeTicket = null;
     this.error = null;
+    this.filters = {};
   }
 }
 

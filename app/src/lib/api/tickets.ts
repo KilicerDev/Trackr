@@ -3,12 +3,20 @@
 import { getClient } from "./client";
 import { TICKET_SELECT } from "./queries";
 
+/** Use "none" for assigned_agent_id to filter for unassigned tickets */
 export type TicketFilters = {
   status?: string;
   priority?: string;
   category?: string;
+  channel?: string;
   customer_id?: string;
-  assigned_agent_id?: string;
+  assigned_agent_id?: string | null;
+  created_at_from?: string;
+  created_at_to?: string;
+  resolved_at_from?: string;
+  resolved_at_to?: string;
+  satisfaction_min?: number;
+  satisfaction_max?: number;
 };
 
 export type CreateTicketInput = {
@@ -42,10 +50,20 @@ export const tickets = {
     if (filters?.status) q = q.eq("status", filters.status);
     if (filters?.priority) q = q.eq("priority", filters.priority);
     if (filters?.category) q = q.eq("category", filters.category);
+    if (filters?.channel) q = q.eq("channel", filters.channel);
     if (filters?.customer_id)
       q = q.eq("customer_id", filters.customer_id);
-    if (filters?.assigned_agent_id)
-      q = q.eq("assigned_agent_id", filters.assigned_agent_id);
+    if (filters?.assigned_agent_id !== undefined) {
+      if (filters.assigned_agent_id === null || filters.assigned_agent_id === "none")
+        q = q.is("assigned_agent_id", null);
+      else q = q.eq("assigned_agent_id", filters.assigned_agent_id);
+    }
+    if (filters?.created_at_from) q = q.gte("created_at", filters.created_at_from);
+    if (filters?.created_at_to) q = q.lte("created_at", filters.created_at_to);
+    if (filters?.resolved_at_from) q = q.gte("resolved_at", filters.resolved_at_from);
+    if (filters?.resolved_at_to) q = q.lte("resolved_at", filters.resolved_at_to);
+    if (filters?.satisfaction_min != null) q = q.gte("satisfaction_score", filters.satisfaction_min);
+    if (filters?.satisfaction_max != null) q = q.lte("satisfaction_score", filters.satisfaction_max);
 
     const { data, error, count } = await q
       .order("created_at", { ascending: false })
@@ -65,6 +83,23 @@ export const tickets = {
 
     if (error) throw error;
     return data;
+  },
+
+  async getCustomersByOrg(orgId: string) {
+    const supabase = getClient();
+    const { data, error } = await supabase
+      .from("support_tickets")
+      .select("customer_id, customer:users!customer_id(id, full_name, email, avatar_url)")
+      .eq("organization_id", orgId)
+      .is("deleted_at", null);
+
+    if (error) throw error;
+    const byId = new Map<string, { full_name: string; email: string; avatar_url: string | null }>();
+    for (const row of data ?? []) {
+      const c = row.customer as { id: string; full_name: string; email: string; avatar_url: string | null } | null;
+      if (row.customer_id && c) byId.set(row.customer_id, { full_name: c.full_name, email: c.email, avatar_url: c.avatar_url });
+    }
+    return Array.from(byId.entries()).map(([id, c]) => ({ id, ...c }));
   },
 
   async create(input: CreateTicketInput) {

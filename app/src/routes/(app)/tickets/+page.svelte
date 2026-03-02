@@ -5,19 +5,108 @@
 	import { api } from '$lib/api';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import type { Organization } from '$lib/api/organizations';
+	import type { TicketFilters } from '$lib/api/tickets';
 	import TaskRow from '$lib/components/TaskRow.svelte';
+	import { ListFilter } from '@lucide/svelte';
+
+	const TICKET_STATUSES = ['open', 'in_progress', 'waiting_on_customer', 'waiting_on_agent', 'resolved', 'closed'] as const;
+	const TICKET_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+	const TICKET_CATEGORIES = ['billing', 'technical_issue', 'feature_request', 'general'] as const;
+	const TICKET_CHANNELS = ['email', 'api', 'chat', 'web_form'] as const;
+
+	type Member = { user_id: string; user: { id: string; full_name: string; avatar_url: string | null } };
+	type CustomerOption = { id: string; full_name: string; email: string; avatar_url: string | null };
 
 	let organizations = $state<Organization[]>([]);
 	let selectedOrgId = $state<string | null>(null);
-	let dropdownOpen = $state(false);
+	let orgDropdownOpen = $state(false);
+
+	let status = $state<string>('');
+	let priority = $state<string>('');
+	let category = $state<string>('');
+	let channel = $state<string>('');
+	let assignedAgentId = $state<string>('');
+	let customerId = $state<string>('');
+	let createdFrom = $state<string>('');
+	let createdTo = $state<string>('');
+	let resolvedFrom = $state<string>('');
+	let resolvedTo = $state<string>('');
+	let satisfactionMin = $state<number | ''>('');
+	let satisfactionMax = $state<number | ''>('');
+
+	let members = $state<Member[]>([]);
+	let customers = $state<CustomerOption[]>([]);
+	let filterDropdownOpen = $state<string | null>(null);
+	let filtersVisible = $state(true);
 
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 
+	function getFilters(): TicketFilters {
+		const f: TicketFilters = {};
+		if (status) f.status = status;
+		if (priority) f.priority = priority;
+		if (category) f.category = category;
+		if (channel) f.channel = channel;
+		if (assignedAgentId === 'none') f.assigned_agent_id = 'none';
+		else if (assignedAgentId) f.assigned_agent_id = assignedAgentId;
+		if (customerId) f.customer_id = customerId;
+		if (createdFrom) f.created_at_from = createdFrom + 'T00:00:00.000Z';
+		if (createdTo) f.created_at_to = createdTo + 'T23:59:59.999Z';
+		if (resolvedFrom) f.resolved_at_from = resolvedFrom + 'T00:00:00.000Z';
+		if (resolvedTo) f.resolved_at_to = resolvedTo + 'T23:59:59.999Z';
+		if (satisfactionMin !== '') f.satisfaction_min = Number(satisfactionMin);
+		if (satisfactionMax !== '') f.satisfaction_max = Number(satisfactionMax);
+		return f;
+	}
+
+	function applyFilters() {
+		ticketStore.load(selectedOrgId ?? undefined, getFilters());
+	}
+
 	function selectOrg(orgId: string | null) {
 		selectedOrgId = orgId;
-		dropdownOpen = false;
-		ticketStore.load(orgId);
+		orgDropdownOpen = false;
+		ticketStore.load(orgId ?? undefined, getFilters());
+		if (orgId) {
+			api.members.getAll(orgId).then((m) => { members = m as Member[]; }).catch(() => { members = []; });
+			api.tickets.getCustomersByOrg(orgId).then((c) => { customers = c; }).catch(() => { customers = []; });
+		} else {
+			members = [];
+			customers = [];
+		}
 	}
+
+	function openFilterDropdown(key: string) {
+		filterDropdownOpen = filterDropdownOpen === key ? null : key;
+	}
+
+	function clearFilters() {
+		status = '';
+		priority = '';
+		category = '';
+		channel = '';
+		assignedAgentId = '';
+		customerId = '';
+		createdFrom = '';
+		createdTo = '';
+		resolvedFrom = '';
+		resolvedTo = '';
+		satisfactionMin = '';
+		satisfactionMax = '';
+		filterDropdownOpen = null;
+		ticketStore.load(selectedOrgId ?? undefined, {});
+	}
+
+	const hasActiveFilters = $derived(
+		!!(status || priority || category || channel || assignedAgentId || customerId ||
+			createdFrom || createdTo || resolvedFrom || resolvedTo || satisfactionMin !== '' || satisfactionMax !== '')
+	);
+
+	const filterLabelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const dropdownBtnClass =
+		'flex min-w-[6.5rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+	const dropdownPanelClass =
+		'absolute left-0 z-20 mt-1.5 max-h-56 min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
 
 	onMount(async () => {
 		try {
@@ -25,52 +114,49 @@
 		} catch {
 			organizations = [];
 		}
-
 		const orgId = auth.organizationId;
-		ticketStore.load(orgId);
 		selectedOrgId = orgId;
+		ticketStore.load(orgId ?? undefined, getFilters());
+		if (orgId) {
+			try {
+				members = (await api.members.getAll(orgId)) as Member[];
+				customers = await api.tickets.getCustomersByOrg(orgId);
+			} catch {
+				members = [];
+				customers = [];
+			}
+		}
 	});
 </script>
 
-<div class="mx-auto w-full max-w-[1200px]">
-	<div class="flex items-center justify-between px-4 py-3">
-		<div
-			class="relative"
-			use:clickOutside={{ onClickOutside: () => (dropdownOpen = false), enabled: dropdownOpen }}
-		>
-			<button
-				class="flex cursor-pointer items-center gap-2 border border-surface-border bg-surface px-3 py-1.5 text-xs font-medium text-sidebar-text transition-colors hover:bg-surface-hover"
-				onclick={() => (dropdownOpen = !dropdownOpen)}
-			>
-				<span>{selectedOrg?.name ?? 'All Organizations'}</span>
-				<svg
-					class="h-4 w-4 text-sidebar-icon transition-transform {dropdownOpen ? 'rotate-180' : ''}"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
+<div
+	class="mx-auto w-full max-w-[1200px]"
+	use:clickOutside={{ onClickOutside: () => { orgDropdownOpen = false; filterDropdownOpen = null; }, enabled: orgDropdownOpen || filterDropdownOpen !== null }}
+>
+	<!-- Header: org + actions -->
+	<div class="flex items-center justify-between border-b border-surface-border px-4 py-3">
+		<div class="flex items-center gap-2">
+			<div class="relative">
+				<button
+					class="flex min-w-[11rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs font-medium text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+					onclick={() => (orgDropdownOpen = !orgDropdownOpen)}
 				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M19 9l-7 7-7-7"
-					/>
-				</svg>
-			</button>
-
-			{#if dropdownOpen}
-				<div
-					class="absolute left-0 z-10 mt-1 min-w-[200px] overflow-hidden border border-surface-border bg-surface shadow-lg"
-				>
-					<button
-						class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
-					onmousedown={(e) => { e.preventDefault(); selectOrg(null); }}
-				>
-					All Organizations
+					<span>{selectedOrg?.name ?? 'All Organizations'}</span>
+					<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {orgDropdownOpen ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+					</svg>
 				</button>
+			{#if orgDropdownOpen}
+				<div class="absolute left-0 z-10 mt-1.5 min-w-[200px] overflow-hidden border border-surface-border bg-surface py-1 shadow-xl">
+					<button
+						class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
+						onmousedown={(e) => { e.preventDefault(); selectOrg(null); }}
+					>
+						All Organizations
+					</button>
 					{#each organizations as org (org.id)}
 						<button
-							class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+							class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 							onmousedown={(e) => { e.preventDefault(); selectOrg(org.id); }}
 						>
 							{org.name}
@@ -78,23 +164,205 @@
 					{/each}
 				</div>
 			{/if}
+			</div>
+			<button
+				class="flex p-2 shrink-0 items-center justify-center border border-surface-border bg-surface shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {filtersVisible ? 'text-accent' : 'text-sidebar-icon'}"
+				onclick={() => (filtersVisible = !filtersVisible)}
+				title={filtersVisible ? 'Hide filters' : 'Show filters'}
+			>
+				<ListFilter size={15} />
+			</button>
 		</div>
 
 		{#if auth.can('tickets', 'create')}
-			<button
-				class="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/90"
-			>
+			<button class="rounded-lg bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90">
 				New Ticket
 			</button>
 		{/if}
 	</div>
+
+	<!-- Filter bar -->
+	{#if filtersVisible}
+	<div class="border-b border-surface-border bg-surface/40 px-4 py-4">
+		<div class="mb-3 flex items-center justify-between">
+			<span class={filterLabelClass}>Filters</span>
+			{#if hasActiveFilters}
+				<button
+					class="text-xs font-medium text-sidebar-icon transition-colors hover:text-accent"
+					onclick={clearFilters}
+				>
+					Clear all
+				</button>
+			{/if}
+		</div>
+		<div class="flex flex-wrap items-end gap-4">
+			<div class="flex flex-col gap-1.5">
+				<span class={filterLabelClass}>Status</span>
+				<div class="relative">
+					<button class={dropdownBtnClass} onclick={() => openFilterDropdown('status')}>
+						<span class="truncate">{status ? status.replace(/_/g, ' ') : 'All'}</span>
+						<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'status' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+					</button>
+					{#if filterDropdownOpen === 'status'}
+						<div class={dropdownPanelClass}>
+							<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!status ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); status = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
+							{#each TICKET_STATUSES as s}
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {status === s ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); status = s; filterDropdownOpen = null; applyFilters(); }}>{s.replace(/_/g, ' ')}</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<span class={filterLabelClass}>Priority</span>
+				<div class="relative">
+					<button class={dropdownBtnClass} onclick={() => openFilterDropdown('priority')}>
+						<span class="truncate">{priority || 'All'}</span>
+						<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'priority' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+					</button>
+					{#if filterDropdownOpen === 'priority'}
+						<div class={dropdownPanelClass}>
+							<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!priority ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); priority = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
+							{#each TICKET_PRIORITIES as p}
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); priority = p; filterDropdownOpen = null; applyFilters(); }}>{p}</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<span class={filterLabelClass}>Category</span>
+				<div class="relative">
+					<button class={dropdownBtnClass} onclick={() => openFilterDropdown('category')}>
+						<span class="truncate">{category ? category.replace(/_/g, ' ') : 'All'}</span>
+						<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'category' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+					</button>
+					{#if filterDropdownOpen === 'category'}
+						<div class={dropdownPanelClass}>
+							<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!category ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); category = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
+							{#each TICKET_CATEGORIES as c}
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {category === c ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); category = c; filterDropdownOpen = null; applyFilters(); }}>{c.replace(/_/g, ' ')}</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<span class={filterLabelClass}>Channel</span>
+				<div class="relative">
+					<button class={dropdownBtnClass} onclick={() => openFilterDropdown('channel')}>
+						<span class="truncate">{channel ? channel.replace(/_/g, ' ') : 'All'}</span>
+						<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'channel' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+					</button>
+					{#if filterDropdownOpen === 'channel'}
+						<div class={dropdownPanelClass}>
+							<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!channel ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); channel = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
+							{#each TICKET_CHANNELS as ch}
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {channel === ch ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); channel = ch; filterDropdownOpen = null; applyFilters(); }}>{ch.replace(/_/g, ' ')}</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			</div>
+			{#if selectedOrgId}
+				<div class="flex flex-col gap-1.5">
+					<span class={filterLabelClass}>Assigned</span>
+					<div class="relative">
+						<button class="{dropdownBtnClass} min-w-[8rem]" onclick={() => openFilterDropdown('agent')}>
+							<span class="truncate">{assignedAgentId === 'none' ? 'Unassigned' : assignedAgentId ? (members.find(m => m.user_id === assignedAgentId)?.user?.full_name ?? '—') : 'All'}</span>
+							<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'agent' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+						</button>
+						{#if filterDropdownOpen === 'agent'}
+							<div class="{dropdownPanelClass} min-w-[12rem]">
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!assignedAgentId ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); assignedAgentId = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {assignedAgentId === 'none' ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); assignedAgentId = 'none'; filterDropdownOpen = null; applyFilters(); }}>Unassigned</button>
+								{#each members as m (m.user_id)}
+									<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {assignedAgentId === m.user_id ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); assignedAgentId = m.user_id; filterDropdownOpen = null; applyFilters(); }}>{m.user?.full_name ?? m.user_id}</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+				<div class="flex flex-col gap-1.5">
+					<span class={filterLabelClass}>Customer</span>
+					<div class="relative">
+						<button class="{dropdownBtnClass} min-w-[8rem]" onclick={() => openFilterDropdown('customer')}>
+							<span class="truncate">{customerId ? (customers.find(c => c.id === customerId)?.full_name ?? '—') : 'All'}</span>
+							<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'customer' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+						</button>
+						{#if filterDropdownOpen === 'customer'}
+							<div class="{dropdownPanelClass} min-w-[14rem]">
+								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!customerId ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); customerId = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
+								{#each customers as c (c.id)}
+									<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {customerId === c.id ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); customerId = c.id; filterDropdownOpen = null; applyFilters(); }}>{c.full_name}{#if c.email} <span class="text-sidebar-icon">({c.email})</span>{/if}</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
+			<div class="flex flex-col gap-1.5">
+				<span class={filterLabelClass}>More</span>
+				<div class="relative">
+					<button
+						class="{dropdownBtnClass} min-w-[5rem]"
+						onclick={() => openFilterDropdown('dates')}
+						title="Date range & satisfaction"
+					>
+						<span class="flex items-center gap-1.5">
+							{#if createdFrom || createdTo || resolvedFrom || resolvedTo || satisfactionMin !== '' || satisfactionMax !== ''}
+								<span class="inline-block h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true"></span>
+							{/if}
+							Dates
+						</span>
+						<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'dates' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+					</button>
+					{#if filterDropdownOpen === 'dates'}
+						<div class="absolute left-0 z-20 mt-1.5 min-w-[240px] border border-surface-border bg-surface p-4 shadow-xl">
+							<p class="mb-3 text-xs font-medium uppercase tracking-wider text-sidebar-icon">Date range & satisfaction</p>
+							<div class="space-y-3 text-xs">
+								<div>
+									<label for="filter-created-from" class="mb-1 block text-sidebar-icon">Created from</label>
+									<input id="filter-created-from" type="date" bind:value={createdFrom} class="w-full border border-surface-border bg-surface px-2.5 py-1.5 text-sidebar-text" onchange={applyFilters} />
+								</div>
+								<div>
+									<label for="filter-created-to" class="mb-1 block text-sidebar-icon">Created to</label>
+									<input id="filter-created-to" type="date" bind:value={createdTo} class="w-full border border-surface-border bg-surface px-2.5 py-1.5 text-sidebar-text" onchange={applyFilters} />
+								</div>
+								<div>
+									<label for="filter-resolved-from" class="mb-1 block text-sidebar-icon">Resolved from</label>
+									<input id="filter-resolved-from" type="date" bind:value={resolvedFrom} class="w-full border border-surface-border bg-surface px-2.5 py-1.5 text-sidebar-text" onchange={applyFilters} />
+								</div>
+								<div>
+									<label for="filter-resolved-to" class="mb-1 block text-sidebar-icon">Resolved to</label>
+									<input id="filter-resolved-to" type="date" bind:value={resolvedTo} class="w-full border border-surface-border bg-surface px-2.5 py-1.5 text-sidebar-text" onchange={applyFilters} />
+								</div>
+								<div class="grid grid-cols-2 gap-2">
+									<div>
+										<label for="filter-satisfaction-min" class="mb-1 block text-sidebar-icon">Satisfaction min</label>
+										<input id="filter-satisfaction-min" type="number" min="1" max="5" bind:value={satisfactionMin} class="w-full border border-surface-border bg-surface px-2.5 py-1.5 text-sidebar-text" onchange={applyFilters} />
+									</div>
+									<div>
+										<label for="filter-satisfaction-max" class="mb-1 block text-sidebar-icon">Satisfaction max</label>
+										<input id="filter-satisfaction-max" type="number" min="1" max="5" bind:value={satisfactionMax} class="w-full border border-surface-border bg-surface px-2.5 py-1.5 text-sidebar-text" onchange={applyFilters} />
+									</div>
+								</div>
+							</div>
+							<button class="mt-3 w-full border border-surface-border bg-surface py-2 text-xs font-medium text-sidebar-text transition-colors hover:bg-surface-hover" onmousedown={(e) => { e.preventDefault(); filterDropdownOpen = null; }}>Done</button>
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+	</div>
+	{/if}
 
 	{#if ticketStore.loading}
 		<p class="px-4 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else if ticketStore.error}
 		<p class="px-4 py-8 text-center text-sm text-red-500">{ticketStore.error}</p>
 	{:else}
-		<div class="border-t border-surface-border">
+		<div>
 			{#each ticketStore.items as ticket (ticket.id)}
 				<TaskRow
 					task={{
