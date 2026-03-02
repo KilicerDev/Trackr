@@ -3,7 +3,7 @@
 	import Header from '$lib/assets/components/Header.svelte';
 
 	let { children } = $props();
-	let pinned = $state(false);
+	let pinned = $state(true);
 </script>
 
 <Sidebar bind:pinned />
