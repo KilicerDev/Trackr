@@ -20,7 +20,8 @@
 INSERT INTO auth.users (
   id, instance_id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-  created_at, updated_at, confirmation_token, is_super_admin
+  created_at, updated_at, confirmation_token, is_super_admin,
+  email_change, email_change_token_new, recovery_token
 ) VALUES (
   'b0000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000000',
@@ -30,7 +31,8 @@ INSERT INTO auth.users (
   now(),
   '{"provider": "email", "providers": ["email"]}',
   '{"full_name": "Ertuğul Kılıç", "username": "kilicer"}',
-  now(), now(), '', false
+  now(), now(), '', false,
+  '', '', ''
 ), (
   'b0000000-0000-0000-0000-000000000002',
   '00000000-0000-0000-0000-000000000000',
@@ -40,7 +42,8 @@ INSERT INTO auth.users (
   now(),
   '{"provider": "email", "providers": ["email"]}',
   '{"full_name": "Sarah Müller", "username": "sarahm"}',
-  now(), now(), '', false
+  now(), now(), '', false,
+  '', '', ''
 );
 
 INSERT INTO auth.identities (

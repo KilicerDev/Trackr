@@ -1,18 +1,14 @@
 <script lang="ts">
-	import { Eye, EyeOff } from '@lucide/svelte';
+	import { enhance } from '$app/forms';
+	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
 	import logo from '$lib/assets/logo.png';
 	import * as m from '$lib/paraglide/messages';
 	import { localizeHref } from '$lib/paraglide/runtime';
 
-	let email = $state('');
-	let password = $state('');
-	let error = $state('');
 	let showPassword = $state(false);
+	let loading = $state(false);
 
-	function handleSubmit(e: SubmitEvent) {
-		e.preventDefault();
-		// TODO: wire up auth
-	}
+	let { form } = $props();
 </script>
 
 <div class="flex flex-col items-center">
@@ -23,22 +19,38 @@
 
 	<div class="mb-8"></div>
 
-	{#if error}
+	{#if form?.message}
 		<div class="mb-4 w-full rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-accent">
-			{error}
+			{form.message}
 		</div>
 	{/if}
 
-	<form onsubmit={handleSubmit} class="w-full space-y-5">
+	<form
+		method="POST"
+		class="w-full space-y-5"
+		use:enhance={() => {
+			loading = true;
+			return async ({ result, update }) => {
+				loading = false;
+				if (result.type === 'redirect') {
+					window.location.href = result.location;
+				} else {
+					await update();
+				}
+			};
+		}}
+	>
 		<div>
 			<label for="email" class="mb-1.5 block text-xs font-semibold tracking-wide text-accent">
 				{m.auth_email()}
 			</label>
 			<input
 				id="email"
+				name="email"
 				type="email"
 				placeholder={m.auth_email()}
-				bind:value={email}
+				value={form?.email ?? ''}
+				required
 				class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
 			/>
 		</div>
@@ -50,9 +62,10 @@
 			<div class="relative">
 				<input
 					id="password"
+					name="password"
 					type={showPassword ? 'text' : 'password'}
 					placeholder={m.auth_password()}
-					bind:value={password}
+					required
 					class="w-full rounded-lg bg-gray-100 px-4 py-3 pr-11 text-sm text-gray-700 outline-none placeholder:text-gray-400"
 				/>
 				<button
@@ -72,9 +85,14 @@
 
 		<button
 			type="submit"
-			class="w-full cursor-pointer rounded-lg bg-accent py-3.5 text-sm font-semibold tracking-wide text-white shadow-md shadow-accent/30 transition-opacity hover:opacity-90"
+			disabled={loading}
+			class="flex w-full cursor-pointer items-center justify-center rounded-lg bg-accent py-3.5 text-sm font-semibold tracking-wide text-white shadow-md shadow-accent/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
 		>
-			{m.auth_login()}
+			{#if loading}
+				<LoaderCircle size={18} class="animate-spin" />
+			{:else}
+				{m.auth_login()}
+			{/if}
 		</button>
 	</form>
 
