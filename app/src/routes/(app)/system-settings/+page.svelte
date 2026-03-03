@@ -45,6 +45,16 @@
 	let deletingTierId = $state<string | null>(null);
 	let confirmDeleteTier = $state<Tier | null>(null);
 
+	// Platform org
+	let platformOrgId = $state<string | null>(null);
+	let platformOrgName = $state('');
+	let platformOrgSlug = $state('');
+	let platformOrgDomain = $state('');
+	let platformOrgWebsite = $state('');
+	let platformOrgSaving = $state(false);
+	let platformOrgError = $state<string | null>(null);
+	let platformOrgSuccess = $state<string | null>(null);
+
 	// Dropdown state
 	let openDropdown = $state<string | null>(null);
 
@@ -91,6 +101,13 @@
 		maxOrgsPerUser = (data.max_orgs_per_user as number) ?? 1;
 		maxProjectsPerOrg = (data.max_projects_per_org as number) ?? 10;
 		maxMembersPerOrg = (data.max_members_per_org as number) ?? 25;
+
+		const pOrg = data.platform_organization as { id: string; name: string; slug: string } | null;
+		platformOrgId = pOrg?.id ?? (data.platform_organization_id as string) ?? null;
+		if (pOrg) {
+			platformOrgName = pOrg.name;
+			platformOrgSlug = pOrg.slug;
+		}
 	}
 
 	async function save() {
@@ -117,6 +134,32 @@
 			error = e instanceof Error ? e.message : 'Failed to save settings';
 		} finally {
 			saving = false;
+		}
+	}
+
+	// ── Platform org ──
+
+	async function savePlatformOrg() {
+		if (!platformOrgId || !platformOrgName.trim() || !platformOrgSlug.trim()) return;
+		platformOrgSaving = true;
+		platformOrgError = null;
+		platformOrgSuccess = null;
+		try {
+			const updated = await api.organizations.update(platformOrgId, {
+				name: platformOrgName.trim(),
+				slug: platformOrgSlug.trim(),
+				domain: platformOrgDomain.trim() || null,
+				website_url: platformOrgWebsite.trim() || null
+			});
+			platformOrgName = updated.name;
+			platformOrgSlug = updated.slug;
+			platformOrgDomain = updated.domain ?? '';
+			platformOrgWebsite = updated.website_url ?? '';
+			platformOrgSuccess = 'Organization updated.';
+		} catch (e) {
+			platformOrgError = e instanceof Error ? e.message : 'Failed to update organization';
+		} finally {
+			platformOrgSaving = false;
 		}
 	}
 
@@ -224,6 +267,18 @@
 				]);
 				applyConfig(configData);
 				tiers = tierList;
+
+				if (platformOrgId) {
+					try {
+						const org = await api.organizations.getById(platformOrgId);
+						platformOrgName = org.name;
+						platformOrgSlug = org.slug;
+						platformOrgDomain = org.domain ?? '';
+						platformOrgWebsite = org.website_url ?? '';
+					} catch {
+						// platform org details not available
+					}
+				}
 			} catch (e) {
 				error = e instanceof Error ? e.message : 'Failed to load system config';
 			} finally {
@@ -321,6 +376,53 @@
 							</tbody>
 						</table>
 					</div>
+				{/if}
+			</section>
+
+			<!-- Platform Organization -->
+			<section>
+				<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Platform Organization</h2>
+				{#if platformOrgId}
+					<p class="mb-4 text-[11px] text-sidebar-icon">
+						Your team's organization. Members here have global access across all client organizations.
+					</p>
+					<form onsubmit={(e) => { e.preventDefault(); savePlatformOrg(); }}>
+						<div class="grid max-w-lg grid-cols-2 gap-4">
+							<div>
+								<label for="porg-name" class={labelClass}>Name</label>
+								<input id="porg-name" type="text" required bind:value={platformOrgName} class={inputClass} />
+							</div>
+							<div>
+								<label for="porg-slug" class={labelClass}>Slug</label>
+								<input id="porg-slug" type="text" required bind:value={platformOrgSlug} class={inputClass} />
+							</div>
+							<div>
+								<label for="porg-domain" class={labelClass}>Domain</label>
+								<input id="porg-domain" type="text" bind:value={platformOrgDomain}
+									class={inputClass} placeholder="example.com" />
+							</div>
+							<div>
+								<label for="porg-website" class={labelClass}>Website</label>
+								<input id="porg-website" type="text" bind:value={platformOrgWebsite}
+									class={inputClass} placeholder="https://..." />
+							</div>
+						</div>
+
+						{#if platformOrgError}
+							<p class="mt-3 text-xs text-red-500">{platformOrgError}</p>
+						{/if}
+						{#if platformOrgSuccess}
+							<p class="mt-3 text-xs text-green-600">{platformOrgSuccess}</p>
+						{/if}
+
+						<div class="mt-4 flex justify-end">
+							<button type="submit" disabled={platformOrgSaving || !platformOrgName.trim() || !platformOrgSlug.trim()} class={btnPrimary}>
+								{platformOrgSaving ? 'Saving...' : 'Save organization'}
+							</button>
+						</div>
+					</form>
+				{:else}
+					<p class="text-xs text-sidebar-icon">No platform organization configured.</p>
 				{/if}
 			</section>
 

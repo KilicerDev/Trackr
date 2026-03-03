@@ -12,6 +12,7 @@ import {
 	TicketSlash,
 	UserCog,
 	UsersRound,
+	Shield,
 	Settings,
 	List
 } from '@lucide/svelte';
@@ -50,6 +51,7 @@ export const sidebarSections: SidebarSection[] = [
 		title: 'Administration',
 		items: [
 			{ label: 'Organizations', icon: Building2, href: '/organizations' },
+			{ label: 'Roles', icon: Shield, href: '/roles' },
 			{ label: '(Ticket Configuration)', icon: TicketSlash, href: '/ticket-configuration' },
 			{ label: '(User Management)', icon: UserCog, href: '/user-management' },
 			{ label: '(Team Management)', icon: UsersRound, href: '/team-management' },

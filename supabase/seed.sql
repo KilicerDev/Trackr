@@ -3,14 +3,15 @@
 -- ============================================
 
 -- Fixed UUIDs for referencing
--- User 1 (owner):    b0000000-0000-0000-0000-000000000001
--- User 2 (client):   b0000000-0000-0000-0000-000000000002
--- Org:               c0000000-0000-0000-0000-000000000001
--- Project 1:         d0000000-0000-0000-0000-000000000001
--- Project 2:         d0000000-0000-0000-0000-000000000002
--- Tasks:             e0000000-0000-0000-0000-00000000000X
--- Tickets:           f0000000-0000-0000-0000-00000000000X
--- Roles (from migration): a0000000-0000-0000-0000-00000000000X
+-- User 1 (owner):          b0000000-0000-0000-0000-000000000001
+-- User 2 (client):         b0000000-0000-0000-0000-000000000002
+-- Platform org:            c0000000-0000-0000-0000-000000000001
+-- Client org (Müller):     c0000000-0000-0000-0000-000000000002
+-- Project 1:               d0000000-0000-0000-0000-000000000001
+-- Project 2:               d0000000-0000-0000-0000-000000000002
+-- Tasks:                   e0000000-0000-0000-0000-00000000000X
+-- Tickets:                 f0000000-0000-0000-0000-00000000000X
+-- Roles (from migration):  a0000000-0000-0000-0000-00000000000X
 
 
 -- ============================================
@@ -77,11 +78,12 @@ INSERT INTO auth.identities (
 
 
 -- ============================================
--- 2. ORGANIZATION (must come before users referencing it)
+-- 2. ORGANIZATIONS (platform org + client org)
 -- ============================================
 
 INSERT INTO public.organizations (id, name, slug, domain, logo_url, support_tier_id, is_active, website_url, notes) VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'Kılıç Software', 'kilic-software', 'kilicsoftware.com', null, '10000000-0000-0000-0000-000000000004', true, 'https://kilicsoftware.com', 'Main organization');
+  ('c0000000-0000-0000-0000-000000000001', 'Kılıç Software', 'kilic-software', 'kilicsoftware.com', null, null, true, 'https://kilicsoftware.com', 'Platform organization'),
+  ('c0000000-0000-0000-0000-000000000002', 'Müller GmbH', 'mueller-gmbh', 'mueller-gmbh.de', null, '10000000-0000-0000-0000-000000000004', true, 'https://mueller-gmbh.de', 'Client company');
 
 
 -- ============================================
@@ -90,7 +92,7 @@ INSERT INTO public.organizations (id, name, slug, domain, logo_url, support_tier
 
 INSERT INTO public.users (id, email, full_name, username, avatar_url, timezone, locale, organization_id, is_active, last_seen_at) VALUES
   ('b0000000-0000-0000-0000-000000000001', 'ertugul.kilic@icloud.com', 'Ertuğul Kılıç', 'kilicer', null, 'Europe/Istanbul', 'tr', 'c0000000-0000-0000-0000-000000000001', true, now()),
-  ('b0000000-0000-0000-0000-000000000002', 'sarah.mueller@example.com', 'Sarah Müller', 'sarahm', null, 'Europe/Berlin', 'de', 'c0000000-0000-0000-0000-000000000001', true, now());
+  ('b0000000-0000-0000-0000-000000000002', 'sarah.mueller@example.com', 'Sarah Müller', 'sarahm', null, 'Europe/Berlin', 'de', 'c0000000-0000-0000-0000-000000000002', true, now());
 
 
 -- ============================================
@@ -99,7 +101,7 @@ INSERT INTO public.users (id, email, full_name, username, avatar_url, timezone, 
 
 INSERT INTO public.organization_members (organization_id, user_id, role_id) VALUES
   ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001'),
-  ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000005');
+  ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000005');
 
 
 -- ============================================
@@ -174,8 +176,8 @@ INSERT INTO public.task_activities (task_id, user_id, action, field_name, old_va
 -- ============================================
 
 INSERT INTO public.support_tickets (id, customer_id, subject, description, status, priority, channel, assigned_agent_id, category, organization_id, satisfaction_score, metadata) VALUES
-  ('f0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'Cannot access billing page', 'I click on billing in settings but get a 403 error. I need to update my payment method.', 'open', 'high', 'web_form', 'b0000000-0000-0000-0000-000000000001', 'billing', 'c0000000-0000-0000-0000-000000000001', null, '{"browser": "Chrome 121", "os": "macOS 14.3"}'),
-  ('f0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Feature request: dark mode', 'Would love to have a dark mode toggle in the settings.', 'resolved', 'low', 'email', 'b0000000-0000-0000-0000-000000000001', 'feature_request', 'c0000000-0000-0000-0000-000000000001', 4, '{"browser": "Firefox 122", "os": "Windows 11"}');
+  ('f0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'Cannot access billing page', 'I click on billing in settings but get a 403 error. I need to update my payment method.', 'open', 'high', 'web_form', 'b0000000-0000-0000-0000-000000000001', 'billing', 'c0000000-0000-0000-0000-000000000002', null, '{"browser": "Chrome 121", "os": "macOS 14.3"}'),
+  ('f0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Feature request: dark mode', 'Would love to have a dark mode toggle in the settings.', 'resolved', 'low', 'email', 'b0000000-0000-0000-0000-000000000001', 'feature_request', 'c0000000-0000-0000-0000-000000000002', 4, '{"browser": "Firefox 122", "os": "Windows 11"}');
 
 
 -- ============================================
@@ -191,7 +193,7 @@ INSERT INTO public.support_ticket_messages (ticket_id, sender_id, is_internal_no
 
 
 -- ============================================
--- 13. ORGANIZATION SETTINGS
+-- 13. ORGANIZATION SETTINGS (client org)
 -- ============================================
 
 INSERT INTO public.organization_settings (
@@ -200,9 +202,17 @@ INSERT INTO public.organization_settings (
   default_ticket_priority,
   require_ticket_category
 ) VALUES (
-  'c0000000-0000-0000-0000-000000000001',
+  'c0000000-0000-0000-0000-000000000002',
   false,
   'medium',
   true
 );
+
+
+-- ============================================
+-- 14. SET PLATFORM ORGANIZATION IN SYSTEM CONFIG
+-- ============================================
+
+UPDATE public.system_config
+SET platform_organization_id = 'c0000000-0000-0000-0000-000000000001';
 

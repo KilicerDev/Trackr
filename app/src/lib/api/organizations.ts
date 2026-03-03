@@ -42,11 +42,22 @@ export type CreateOrgInput = {
 export const organizations = {
   async getAll() {
     const supabase = getClient();
-    const { data, error } = await supabase
+
+    const { data: sc } = await supabase
+      .from("system_config")
+      .select("platform_organization_id")
+      .single();
+
+    let q = supabase
       .from("organizations")
       .select(ORG_SELECT)
-      .is("deleted_at", null)
-      .order("name");
+      .is("deleted_at", null);
+
+    if (sc?.platform_organization_id) {
+      q = q.neq("id", sc.platform_organization_id);
+    }
+
+    const { data, error } = await q.order("name");
 
     if (error) throw error;
     return (data ?? []) as Organization[];

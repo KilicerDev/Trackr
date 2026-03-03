@@ -34,7 +34,18 @@ export const config = {
       .single();
 
     if (error) throw error;
-    return data;
+
+    let platform_organization: { id: string; name: string; slug: string } | null = null;
+    if (data.platform_organization_id) {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("id, name, slug")
+        .eq("id", data.platform_organization_id)
+        .single();
+      platform_organization = org;
+    }
+
+    return { ...data, platform_organization };
   },
 
   async updateSystem(values: Record<string, unknown>) {
