@@ -8,6 +8,7 @@
 	import type { TicketFilters } from '$lib/api/tickets';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import CreateTicketModal from '$lib/components/CreateTicketModal.svelte';
+	import TicketDetailPanel from '$lib/components/TicketDetailPanel.svelte';
 	import { ListFilter } from '@lucide/svelte';
 
 	const TICKET_STATUSES = [
@@ -50,6 +51,7 @@
 	let filterDropdownOpen = $state<string | null>(null);
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
+	let selectedTicketId = $state<string | null>(null);
 
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 
@@ -792,26 +794,40 @@
 	{:else}
 		<div>
 			{#each ticketStore.items as ticket (ticket.id)}
-				<TaskRow
-					task={{
-						id: ticket.id,
-						title: ticket.subject,
-						status: ticket.status,
-						priority: ticket.priority,
-						type: 'task',
-						short_id: ticket.id.slice(0, 6),
-						project_id: '',
-						created_by: '',
-						project: null,
-						assignments: [],
-						created_by_user: null,
-						start_at: ticket.created_at,
-						end_at: ticket.resolved_at
-					}}
-				/>
+			<TaskRow
+				task={{
+					id: ticket.id,
+					title: ticket.subject,
+					status: ticket.status,
+					priority: ticket.priority,
+					type: 'task',
+					short_id: ticket.id.slice(0, 6),
+					project_id: '',
+					created_by: '',
+					project: null,
+					assignments: [],
+					created_by_user: null,
+					start_at: ticket.created_at,
+					end_at: ticket.resolved_at
+				}}
+				onclick={() => {
+					selectedTicketId = ticket.id;
+				}}
+			/>
 			{/each}
 		</div>
 
 		<p class="px-4 py-3 text-xs text-muted">{ticketStore.count} tickets total</p>
 	{/if}
 </div>
+
+{#if selectedTicketId}
+	<TicketDetailPanel
+		ticketId={selectedTicketId}
+		{members}
+		onClose={() => {
+			selectedTicketId = null;
+		}}
+		onUpdate={() => applyFilters()}
+	/>
+{/if}
