@@ -4,10 +4,11 @@
 	interface Props {
 		open: boolean;
 		onClose: () => void;
+		maxWidth?: string;
 		children?: Snippet;
 	}
 
-	let { open = false, onClose, children }: Props = $props();
+	let { open = false, onClose, maxWidth = 'max-w-lg', children }: Props = $props();
 
 	$effect(() => {
 		if (!open) return;
@@ -28,7 +29,7 @@
 		<div class="absolute inset-0 bg-black/50"></div>
 		<!-- Panel: same surface/border as app dropdowns and filter bar -->
 		<div
-			class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto border border-surface-border bg-surface shadow-xl"
+			class="relative max-h-[90vh] w-full {maxWidth} overflow-y-auto border border-surface-border bg-surface shadow-xl"
 		>
 			{#if children}
 				{@render children()}

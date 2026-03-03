@@ -80,8 +80,8 @@ INSERT INTO auth.identities (
 -- 2. ORGANIZATION (must come before users referencing it)
 -- ============================================
 
-INSERT INTO public.organizations (id, name, slug, domain, logo_url, support_tier, is_active, website_url, notes) VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'Kılıç Software', 'kilic-software', 'kilicsoftware.com', null, 'gold', true, 'https://kilicsoftware.com', 'Main organization');
+INSERT INTO public.organizations (id, name, slug, domain, logo_url, support_tier_id, is_active, website_url, notes) VALUES
+  ('c0000000-0000-0000-0000-000000000001', 'Kılıç Software', 'kilic-software', 'kilicsoftware.com', null, '10000000-0000-0000-0000-000000000004', true, 'https://kilicsoftware.com', 'Main organization');
 
 
 -- ============================================
@@ -188,3 +188,21 @@ INSERT INTO public.support_ticket_messages (ticket_id, sender_id, is_internal_no
   ('f0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', false, 'Hi Sarah, thanks for reaching out. I''m looking into this now and will get back to you shortly.'),
   ('f0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', false, 'It would be great if you could add a dark mode option. My eyes hurt at night!'),
   ('f0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', false, 'Great suggestion! We have this on our roadmap. Marking as resolved for now — we''ll notify you when it ships.');
+
+
+-- ============================================
+-- 13. ORGANIZATION SETTINGS
+-- ============================================
+
+INSERT INTO public.organization_settings (
+  organization_id,
+  auto_assign_tickets,
+  default_ticket_priority,
+  require_ticket_category
+) VALUES (
+  'c0000000-0000-0000-0000-000000000001',
+  false,
+  'medium',
+  true
+);
+

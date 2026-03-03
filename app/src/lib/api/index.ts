@@ -3,6 +3,7 @@ import { projects } from "./projects";
 import { tickets } from "./tickets";
 import { members } from "./members";
 import { organizations } from "./organizations";
+import { config } from "./config";
 
 export const api = {
   tasks,
@@ -10,4 +11,5 @@ export const api = {
   tickets,
   members,
   organizations,
+  config,
 };

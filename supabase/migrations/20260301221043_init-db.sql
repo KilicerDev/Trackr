@@ -10,10 +10,6 @@ CREATE TYPE public.project_status AS ENUM (
   'planning', 'active', 'paused', 'completed', 'archived'
 );
 
-CREATE TYPE public.support_tier AS ENUM (
-  'basic', 'gold', 'enterprise'
-);
-
 CREATE TYPE public.task_status AS ENUM (
   'backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'
 );
@@ -73,7 +69,6 @@ CREATE TABLE public.organizations (
   slug          text NOT NULL UNIQUE,
   domain        text,
   logo_url      text,
-  support_tier  public.support_tier NOT NULL DEFAULT 'basic',
   is_active     boolean NOT NULL DEFAULT true,
   website_url   text,
   notes         text,

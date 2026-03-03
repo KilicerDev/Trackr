@@ -8,6 +8,7 @@ import {
 	BookOpen,
 	Library,
 	GraduationCap,
+	Building2,
 	TicketSlash,
 	UserCog,
 	UsersRound,
@@ -48,10 +49,11 @@ export const sidebarSections: SidebarSection[] = [
 	{
 		title: 'Administration',
 		items: [
+			{ label: 'Organizations', icon: Building2, href: '/organizations' },
 			{ label: '(Ticket Configuration)', icon: TicketSlash, href: '/ticket-configuration' },
 			{ label: '(User Management)', icon: UserCog, href: '/user-management' },
 			{ label: '(Team Management)', icon: UsersRound, href: '/team-management' },
-			{ label: '(System Settings)', icon: Settings, href: '/system-settings' },
+			{ label: 'System Settings', icon: Settings, href: '/system-settings' },
 			{ label: '(Logs)', icon: List, href: '/logs' }
 		]
 	}
