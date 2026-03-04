@@ -24,12 +24,12 @@
 	<div
 		role="dialog"
 		aria-modal="true"
-		class="fixed inset-0 z-50 flex items-center justify-center p-4"
+		class="fixed inset-0 z-9999 flex items-center justify-center p-4"
 	>
 		<div class="absolute inset-0 bg-black/50"></div>
 		<!-- Panel: same surface/border as app dropdowns and filter bar -->
 		<div
-			class="relative max-h-[90vh] w-full {maxWidth} overflow-y-auto border border-surface-border bg-surface shadow-xl"
+			class="relative w-full {maxWidth} border border-surface-border bg-surface shadow-xl"
 		>
 			{#if children}
 				{@render children()}

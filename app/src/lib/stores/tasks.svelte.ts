@@ -105,6 +105,35 @@ class TaskStore {
     }
   }
 
+  async update(taskId: string, values: Record<string, unknown>) {
+    const prev = this.items.find((t) => t.id === taskId);
+    if (!prev) return;
+    const snapshot = { ...prev };
+
+    this.items = this.items.map((t) =>
+      t.id === taskId ? { ...t, ...values } : t
+    );
+    if (this.activeTask?.id === taskId) {
+      this.activeTask = { ...this.activeTask, ...values };
+    }
+
+    try {
+      const updated = (await api.tasks.update(taskId, values)) as Task;
+      this.items = this.items.map((t) => (t.id === taskId ? updated : t));
+      if (this.activeTask?.id === taskId) {
+        this.activeTask = updated;
+      }
+      return updated;
+    } catch {
+      this.items = this.items.map((t) =>
+        t.id === taskId ? snapshot : t
+      );
+      if (this.activeTask?.id === taskId) {
+        this.activeTask = snapshot;
+      }
+    }
+  }
+
   async updateStatus(taskId: string, status: string) {
     const prev = this.items.find((t) => t.id === taskId);
     const prevStatus = prev?.status;

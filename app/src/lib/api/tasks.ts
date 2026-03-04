@@ -190,6 +190,55 @@ export const tasks = {
     return data;
   },
 
+  async getWorkLogs(taskId: string) {
+    const supabase = getClient();
+    const { data, error } = await supabase
+      .from("task_work_logs")
+      .select("*, user:users(id, full_name, avatar_url)")
+      .eq("task_id", taskId)
+      .order("logged_at", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async addWorkLog(
+    taskId: string,
+    userId: string,
+    minutes: number,
+    description?: string,
+    loggedAt?: string
+  ) {
+    const supabase = getClient();
+    const row: Record<string, unknown> = {
+      task_id: taskId,
+      user_id: userId,
+      minutes,
+    };
+    if (description) row.description = description;
+    if (loggedAt) row.logged_at = loggedAt;
+
+    const { data, error } = await supabase
+      .from("task_work_logs")
+      .insert(row)
+      .select("*, user:users(id, full_name, avatar_url)")
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteWorkLog(id: string) {
+    const supabase = getClient();
+    const { error } = await supabase
+      .from("task_work_logs")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+  },
+
   async getActivities(taskId: string) {
     const supabase = getClient();
     const { data, error } = await supabase

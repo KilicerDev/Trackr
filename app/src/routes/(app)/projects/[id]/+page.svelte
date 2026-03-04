@@ -9,6 +9,8 @@
 	import type { Role } from '$lib/api/roles';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import { ArrowLeft, Users, Calendar, User, Check, X, Plus, Trash2 } from '@lucide/svelte';
+	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
+	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 
 	const PROJECT_STATUSES = ['planning', 'active', 'paused', 'completed', 'archived'] as const;
 	const PRESET_COLORS = [
@@ -66,6 +68,8 @@
 		return result;
 	});
 
+	let selectedTaskId = $state<string | null>(null);
+	let createModalOpen = $state(false);
 	let openDropdown = $state<string | null>(null);
 	let editingName = $state(false);
 	let nameDraft = $state('');
@@ -554,13 +558,19 @@
 		</div>
 
 		<!-- Tasks -->
-		<div class="px-4 pt-4 pb-2">
+		<div class="flex items-center justify-between px-4 pt-4 pb-2">
 			<h2 class="text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">
 				Tasks
 				{#if taskStore.count > 0}
 					<span class="ml-1 text-muted">({taskStore.count})</span>
 				{/if}
 			</h2>
+			<button
+				class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
+				onclick={() => (createModalOpen = true)}
+			>
+				<Plus size={13} /> Add
+			</button>
 		</div>
 
 		{#if taskStore.loading}
@@ -572,9 +582,28 @@
 		{:else}
 			<div>
 				{#each taskTree as { task, depth } (task.id)}
-					<TaskRow {task} {depth} />
+					<TaskRow {task} {depth} onclick={() => (selectedTaskId = task.id)} />
 				{/each}
 			</div>
 		{/if}
 	{/if}
 </div>
+
+{#if createModalOpen && project}
+	<CreateTaskModal
+		projectId={project.id}
+		onClose={() => (createModalOpen = false)}
+		onCreated={(id) => (selectedTaskId = id)}
+	/>
+{/if}
+
+{#if selectedTaskId}
+	<TaskDetailPanel
+		taskId={selectedTaskId}
+		members={(project?.members ?? []).map((m) => ({
+			user_id: m.user_id,
+			user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url }
+		}))}
+		onClose={() => (selectedTaskId = null)}
+	/>
+{/if}
