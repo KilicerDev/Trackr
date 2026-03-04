@@ -55,6 +55,16 @@
 	let platformOrgError = $state<string | null>(null);
 	let platformOrgSuccess = $state<string | null>(null);
 
+	// Tab
+	type Tab = 'tiers' | 'organization' | 'branding' | 'defaults';
+	let activeTab = $state<Tab>('tiers');
+	const tabs: { key: Tab; label: string }[] = [
+		{ key: 'tiers', label: 'Support Tiers' },
+		{ key: 'organization', label: 'Organization' },
+		{ key: 'branding', label: 'Branding' },
+		{ key: 'defaults', label: 'Defaults' }
+	];
+
 	// Dropdown state
 	let openDropdown = $state<string | null>(null);
 
@@ -311,236 +321,270 @@
 	{:else if loading}
 		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
 	{:else}
-		<div class="space-y-8 p-6">
+		<!-- Tab Bar -->
+		<div class="flex border-b border-surface-border bg-surface-hover/40 px-6">
+			{#each tabs as tab (tab.key)}
+				<button
+					class="relative px-4 py-2.5 text-xs font-medium transition-colors {activeTab === tab.key
+						? 'text-accent after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-accent'
+						: 'text-sidebar-icon hover:text-sidebar-text'}"
+					onclick={() => { activeTab = tab.key; error = null; success = null; }}
+				>
+					{tab.label}
+				</button>
+			{/each}
+		</div>
+
+		<div class="p-6">
 			<!-- Support Tiers -->
-			<section>
-				<div class="mb-4 flex items-center justify-between">
-					<h2 class="text-xs font-semibold uppercase tracking-wider text-sidebar-text">Support Tiers</h2>
-					<button class={btnPrimary} onclick={openAddTier}>Add tier</button>
-				</div>
-
-				{#if tiers.length === 0}
-					<p class="py-6 text-center text-xs text-sidebar-icon">No tiers configured.</p>
-				{:else}
-					<div class="overflow-x-auto">
-						<table class="w-full text-xs">
-							<thead>
-								<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
-									<th class="px-3 py-2">Name</th>
-									<th class="px-3 py-2">Response</th>
-									<th class="px-3 py-2">Resolution</th>
-									<th class="px-3 py-2">Order</th>
-									<th class="px-3 py-2">Status</th>
-									<th class="px-3 py-2"></th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each tiers as t (t.id)}
-									<tr class="border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50">
-										<td class="px-3 py-2.5">
-											<div>
-												<span class="font-medium text-sidebar-text">{t.name}</span>
-												<span class="ml-1.5 text-[10px] text-sidebar-icon">({t.slug})</span>
-											</div>
-											{#if t.description}
-												<p class="mt-0.5 text-[10px] text-sidebar-icon">{t.description}</p>
-											{/if}
-										</td>
-										<td class="px-3 py-2.5 text-sidebar-text">{t.response_time_hours}h</td>
-										<td class="px-3 py-2.5 text-sidebar-text">{t.resolution_time_hours}h</td>
-										<td class="px-3 py-2.5 text-sidebar-icon">{t.sort_order}</td>
-										<td class="px-3 py-2.5">
-											<span class="text-[10px] font-medium {t.is_active ? 'text-green-600' : 'text-sidebar-icon'}">
-												{t.is_active ? 'Active' : 'Inactive'}
-											</span>
-										</td>
-										<td class="px-3 py-2.5">
-											<div class="flex items-center gap-2">
-												<button
-													class="text-[11px] text-sidebar-icon transition-colors hover:text-accent"
-													onclick={() => openEditTier(t)}
-												>
-													Edit
-												</button>
-											<button
-												class="text-[11px] text-sidebar-icon transition-colors hover:text-red-500"
-												disabled={deletingTierId === t.id}
-												onclick={() => (confirmDeleteTier = t)}
-											>
-												{deletingTierId === t.id ? '...' : 'Delete'}
-											</button>
-											</div>
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
+			{#if activeTab === 'tiers'}
+				<section>
+					<div class="mb-4 flex items-center justify-between">
+						<h2 class="text-xs font-semibold uppercase tracking-wider text-sidebar-text">Support Tiers</h2>
+						<button class={btnPrimary} onclick={openAddTier}>Add tier</button>
 					</div>
-				{/if}
-			</section>
 
-			<!-- Platform Organization -->
-			<section>
-				<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Platform Organization</h2>
-				{#if platformOrgId}
-					<p class="mb-4 text-[11px] text-sidebar-icon">
-						Your team's organization. Members here have global access across all client organizations.
-					</p>
-					<form onsubmit={(e) => { e.preventDefault(); savePlatformOrg(); }}>
+					{#if tiers.length === 0}
+						<p class="py-6 text-center text-xs text-sidebar-icon">No tiers configured.</p>
+					{:else}
+						<div class="overflow-x-auto">
+							<table class="w-full text-xs">
+								<thead>
+									<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
+										<th class="px-3 py-2">Name</th>
+										<th class="px-3 py-2">Response</th>
+										<th class="px-3 py-2">Resolution</th>
+										<th class="px-3 py-2">Order</th>
+										<th class="px-3 py-2">Status</th>
+										<th class="px-3 py-2"></th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each tiers as t (t.id)}
+										<tr class="border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50">
+											<td class="px-3 py-2.5">
+												<div>
+													<span class="font-medium text-sidebar-text">{t.name}</span>
+													<span class="ml-1.5 text-[10px] text-sidebar-icon">({t.slug})</span>
+												</div>
+												{#if t.description}
+													<p class="mt-0.5 text-[10px] text-sidebar-icon">{t.description}</p>
+												{/if}
+											</td>
+											<td class="px-3 py-2.5 text-sidebar-text">{t.response_time_hours}h</td>
+											<td class="px-3 py-2.5 text-sidebar-text">{t.resolution_time_hours}h</td>
+											<td class="px-3 py-2.5 text-sidebar-icon">{t.sort_order}</td>
+											<td class="px-3 py-2.5">
+												<span class="text-[10px] font-medium {t.is_active ? 'text-green-600' : 'text-sidebar-icon'}">
+													{t.is_active ? 'Active' : 'Inactive'}
+												</span>
+											</td>
+											<td class="px-3 py-2.5">
+												<div class="flex items-center gap-2">
+													<button
+														class="text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+														onclick={() => openEditTier(t)}
+													>
+														Edit
+													</button>
+													<button
+														class="text-[11px] text-sidebar-icon transition-colors hover:text-red-500"
+														disabled={deletingTierId === t.id}
+														onclick={() => (confirmDeleteTier = t)}
+													>
+														{deletingTierId === t.id ? '...' : 'Delete'}
+													</button>
+												</div>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
+				</section>
+			{/if}
+
+			<!-- Organization -->
+			{#if activeTab === 'organization'}
+				<section>
+					<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Platform Organization</h2>
+					{#if platformOrgId}
+						<p class="mb-4 text-[11px] text-sidebar-icon">
+							Your team's organization. Members here have global access across all client organizations.
+						</p>
+						<form onsubmit={(e) => { e.preventDefault(); savePlatformOrg(); }}>
+							<div class="grid max-w-lg grid-cols-2 gap-4">
+								<div>
+									<label for="porg-name" class={labelClass}>Name</label>
+									<input id="porg-name" type="text" required bind:value={platformOrgName} class={inputClass} />
+								</div>
+								<div>
+									<label for="porg-slug" class={labelClass}>Slug</label>
+									<input id="porg-slug" type="text" required bind:value={platformOrgSlug} class={inputClass} />
+								</div>
+								<div>
+									<label for="porg-domain" class={labelClass}>Domain</label>
+									<input id="porg-domain" type="text" bind:value={platformOrgDomain}
+										class={inputClass} placeholder="example.com" />
+								</div>
+								<div>
+									<label for="porg-website" class={labelClass}>Website</label>
+									<input id="porg-website" type="text" bind:value={platformOrgWebsite}
+										class={inputClass} placeholder="https://..." />
+								</div>
+							</div>
+
+							{#if platformOrgError}
+								<p class="mt-3 text-xs text-red-500">{platformOrgError}</p>
+							{/if}
+							{#if platformOrgSuccess}
+								<p class="mt-3 text-xs text-green-600">{platformOrgSuccess}</p>
+							{/if}
+
+							<div class="mt-4 flex justify-end">
+								<button type="submit" disabled={platformOrgSaving || !platformOrgName.trim() || !platformOrgSlug.trim()} class={btnPrimary}>
+									{platformOrgSaving ? 'Saving...' : 'Save organization'}
+								</button>
+							</div>
+						</form>
+					{:else}
+						<p class="text-xs text-sidebar-icon">No platform organization configured.</p>
+					{/if}
+				</section>
+			{/if}
+
+			<!-- Branding -->
+			{#if activeTab === 'branding'}
+				<form onsubmit={(e) => { e.preventDefault(); save(); }}>
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Branding</h2>
 						<div class="grid max-w-lg grid-cols-2 gap-4">
-							<div>
-								<label for="porg-name" class={labelClass}>Name</label>
-								<input id="porg-name" type="text" required bind:value={platformOrgName} class={inputClass} />
+							<div class="col-span-2 sm:col-span-1">
+								<label for="app-name" class={labelClass}>App name</label>
+								<input id="app-name" type="text" bind:value={appName} class={inputClass} />
 							</div>
-							<div>
-								<label for="porg-slug" class={labelClass}>Slug</label>
-								<input id="porg-slug" type="text" required bind:value={platformOrgSlug} class={inputClass} />
+							<div class="col-span-2 sm:col-span-1">
+								<label for="support-email" class={labelClass}>Support email</label>
+								<input id="support-email" type="text" autocomplete="off" data-1p-ignore data-lpignore="true" bind:value={supportEmail}
+									class={inputClass} placeholder="support@example.com" />
 							</div>
-							<div>
-								<label for="porg-domain" class={labelClass}>Domain</label>
-								<input id="porg-domain" type="text" bind:value={platformOrgDomain}
-									class={inputClass} placeholder="example.com" />
-							</div>
-							<div>
-								<label for="porg-website" class={labelClass}>Website</label>
-								<input id="porg-website" type="text" bind:value={platformOrgWebsite}
+							<div class="col-span-2">
+								<label for="app-logo" class={labelClass}>Logo URL</label>
+								<input id="app-logo" type="text" bind:value={appLogoUrl}
 									class={inputClass} placeholder="https://..." />
 							</div>
 						</div>
+					</section>
 
-						{#if platformOrgError}
-							<p class="mt-3 text-xs text-red-500">{platformOrgError}</p>
-						{/if}
-						{#if platformOrgSuccess}
-							<p class="mt-3 text-xs text-green-600">{platformOrgSuccess}</p>
-						{/if}
+					{#if error}
+						<p class="mt-4 text-xs text-red-500">{error}</p>
+					{/if}
+					{#if success}
+						<p class="mt-4 text-xs text-green-600">{success}</p>
+					{/if}
 
-						<div class="mt-4 flex justify-end">
-							<button type="submit" disabled={platformOrgSaving || !platformOrgName.trim() || !platformOrgSlug.trim()} class={btnPrimary}>
-								{platformOrgSaving ? 'Saving...' : 'Save organization'}
-							</button>
-						</div>
-					</form>
-				{:else}
-					<p class="text-xs text-sidebar-icon">No platform organization configured.</p>
-				{/if}
-			</section>
-
-			<!-- General Config Form -->
-			<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-8">
-				<!-- Branding -->
-				<section>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Branding</h2>
-					<div class="grid max-w-lg grid-cols-2 gap-4">
-						<div class="col-span-2 sm:col-span-1">
-							<label for="app-name" class={labelClass}>App name</label>
-							<input id="app-name" type="text" bind:value={appName} class={inputClass} />
-						</div>
-						<div class="col-span-2 sm:col-span-1">
-							<label for="support-email" class={labelClass}>Support email</label>
-						<input id="support-email" type="text" autocomplete="off" data-1p-ignore data-lpignore="true" bind:value={supportEmail}
-							class={inputClass} placeholder="support@example.com" />
-						</div>
-						<div class="col-span-2">
-							<label for="app-logo" class={labelClass}>Logo URL</label>
-							<input id="app-logo" type="text" bind:value={appLogoUrl}
-								class={inputClass} placeholder="https://..." />
-						</div>
+					<div class="mt-6 flex justify-end border-t border-surface-border pt-4">
+						<button type="submit" disabled={saving} class={btnPrimary}>
+							{saving ? 'Saving...' : 'Save settings'}
+						</button>
 					</div>
-				</section>
+				</form>
+			{/if}
 
-				<!-- Defaults -->
-				<section>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Defaults for New Organizations</h2>
-					<div class="grid max-w-lg grid-cols-3 gap-4">
-						<div>
-							<span class={labelClass}>Default tier</span>
-							<div class="relative" data-dropdown>
-								<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('default-tier')}>
-									<span class="truncate">{defaultTierLabel()}</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'default-tier'}
-									<div class={dropPanelClass}>
-										<button type="button"
-											class="{dropItemBase} {defaultTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
-											onmousedown={(e) => { e.preventDefault(); defaultTierId = null; openDropdown = null; }}
-										>None</button>
-										{#each tiers.filter((t) => t.is_active) as t (t.id)}
+			<!-- Defaults -->
+			{#if activeTab === 'defaults'}
+				<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-8">
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Defaults for New Organizations</h2>
+						<div class="grid max-w-lg grid-cols-3 gap-4">
+							<div>
+								<span class={labelClass}>Default tier</span>
+								<div class="relative" data-dropdown>
+									<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('default-tier')}>
+										<span class="truncate">{defaultTierLabel()}</span>
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'default-tier'}
+										<div class={dropPanelClass}>
 											<button type="button"
-												class="{dropItemBase} {defaultTierId === t.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-												onmousedown={(e) => { e.preventDefault(); defaultTierId = t.id; openDropdown = null; }}
-											>{t.name}</button>
-										{/each}
-									</div>
+												class="{dropItemBase} {defaultTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
+												onmousedown={(e) => { e.preventDefault(); defaultTierId = null; openDropdown = null; }}
+											>None</button>
+											{#each tiers.filter((t) => t.is_active) as t (t.id)}
+												<button type="button"
+													class="{dropItemBase} {defaultTierId === t.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+													onmousedown={(e) => { e.preventDefault(); defaultTierId = t.id; openDropdown = null; }}
+												>{t.name}</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							</div>
+							<div>
+								<label for="default-tz" class={labelClass}>Timezone</label>
+								<input id="default-tz" type="text" bind:value={defaultTimezone}
+									class={inputClass} placeholder="UTC" />
+							</div>
+							<div>
+								<label for="default-locale" class={labelClass}>Locale</label>
+								<input id="default-locale" type="text" bind:value={defaultLocale}
+									class={inputClass} placeholder="en" />
+							</div>
+						</div>
+					</section>
+
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Feature Flags</h2>
+						<div class="space-y-3">
+							{@render toggle(signupsEnabled, () => { signupsEnabled = !signupsEnabled; }, 'Signups enabled')}
+							<div class="flex items-center gap-3">
+								<button type="button" class="flex items-center gap-3" onclick={() => { maintenanceMode = !maintenanceMode; }}>
+									<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
+										{maintenanceMode ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+										{#if maintenanceMode}{@html checkSvg}{/if}
+									</span>
+									<span class="text-xs text-sidebar-text">Maintenance mode</span>
+								</button>
+								{#if maintenanceMode}
+									<span class="inline-block bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500">ON</span>
 								{/if}
 							</div>
 						</div>
-						<div>
-							<label for="default-tz" class={labelClass}>Timezone</label>
-							<input id="default-tz" type="text" bind:value={defaultTimezone}
-								class={inputClass} placeholder="UTC" />
+					</section>
+
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Limits</h2>
+						<div class="grid max-w-lg grid-cols-3 gap-4">
+							<div>
+								<label for="max-orgs" class={labelClass}>Max orgs / user</label>
+								<input id="max-orgs" type="number" min="1" bind:value={maxOrgsPerUser} class={inputClass} />
+							</div>
+							<div>
+								<label for="max-projects" class={labelClass}>Max projects / org</label>
+								<input id="max-projects" type="number" min="1" bind:value={maxProjectsPerOrg} class={inputClass} />
+							</div>
+							<div>
+								<label for="max-members" class={labelClass}>Max members / org</label>
+								<input id="max-members" type="number" min="1" bind:value={maxMembersPerOrg} class={inputClass} />
+							</div>
 						</div>
-						<div>
-							<label for="default-locale" class={labelClass}>Locale</label>
-							<input id="default-locale" type="text" bind:value={defaultLocale}
-								class={inputClass} placeholder="en" />
-						</div>
+					</section>
+
+					{#if error}
+						<p class="text-xs text-red-500">{error}</p>
+					{/if}
+					{#if success}
+						<p class="text-xs text-green-600">{success}</p>
+					{/if}
+
+					<div class="flex justify-end border-t border-surface-border pt-4">
+						<button type="submit" disabled={saving} class={btnPrimary}>
+							{saving ? 'Saving...' : 'Save settings'}
+						</button>
 					</div>
-				</section>
-
-				<!-- Feature Flags -->
-				<section>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Feature Flags</h2>
-					<div class="space-y-3">
-						{@render toggle(signupsEnabled, () => { signupsEnabled = !signupsEnabled; }, 'Signups enabled')}
-						<div class="flex items-center gap-3">
-							<button type="button" class="flex items-center gap-3" onclick={() => { maintenanceMode = !maintenanceMode; }}>
-								<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-									{maintenanceMode ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
-									{#if maintenanceMode}{@html checkSvg}{/if}
-								</span>
-								<span class="text-xs text-sidebar-text">Maintenance mode</span>
-							</button>
-							{#if maintenanceMode}
-								<span class="inline-block bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500">ON</span>
-							{/if}
-						</div>
-					</div>
-				</section>
-
-				<!-- Limits -->
-				<section>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Limits</h2>
-					<div class="grid max-w-lg grid-cols-3 gap-4">
-						<div>
-							<label for="max-orgs" class={labelClass}>Max orgs / user</label>
-							<input id="max-orgs" type="number" min="1" bind:value={maxOrgsPerUser} class={inputClass} />
-						</div>
-						<div>
-							<label for="max-projects" class={labelClass}>Max projects / org</label>
-							<input id="max-projects" type="number" min="1" bind:value={maxProjectsPerOrg} class={inputClass} />
-						</div>
-						<div>
-							<label for="max-members" class={labelClass}>Max members / org</label>
-							<input id="max-members" type="number" min="1" bind:value={maxMembersPerOrg} class={inputClass} />
-						</div>
-					</div>
-				</section>
-
-				{#if error}
-					<p class="text-xs text-red-500">{error}</p>
-				{/if}
-				{#if success}
-					<p class="text-xs text-green-600">{success}</p>
-				{/if}
-
-				<div class="flex justify-end border-t border-surface-border pt-4">
-					<button type="submit" disabled={saving} class={btnPrimary}>
-						{saving ? 'Saving...' : 'Save settings'}
-					</button>
-				</div>
-			</form>
+				</form>
+			{/if}
 		</div>
 	{/if}
 </div>

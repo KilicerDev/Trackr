@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X, Send, Lock } from '@lucide/svelte';
+	import { X, Send, Lock, Trash2, Plus, Clock } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 
@@ -49,6 +49,16 @@
 		sender: { id: string; full_name: string; username: string; avatar_url: string | null } | null;
 	};
 
+	type WorkLog = {
+		id: string;
+		minutes: number;
+		description: string | null;
+		logged_at: string;
+		created_at: string;
+		user_id: string;
+		user: { id: string; full_name: string; avatar_url: string | null } | null;
+	};
+
 	interface Props {
 		ticketId: string;
 		members: Member[];
@@ -71,6 +81,25 @@
 	let messageBody = $state('');
 	let isInternalNote = $state(false);
 	let sendingMessage = $state(false);
+
+	let workLogs = $state<WorkLog[]>([]);
+	let wlHours = $state('');
+	let wlMinutes = $state('');
+	let wlDescription = $state('');
+	let wlDate = $state(new Date().toISOString().slice(0, 10));
+	let addingWorkLog = $state(false);
+
+	let totalMinutes = $derived(
+		workLogs.reduce((sum, wl) => sum + Number(wl.minutes), 0)
+	);
+
+	function formatMinutes(m: number): string {
+		const h = Math.floor(m / 60);
+		const rem = m % 60;
+		if (h > 0 && rem > 0) return `${h}h ${rem}m`;
+		if (h > 0) return `${h}h`;
+		return `${rem}m`;
+	}
 
 	let messagesContainer: HTMLDivElement | undefined = $state();
 
@@ -112,12 +141,14 @@
 		editingDescription = false;
 		messageBody = '';
 		try {
-			const [t, m] = await Promise.all([
+			const [t, m, wl] = await Promise.all([
 				api.tickets.getById(id),
-				api.tickets.getMessages(id)
+				api.tickets.getMessages(id),
+				api.tickets.getWorkLogs(id)
 			]);
 			ticket = t as TicketDetail;
 			messages = m as Message[];
+			workLogs = wl as WorkLog[];
 			descriptionDraft = ticket.description ?? '';
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load ticket';
@@ -202,6 +233,43 @@
 			/* keep message in input on error */
 		} finally {
 			sendingMessage = false;
+		}
+	}
+
+	async function addWorkLog() {
+		if (!ticket || addingWorkLog || !auth.user) return;
+		const h = parseInt(wlHours || '0', 10) || 0;
+		const m = parseInt(wlMinutes || '0', 10) || 0;
+		const totalMins = h * 60 + m;
+		if (totalMins <= 0) return;
+		addingWorkLog = true;
+		try {
+			const entry = (await api.tickets.addWorkLog(
+				ticket.id,
+				auth.user.id,
+				totalMins,
+				wlDescription.trim() || undefined,
+				wlDate || undefined
+			)) as WorkLog;
+			workLogs = [entry, ...workLogs];
+			wlHours = '';
+			wlMinutes = '';
+			wlDescription = '';
+			wlDate = new Date().toISOString().slice(0, 10);
+		} catch {
+			/* keep form state on error */
+		} finally {
+			addingWorkLog = false;
+		}
+	}
+
+	async function deleteWorkLog(id: string) {
+		const prev = workLogs;
+		workLogs = workLogs.filter((wl) => wl.id !== id);
+		try {
+			await api.tickets.deleteWorkLog(id);
+		} catch {
+			workLogs = prev;
 		}
 	}
 
@@ -551,6 +619,106 @@
 								<p class="text-sidebar-text">{ticket.satisfaction_score}/5</p>
 							</div>
 						{/if}
+					</div>
+				</div>
+
+				<!-- Work Log -->
+				<div class="border-b border-surface-border px-4 py-3">
+					<div class="mb-3 flex items-center gap-2">
+						<span class={labelClass}>Work Log</span>
+						{#if totalMinutes > 0}
+							<span
+								class="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent"
+							>
+								<Clock size={10} />
+								{formatMinutes(totalMinutes)}
+							</span>
+						{/if}
+					</div>
+
+					<!-- Add form -->
+					<div class="mb-3">
+						<div class="mb-1 flex gap-2">
+							<span class="w-14 text-[10px] text-muted">Hours</span>
+							<span class="w-14 text-[10px] text-muted">Min</span>
+							<span class="min-w-0 flex-1 text-[10px] text-muted">Description</span>
+							<span class="w-[110px] text-[10px] text-muted">Date</span>
+							<span class="w-[30px] shrink-0"></span>
+						</div>
+						<div class="flex items-stretch gap-2">
+							<input
+								type="number"
+								step="1"
+								min="0"
+								bind:value={wlHours}
+								placeholder="0"
+								class="w-14 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
+							/>
+							<input
+								type="number"
+								step="5"
+								min="0"
+								max="59"
+								bind:value={wlMinutes}
+								placeholder="0"
+								class="w-14 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
+							/>
+							<input
+								type="text"
+								bind:value={wlDescription}
+								placeholder="What was done..."
+								class="min-w-0 flex-1 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
+							/>
+							<input
+								type="date"
+								bind:value={wlDate}
+								class="w-[110px] border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors focus:border-sidebar-icon/30"
+							/>
+							<button
+								class="flex w-[30px] shrink-0 items-center justify-center bg-accent text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+								disabled={addingWorkLog || (!wlHours && !wlMinutes)}
+								onclick={addWorkLog}
+								aria-label="Add work log"
+							>
+								<Plus size={14} />
+							</button>
+						</div>
+					</div>
+
+					<!-- Entries -->
+					<div class="max-h-[200px] space-y-2 overflow-y-auto">
+						{#if workLogs.length === 0}
+							<p class="py-3 text-center text-xs text-muted">No hours logged yet</p>
+						{/if}
+						{#each workLogs as wl (wl.id)}
+							<div class="flex items-start justify-between gap-2 border border-surface-border bg-surface p-2.5">
+								<div class="min-w-0 flex-1">
+									<div class="flex items-center gap-2">
+										<span class="text-xs font-medium text-sidebar-text">
+											{wl.user?.full_name ?? 'Unknown'}
+										</span>
+										<span class="font-mono text-xs font-semibold text-accent">
+											{formatMinutes(Number(wl.minutes))}
+										</span>
+									</div>
+									{#if wl.description}
+										<p class="mt-0.5 text-[11px] text-muted">{wl.description}</p>
+									{/if}
+								</div>
+								<div class="flex shrink-0 items-center gap-2">
+									<span class="text-[10px] text-muted">{formatDate(wl.logged_at)}</span>
+									{#if auth.user && wl.user_id === auth.user.id}
+										<button
+											class="p-0.5 text-sidebar-icon transition-colors hover:text-red-500"
+											onclick={() => deleteWorkLog(wl.id)}
+											aria-label="Delete work log"
+										>
+											<Trash2 size={12} />
+										</button>
+									{/if}
+								</div>
+							</div>
+						{/each}
 					</div>
 				</div>
 

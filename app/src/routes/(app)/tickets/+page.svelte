@@ -172,12 +172,12 @@
 			organizations = [];
 		}
 		const orgId = auth.organizationId;
-		selectedOrgId = orgId;
-		ticketStore.load(orgId ?? undefined, getFilters());
-		if (orgId) {
+		selectedOrgId = organizations.some((o) => o.id === orgId) ? orgId : null;
+		ticketStore.load(selectedOrgId ?? undefined, getFilters());
+		if (selectedOrgId) {
 			try {
-				members = (await api.members.getAll(orgId)) as Member[];
-				customers = await api.tickets.getCustomersByOrg(orgId);
+				members = (await api.members.getAll(selectedOrgId)) as Member[];
+				customers = await api.tickets.getCustomersByOrg(selectedOrgId);
 			} catch {
 				members = [];
 				customers = [];

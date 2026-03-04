@@ -6,6 +6,7 @@
 	import type { LayoutData } from './$types';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { theme } from '$lib/stores/theme.svelte';
+	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
@@ -22,6 +23,7 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 {@render children()}
+<NotificationContainer />
 
 <div style="display:none">
 	{#each locales as locale}

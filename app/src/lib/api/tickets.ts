@@ -176,4 +176,53 @@ export const tickets = {
     if (error) throw error;
     return data;
   },
+
+  async getWorkLogs(ticketId: string) {
+    const supabase = getClient();
+    const { data, error } = await supabase
+      .from("ticket_work_logs")
+      .select("*, user:users(id, full_name, avatar_url)")
+      .eq("ticket_id", ticketId)
+      .order("logged_at", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async addWorkLog(
+    ticketId: string,
+    userId: string,
+    minutes: number,
+    description?: string,
+    loggedAt?: string
+  ) {
+    const supabase = getClient();
+    const row: Record<string, unknown> = {
+      ticket_id: ticketId,
+      user_id: userId,
+      minutes,
+    };
+    if (description) row.description = description;
+    if (loggedAt) row.logged_at = loggedAt;
+
+    const { data, error } = await supabase
+      .from("ticket_work_logs")
+      .insert(row)
+      .select("*, user:users(id, full_name, avatar_url)")
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteWorkLog(id: string) {
+    const supabase = getClient();
+    const { error } = await supabase
+      .from("ticket_work_logs")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+  },
 };

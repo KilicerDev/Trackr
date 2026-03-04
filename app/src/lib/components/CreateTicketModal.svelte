@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/Modal.svelte';
 	import { ticketStore } from '$lib/stores/tickets.svelte';
+	import { notifications } from '$lib/stores/notifications.svelte';
 
 	interface CustomerOption {
 		id: string;
@@ -69,8 +70,8 @@
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (!canSubmit || !organizationId || submitting) return;
-		error = null;
 		submitting = true;
+		const n = notifications.action('Creating ticket');
 		try {
 			await ticketStore.create({
 				subject: subject.trim(),
@@ -81,10 +82,11 @@
 				channel: channel || 'web_form',
 				category: category || undefined
 			});
+			n.success('Ticket created');
 			onSuccess?.();
 			onClose();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to create ticket';
+			n.error('Failed', err instanceof Error ? err.message : 'Failed to create ticket');
 		} finally {
 			submitting = false;
 		}
