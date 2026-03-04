@@ -3,10 +3,11 @@
 
 	type Props = {
 		task: Task;
+		depth?: number;
 		onclick?: () => void;
 	};
 
-	let { task, onclick }: Props = $props();
+	let { task, depth = 0, onclick }: Props = $props();
 
 	const typeIcons: Record<string, string> = {
 		task: '☰',
@@ -72,7 +73,8 @@
 </script>
 
 <button
-	class="group flex w-full items-center gap-3 border-b border-surface-border px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface-hover"
+	class="group flex w-full items-center gap-3 border-b border-surface-border py-2.5 text-left text-sm transition-colors hover:bg-surface-hover"
+	style="padding-left: {16 + depth * 24}px; padding-right: 16px;"
 	{onclick}
 >
 	<span class="shrink-0 text-base text-muted">

@@ -9,6 +9,8 @@ export type CreateProjectInput = {
   organization_id: string;
   color?: string;
   icon?: string;
+  start_at?: string;
+  end_at?: string;
 };
 
 export const projects = {

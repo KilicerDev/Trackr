@@ -1,6 +1,13 @@
 import { api } from "$lib/api";
 import type { TaskFilters } from "$lib/api/tasks";
 
+function extractErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string")
+    return (e as { message: string }).message;
+  return fallback;
+}
+
 export type Task = {
   id: string;
   title: string;
@@ -55,7 +62,8 @@ class TaskStore {
       this.filters = f;
       this.page = page;
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Failed to load tasks";
+      console.error("[TaskStore.load]", e);
+      this.error = extractErrorMessage(e, "Failed to load tasks");
     } finally {
       this.loading = false;
     }
@@ -66,7 +74,7 @@ class TaskStore {
     try {
       this.activeTask = (await api.tasks.getById(id)) as Task;
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Task not found";
+      this.error = extractErrorMessage(e, "Task not found");
     } finally {
       this.loading = false;
     }
@@ -79,7 +87,7 @@ class TaskStore {
         shortId
       )) as Task;
     } catch (e) {
-      this.error = e instanceof Error ? e.message : "Task not found";
+      this.error = extractErrorMessage(e, "Task not found");
     } finally {
       this.loading = false;
     }
@@ -92,8 +100,7 @@ class TaskStore {
       this.count++;
       return task;
     } catch (e) {
-      this.error =
-        e instanceof Error ? e.message : "Failed to create task";
+      this.error = extractErrorMessage(e, "Failed to create task");
       throw e;
     }
   }

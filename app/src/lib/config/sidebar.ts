@@ -35,7 +35,6 @@ export const sidebarSections: SidebarSection[] = [
 			{ label: 'Dashboard', icon: LayoutDashboard, href: '/' },
 			{ label: 'Support Tickets', icon: Ticket, href: '/tickets' },
 			{ label: 'Projects', icon: Files, href: '/projects' },
-			{ label: '(Teams)', icon: Users, href: '/teams' },
 			{ label: '(Chats)', icon: MessageCircle, href: '/chats' }
 		]
 	},
@@ -54,7 +53,6 @@ export const sidebarSections: SidebarSection[] = [
 			{ label: 'Roles', icon: Shield, href: '/roles' },
 			{ label: '(Ticket Configuration)', icon: TicketSlash, href: '/ticket-configuration' },
 			{ label: '(User Management)', icon: UserCog, href: '/user-management' },
-			{ label: '(Team Management)', icon: UsersRound, href: '/team-management' },
 			{ label: 'System Settings', icon: Settings, href: '/system-settings' },
 			{ label: '(Logs)', icon: List, href: '/logs' }
 		]

@@ -4,7 +4,7 @@ export const TASK_SELECT = `
   assignments:task_assignments(
     user_id,
     role,
-    user:users(id, full_name, username, avatar_url)
+    user:users!user_id(id, full_name, username, avatar_url)
   ),
   created_by_user:users!created_by(id, full_name, avatar_url),
   parent:tasks!parent_id(id, title, short_id)
