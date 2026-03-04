@@ -137,7 +137,14 @@
 
 	$effect(() => {
 		const orgId = auth.organizationId;
-		if (!orgId || loaded) return;
+		if (loaded) return;
+		if (!auth.isAuthenticated) return;
+
+		if (!orgId) {
+			loading = false;
+			return;
+		}
+
 		loaded = true;
 
 		(async () => {

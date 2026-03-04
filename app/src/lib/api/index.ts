@@ -5,6 +5,7 @@ import { members } from "./members";
 import { organizations } from "./organizations";
 import { config } from "./config";
 import { roles } from "./roles";
+import { users } from "./users";
 
 export const api = {
   tasks,
@@ -14,4 +15,5 @@ export const api = {
   organizations,
   config,
   roles,
+  users,
 };

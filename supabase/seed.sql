@@ -15,7 +15,16 @@
 
 
 -- ============================================
--- 1. AUTH USERS
+-- 1. ORGANIZATIONS (must exist before auth.users so trigger can reference them)
+-- ============================================
+
+INSERT INTO public.organizations (id, name, slug, domain, logo_url, support_tier_id, is_active, website_url, notes) VALUES
+  ('c0000000-0000-0000-0000-000000000001', 'Kılıç Software', 'kilic-software', 'kilicsoftware.com', null, null, true, 'https://kilicsoftware.com', 'Platform organization'),
+  ('c0000000-0000-0000-0000-000000000002', 'Müller GmbH', 'mueller-gmbh', 'mueller-gmbh.de', null, '10000000-0000-0000-0000-000000000004', true, 'https://mueller-gmbh.de', 'Client company');
+
+
+-- ============================================
+-- 2. AUTH USERS (trigger handle_new_user creates public.users rows automatically)
 -- ============================================
 
 INSERT INTO auth.users (
@@ -78,21 +87,22 @@ INSERT INTO auth.identities (
 
 
 -- ============================================
--- 2. ORGANIZATIONS (platform org + client org)
+-- 3. UPDATE PUBLIC USERS (trigger created base rows, now set org + preferences)
 -- ============================================
 
-INSERT INTO public.organizations (id, name, slug, domain, logo_url, support_tier_id, is_active, website_url, notes) VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'Kılıç Software', 'kilic-software', 'kilicsoftware.com', null, null, true, 'https://kilicsoftware.com', 'Platform organization'),
-  ('c0000000-0000-0000-0000-000000000002', 'Müller GmbH', 'mueller-gmbh', 'mueller-gmbh.de', null, '10000000-0000-0000-0000-000000000004', true, 'https://mueller-gmbh.de', 'Client company');
+UPDATE public.users SET
+  organization_id = 'c0000000-0000-0000-0000-000000000001',
+  timezone = 'Europe/Istanbul',
+  locale = 'tr',
+  last_seen_at = now()
+WHERE id = 'b0000000-0000-0000-0000-000000000001';
 
-
--- ============================================
--- 3. PUBLIC USERS (after org exists)
--- ============================================
-
-INSERT INTO public.users (id, email, full_name, username, avatar_url, timezone, locale, organization_id, is_active, last_seen_at) VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'ertugul.kilic@icloud.com', 'Ertuğul Kılıç', 'kilicer', null, 'Europe/Istanbul', 'tr', 'c0000000-0000-0000-0000-000000000001', true, now()),
-  ('b0000000-0000-0000-0000-000000000002', 'sarah.mueller@example.com', 'Sarah Müller', 'sarahm', null, 'Europe/Berlin', 'de', 'c0000000-0000-0000-0000-000000000002', true, now());
+UPDATE public.users SET
+  organization_id = 'c0000000-0000-0000-0000-000000000002',
+  timezone = 'Europe/Berlin',
+  locale = 'de',
+  last_seen_at = now()
+WHERE id = 'b0000000-0000-0000-0000-000000000002';
 
 
 -- ============================================
@@ -215,4 +225,3 @@ INSERT INTO public.organization_settings (
 
 UPDATE public.system_config
 SET platform_organization_id = 'c0000000-0000-0000-0000-000000000001';
-
