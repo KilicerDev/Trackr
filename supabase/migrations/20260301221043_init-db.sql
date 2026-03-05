@@ -447,11 +447,11 @@ INSERT INTO public.permissions (id, resource, action, description) VALUES
 -- ============================================
 
 INSERT INTO public.roles (id, name, slug, description, is_system, organization_id) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'Owner',     'owner',     'Full access to everything. Cannot be restricted.',               true, null),
-  ('a0000000-0000-0000-0000-000000000002', 'Developer', 'developer', 'Full access to projects and tasks. Limited org management.',      true, null),
-  ('a0000000-0000-0000-0000-000000000003', 'Manager',   'manager',   'Manage tasks, tickets, and members. Configurable per org.',       true, null),
-  ('a0000000-0000-0000-0000-000000000004', 'Watcher',   'watcher',   'Read-only access to tasks and tickets.',                          true, null),
-  ('a0000000-0000-0000-0000-000000000005', 'Client',    'client',    'Can create and view own support tickets.',                        true, null);
+  ('a0000000-0000-0000-0000-000000000001', 'Owner',          'owner',   'Full access to everything. Cannot be restricted.',                      true, null),
+  ('a0000000-0000-0000-0000-000000000002', 'Administration', 'admin',   'Full access to everything. Like the owner.',                            true, null),
+  ('a0000000-0000-0000-0000-000000000003', 'Manager',        'manager', 'Manage tasks, tickets, and members within assigned organizations.',     true, null),
+  ('a0000000-0000-0000-0000-000000000004', 'Agent',          'agent',   'Manage assigned projects and tickets within assigned organizations.',   true, null),
+  ('a0000000-0000-0000-0000-000000000005', 'Client',         'client',  'Can create and view own support tickets.',                              true, null);
 
 
 -- ============================================
@@ -469,15 +469,11 @@ SELECT gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', p.id, 'all'
 FROM public.permissions p;
 
 -- ─────────────────────────────────
--- DEVELOPER: all task/project access, limited org
+-- ADMINISTRATION: everything → scope: all
 -- ─────────────────────────────────
 INSERT INTO public.role_permissions (id, role_id, permission_id, scope)
 SELECT gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', p.id, 'all'
-FROM public.permissions p
-WHERE (p.resource = 'tasks')
-   OR (p.resource = 'projects')
-   OR (p.resource = 'support_tickets' AND p.action IN ('create', 'read', 'update'))
-   OR (p.resource = 'members' AND p.action = 'invite');
+FROM public.permissions p;
 
 -- ─────────────────────────────────
 -- MANAGER: tasks, tickets, members, project read/update
@@ -491,13 +487,14 @@ WHERE (p.resource = 'tasks')
    OR (p.resource = 'members' AND p.action IN ('invite', 'remove'));
 
 -- ─────────────────────────────────
--- WATCHER: read-only → scope: all
+-- AGENT: assigned work only → scope: own
 -- ─────────────────────────────────
 INSERT INTO public.role_permissions (id, role_id, permission_id, scope)
-SELECT gen_random_uuid(), 'a0000000-0000-0000-0000-000000000004', p.id, 'all'
+SELECT gen_random_uuid(), 'a0000000-0000-0000-0000-000000000004', p.id, 'own'
 FROM public.permissions p
-WHERE p.action = 'read'
-  AND p.resource IN ('tasks', 'support_tickets', 'projects');
+WHERE (p.resource = 'tasks' AND p.action IN ('create', 'read', 'update'))
+   OR (p.resource = 'projects' AND p.action IN ('read', 'update'))
+   OR (p.resource = 'support_tickets' AND p.action IN ('read', 'update'));
 
 -- ─────────────────────────────────
 -- CLIENT: own tickets only → scope: own

@@ -69,7 +69,7 @@
 
 	let { ticketId, members, onClose, onUpdate }: Props = $props();
 
-	const ASSIGNABLE_ROLES = ['owner', 'developer', 'manager'];
+	const ASSIGNABLE_ROLES = ['owner', 'admin', 'manager', 'agent'];
 	const assignableMembers = $derived(
 		members.filter((m) => m.role && ASSIGNABLE_ROLES.includes(m.role.slug))
 	);

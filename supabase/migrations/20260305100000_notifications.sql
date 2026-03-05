@@ -430,7 +430,7 @@ CREATE TRIGGER trg_notify_task_comment
 
 -- ============================================
 -- 5h. SLA breach
---     Recipients: assigned agent + org owner/developer roles
+--     Recipients: assigned agent + org owner/admin roles
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_sla_breach()
@@ -464,7 +464,7 @@ BEGIN
     FROM public.organization_members om
     JOIN public.roles r ON r.id = om.role_id
     WHERE om.organization_id = _ticket.organization_id
-      AND r.slug IN ('owner', 'developer')
+      AND r.slug IN ('owner', 'admin')
       AND r.is_system = true
       AND om.user_id IS DISTINCT FROM _ticket.assigned_agent_id
   LOOP

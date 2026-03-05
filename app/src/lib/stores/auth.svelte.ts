@@ -19,8 +19,8 @@ class AuthState {
         return this.role?.role_slug === "owner";
     }
 
-    get isDeveloper() {
-        return this.role?.role_slug === "developer";
+    get isAdmin() {
+        return this.role?.role_slug === "admin";
     }
 
     get isClient() {
@@ -28,7 +28,7 @@ class AuthState {
     }
 
     get isAdminRole() {
-        return this.isPlatformMember || this.isOwner || this.isDeveloper;
+        return this.isPlatformMember || this.isOwner || this.isAdmin;
     }
 
     get organizationId() {
