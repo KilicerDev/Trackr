@@ -11,7 +11,7 @@
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
 	$effect(() => {
-		auth.init(data.user, data.role, data.permissions);
+		auth.init(data.user, data.role, data.permissions, data.isPlatformMember);
 	});
 
 	$effect(() => {

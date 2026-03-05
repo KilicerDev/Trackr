@@ -5,6 +5,7 @@
 -- Fixed UUIDs for referencing
 -- User 1 (owner):          b0000000-0000-0000-0000-000000000001
 -- User 2 (client):         b0000000-0000-0000-0000-000000000002
+-- User 3 (client):         b0000000-0000-0000-0000-000000000003
 -- Platform org:            c0000000-0000-0000-0000-000000000001
 -- Client org (Müller):     c0000000-0000-0000-0000-000000000002
 -- Project 1:               d0000000-0000-0000-0000-000000000001
@@ -54,6 +55,17 @@ INSERT INTO auth.users (
   '{"full_name": "Sarah Müller", "username": "sarahm"}',
   now(), now(), '', false,
   '', '', ''
+), (
+  'b0000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated',
+  'nicholas@kilohertz.dev',
+  crypt('091424', gen_salt('bf')),
+  now(),
+  '{"provider": "email", "providers": ["email"]}',
+  '{"full_name": "Nicholas Hinke", "username": "nicholas"}',
+  now(), now(), '', false,
+  '', '', ''
 );
 
 INSERT INTO auth.identities (
@@ -83,6 +95,18 @@ INSERT INTO auth.identities (
   ),
   'email', 'b0000000-0000-0000-0000-000000000002',
   now(), now(), now()
+), (
+  'b0000000-0000-0000-0000-000000000003',
+  'b0000000-0000-0000-0000-000000000003',
+  jsonb_build_object(
+    'sub', 'b0000000-0000-0000-0000-000000000003',
+    'email', 'nicholas@kilohertz.dev',
+    'email_verified', true,
+    'full_name', 'Nicholas Hinke',
+    'username', 'nicholas'
+  ),
+  'email', 'b0000000-0000-0000-0000-000000000003',
+  now(), now(), now()
 );
 
 
@@ -104,6 +128,13 @@ UPDATE public.users SET
   last_seen_at = now()
 WHERE id = 'b0000000-0000-0000-0000-000000000002';
 
+UPDATE public.users SET
+  organization_id = 'c0000000-0000-0000-0000-000000000002',
+  timezone = 'Europe/Berlin',
+  locale = 'de',
+  last_seen_at = now()
+WHERE id = 'b0000000-0000-0000-0000-000000000003';
+
 
 -- ============================================
 -- 4. ORGANIZATION MEMBERS
@@ -111,7 +142,8 @@ WHERE id = 'b0000000-0000-0000-0000-000000000002';
 
 INSERT INTO public.organization_members (organization_id, user_id, role_id) VALUES
   ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001'),
-  ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000005');
+  ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000005'),
+  ('c0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000005');
 
 
 -- ============================================

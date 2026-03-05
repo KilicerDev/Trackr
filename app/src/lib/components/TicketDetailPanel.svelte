@@ -302,9 +302,14 @@
 			.join(' ');
 	}
 
+	const canUpdate = $derived(auth.can('support_tickets', 'update'));
+	const canAssign = $derived(auth.can('support_tickets', 'assign'));
+
 	const labelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
 	const propBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-1.5 text-xs text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+	const propBtnReadonlyClass =
+		'flex w-full items-center gap-2 border border-surface-border bg-surface px-3 py-1.5 text-xs text-sidebar-text/60 cursor-default';
 	const dropdownPanelClass =
 		'absolute left-0 z-30 mt-1 max-h-48 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
 	const dropdownItemBase =
@@ -369,172 +374,202 @@
 						<!-- Status -->
 						<div>
 							<span class="mb-1 block text-[10px] text-muted">Status</span>
-							<div class="relative" data-dropdown>
-								<button
-									class={propBtnClass}
-									onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
-								>
+							{#if canUpdate}
+								<div class="relative" data-dropdown>
+									<button
+										class={propBtnClass}
+										onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
+									>
+										<span class="truncate">{displayName(ticket.status)}</span>
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'status'}
+										<div class={dropdownPanelClass}>
+											{#each TICKET_STATUSES as s}
+												<button
+													class="{dropdownItemBase} {ticket.status === s
+														? 'font-medium text-accent'
+														: 'text-sidebar-text'}"
+													onmousedown={(e) => {
+														e.preventDefault();
+														updateField('status', s);
+													}}>{displayName(s)}</button
+												>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class={propBtnReadonlyClass}>
 									<span class="truncate">{displayName(ticket.status)}</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'status'}
-									<div class={dropdownPanelClass}>
-										{#each TICKET_STATUSES as s}
-											<button
-												class="{dropdownItemBase} {ticket.status === s
-													? 'font-medium text-accent'
-													: 'text-sidebar-text'}"
-												onmousedown={(e) => {
-													e.preventDefault();
-													updateField('status', s);
-												}}>{displayName(s)}</button
-											>
-										{/each}
-									</div>
-								{/if}
-							</div>
+								</div>
+							{/if}
 						</div>
 
 						<!-- Priority -->
 						<div>
 							<span class="mb-1 block text-[10px] text-muted">Priority</span>
-							<div class="relative" data-dropdown>
-								<button
-									class={propBtnClass}
-									onclick={() =>
-										(openDropdown = openDropdown === 'priority' ? null : 'priority')}
-								>
+							{#if canUpdate}
+								<div class="relative" data-dropdown>
+									<button
+										class={propBtnClass}
+										onclick={() =>
+											(openDropdown = openDropdown === 'priority' ? null : 'priority')}
+									>
+										<span class="truncate">{displayName(ticket.priority)}</span>
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'priority'}
+										<div class={dropdownPanelClass}>
+											{#each TICKET_PRIORITIES as p}
+												<button
+													class="{dropdownItemBase} {ticket.priority === p
+														? 'font-medium text-accent'
+														: 'text-sidebar-text'}"
+													onmousedown={(e) => {
+														e.preventDefault();
+														updateField('priority', p);
+													}}>{displayName(p)}</button
+												>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class={propBtnReadonlyClass}>
 									<span class="truncate">{displayName(ticket.priority)}</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'priority'}
-									<div class={dropdownPanelClass}>
-										{#each TICKET_PRIORITIES as p}
-											<button
-												class="{dropdownItemBase} {ticket.priority === p
-													? 'font-medium text-accent'
-													: 'text-sidebar-text'}"
-												onmousedown={(e) => {
-													e.preventDefault();
-													updateField('priority', p);
-												}}>{displayName(p)}</button
-											>
-										{/each}
-									</div>
-								{/if}
-							</div>
+								</div>
+							{/if}
 						</div>
 
 						<!-- Category -->
 						<div>
 							<span class="mb-1 block text-[10px] text-muted">Category</span>
-							<div class="relative" data-dropdown>
-								<button
-									class={propBtnClass}
-									onclick={() =>
-										(openDropdown = openDropdown === 'category' ? null : 'category')}
-								>
-									<span class="truncate"
-										>{ticket.category ? displayName(ticket.category) : '—'}</span
+							{#if canUpdate}
+								<div class="relative" data-dropdown>
+									<button
+										class={propBtnClass}
+										onclick={() =>
+											(openDropdown = openDropdown === 'category' ? null : 'category')}
 									>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'category'}
-									<div class={dropdownPanelClass}>
-										<button
-											class="{dropdownItemBase} {!ticket.category
-												? 'font-medium text-accent'
-												: 'text-sidebar-text'}"
-											onmousedown={(e) => {
-												e.preventDefault();
-												updateField('category', null);
-											}}>None</button
+										<span class="truncate"
+											>{ticket.category ? displayName(ticket.category) : '—'}</span
 										>
-										{#each TICKET_CATEGORIES as c}
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'category'}
+										<div class={dropdownPanelClass}>
 											<button
-												class="{dropdownItemBase} {ticket.category === c
+												class="{dropdownItemBase} {!ticket.category
 													? 'font-medium text-accent'
 													: 'text-sidebar-text'}"
 												onmousedown={(e) => {
 													e.preventDefault();
-													updateField('category', c);
-												}}>{displayName(c)}</button
+													updateField('category', null);
+												}}>None</button
 											>
-										{/each}
-									</div>
-								{/if}
-							</div>
+											{#each TICKET_CATEGORIES as c}
+												<button
+													class="{dropdownItemBase} {ticket.category === c
+														? 'font-medium text-accent'
+														: 'text-sidebar-text'}"
+													onmousedown={(e) => {
+														e.preventDefault();
+														updateField('category', c);
+													}}>{displayName(c)}</button
+												>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class={propBtnReadonlyClass}>
+									<span class="truncate">{ticket.category ? displayName(ticket.category) : '—'}</span>
+								</div>
+							{/if}
 						</div>
 
 						<!-- Channel -->
 						<div>
 							<span class="mb-1 block text-[10px] text-muted">Channel</span>
-							<div class="relative" data-dropdown>
-								<button
-									class={propBtnClass}
-									onclick={() =>
-										(openDropdown = openDropdown === 'channel' ? null : 'channel')}
-								>
+							{#if canUpdate}
+								<div class="relative" data-dropdown>
+									<button
+										class={propBtnClass}
+										onclick={() =>
+											(openDropdown = openDropdown === 'channel' ? null : 'channel')}
+									>
+										<span class="truncate">{displayName(ticket.channel)}</span>
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'channel'}
+										<div class={dropdownPanelClass}>
+											{#each TICKET_CHANNELS as ch}
+												<button
+													class="{dropdownItemBase} {ticket.channel === ch
+														? 'font-medium text-accent'
+														: 'text-sidebar-text'}"
+													onmousedown={(e) => {
+														e.preventDefault();
+														updateField('channel', ch);
+													}}>{displayName(ch)}</button
+												>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class={propBtnReadonlyClass}>
 									<span class="truncate">{displayName(ticket.channel)}</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'channel'}
-									<div class={dropdownPanelClass}>
-										{#each TICKET_CHANNELS as ch}
-											<button
-												class="{dropdownItemBase} {ticket.channel === ch
-													? 'font-medium text-accent'
-													: 'text-sidebar-text'}"
-												onmousedown={(e) => {
-													e.preventDefault();
-													updateField('channel', ch);
-												}}>{displayName(ch)}</button
-											>
-										{/each}
-									</div>
-								{/if}
-							</div>
+								</div>
+							{/if}
 						</div>
 
 						<!-- Assigned agent (full width) -->
 						<div class="col-span-2">
 							<span class="mb-1 block text-[10px] text-muted">Assigned Agent</span>
-							<div class="relative" data-dropdown>
-								<button
-									class={propBtnClass}
-									onclick={() => (openDropdown = openDropdown === 'agent' ? null : 'agent')}
-								>
-									<span class="truncate"
-										>{ticket.agent?.full_name ?? 'Unassigned'}</span
+							{#if canAssign}
+								<div class="relative" data-dropdown>
+									<button
+										class={propBtnClass}
+										onclick={() => (openDropdown = openDropdown === 'agent' ? null : 'agent')}
 									>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'agent'}
-									<div class={dropdownPanelClass}>
-										<button
-											class="{dropdownItemBase} {!ticket.assigned_agent_id
-												? 'font-medium text-accent'
-												: 'text-sidebar-text'}"
-											onmousedown={(e) => {
-												e.preventDefault();
-												updateField('assigned_agent_id', null);
-											}}>Unassigned</button
+										<span class="truncate"
+											>{ticket.agent?.full_name ?? 'Unassigned'}</span
 										>
-										{#each members as m (m.user_id)}
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'agent'}
+										<div class={dropdownPanelClass}>
 											<button
-												class="{dropdownItemBase} {ticket.assigned_agent_id ===
-												m.user_id
+												class="{dropdownItemBase} {!ticket.assigned_agent_id
 													? 'font-medium text-accent'
 													: 'text-sidebar-text'}"
 												onmousedown={(e) => {
 													e.preventDefault();
-													updateField('assigned_agent_id', m.user_id);
-												}}>{m.user?.full_name ?? m.user_id}</button
+													updateField('assigned_agent_id', null);
+												}}>Unassigned</button
 											>
-										{/each}
-									</div>
-								{/if}
-							</div>
+											{#each members as m (m.user_id)}
+												<button
+													class="{dropdownItemBase} {ticket.assigned_agent_id ===
+													m.user_id
+														? 'font-medium text-accent'
+														: 'text-sidebar-text'}"
+													onmousedown={(e) => {
+														e.preventDefault();
+														updateField('assigned_agent_id', m.user_id);
+													}}>{m.user?.full_name ?? m.user_id}</button
+												>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class={propBtnReadonlyClass}>
+									<span class="truncate">{ticket.agent?.full_name ?? 'Unassigned'}</span>
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -554,7 +589,7 @@
 				<div class="border-b border-surface-border px-4 py-3">
 					<div class="mb-2 flex items-center justify-between">
 						<span class={labelClass}>Description</span>
-						{#if !editingDescription}
+						{#if canUpdate && !editingDescription}
 							<button
 								class="text-[11px] text-sidebar-icon transition-colors hover:text-accent"
 								onclick={() => {
@@ -636,54 +671,56 @@
 						{/if}
 					</div>
 
-					<!-- Add form -->
-					<div class="mb-3">
-						<div class="mb-1 flex gap-2">
-							<span class="w-14 text-[10px] text-muted">Hours</span>
-							<span class="w-14 text-[10px] text-muted">Min</span>
-							<span class="min-w-0 flex-1 text-[10px] text-muted">Description</span>
-							<span class="w-[110px] text-[10px] text-muted">Date</span>
-							<span class="w-[30px] shrink-0"></span>
+					{#if canUpdate}
+						<!-- Add form -->
+						<div class="mb-3">
+							<div class="mb-1 flex gap-2">
+								<span class="w-14 text-[10px] text-muted">Hours</span>
+								<span class="w-14 text-[10px] text-muted">Min</span>
+								<span class="min-w-0 flex-1 text-[10px] text-muted">Description</span>
+								<span class="w-[110px] text-[10px] text-muted">Date</span>
+								<span class="w-[30px] shrink-0"></span>
+							</div>
+							<div class="flex items-stretch gap-2">
+								<input
+									type="number"
+									step="1"
+									min="0"
+									bind:value={wlHours}
+									placeholder="0"
+									class="w-14 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
+								/>
+								<input
+									type="number"
+									step="5"
+									min="0"
+									max="59"
+									bind:value={wlMinutes}
+									placeholder="0"
+									class="w-14 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
+								/>
+								<input
+									type="text"
+									bind:value={wlDescription}
+									placeholder="What was done..."
+									class="min-w-0 flex-1 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
+								/>
+								<input
+									type="date"
+									bind:value={wlDate}
+									class="w-[110px] border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors focus:border-sidebar-icon/30"
+								/>
+								<button
+									class="flex w-[30px] shrink-0 items-center justify-center bg-accent text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+									disabled={addingWorkLog || (!wlHours && !wlMinutes)}
+									onclick={addWorkLog}
+									aria-label="Add work log"
+								>
+									<Plus size={14} />
+								</button>
+							</div>
 						</div>
-						<div class="flex items-stretch gap-2">
-							<input
-								type="number"
-								step="1"
-								min="0"
-								bind:value={wlHours}
-								placeholder="0"
-								class="w-14 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
-							/>
-							<input
-								type="number"
-								step="5"
-								min="0"
-								max="59"
-								bind:value={wlMinutes}
-								placeholder="0"
-								class="w-14 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
-							/>
-							<input
-								type="text"
-								bind:value={wlDescription}
-								placeholder="What was done..."
-								class="min-w-0 flex-1 border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30"
-							/>
-							<input
-								type="date"
-								bind:value={wlDate}
-								class="w-[110px] border border-surface-border bg-surface px-2 py-1.5 text-xs text-sidebar-text outline-none transition-colors focus:border-sidebar-icon/30"
-							/>
-							<button
-								class="flex w-[30px] shrink-0 items-center justify-center bg-accent text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-								disabled={addingWorkLog || (!wlHours && !wlMinutes)}
-								onclick={addWorkLog}
-								aria-label="Add work log"
-							>
-								<Plus size={14} />
-							</button>
-						</div>
-					</div>
+					{/if}
 
 					<!-- Entries -->
 					<div class="max-h-[200px] space-y-2 overflow-y-auto">
@@ -707,7 +744,7 @@
 								</div>
 								<div class="flex shrink-0 items-center gap-2">
 									<span class="text-[10px] text-muted">{formatDate(wl.logged_at)}</span>
-									{#if auth.user && wl.user_id === auth.user.id}
+									{#if canUpdate && auth.user && wl.user_id === auth.user.id}
 										<button
 											class="p-0.5 text-sidebar-icon transition-colors hover:text-red-500"
 											onclick={() => deleteWorkLog(wl.id)}
@@ -789,14 +826,16 @@
 						<Send size={14} />
 					</button>
 				</div>
-				<label class="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted">
-					<input
-						type="checkbox"
-						bind:checked={isInternalNote}
-						class="accent-accent"
-					/>
-					Internal note
-				</label>
+				{#if !auth.isClient}
+					<label class="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted">
+						<input
+							type="checkbox"
+							bind:checked={isInternalNote}
+							class="accent-accent"
+						/>
+						Internal note
+					</label>
+				{/if}
 			</div>
 		{/if}
 	</div>

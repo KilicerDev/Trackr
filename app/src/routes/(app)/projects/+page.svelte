@@ -181,12 +181,14 @@
 			</div>
 		</div>
 
-		<button
-			class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
-			onclick={() => (createModalOpen = true)}
-		>
-			New Project
-		</button>
+		{#if auth.can('projects', 'create')}
+			<button
+				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
+				onclick={() => (createModalOpen = true)}
+			>
+				New Project
+			</button>
+		{/if}
 	</div>
 
 	{#if createModalOpen}

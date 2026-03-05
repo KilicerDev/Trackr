@@ -5,6 +5,7 @@
 	import type { ProjectMember } from '$lib/stores/projects.svelte';
 	import { taskStore } from '$lib/stores/tasks.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import type { Role } from '$lib/api/roles';
 	import TaskRow from '$lib/components/TaskRow.svelte';
@@ -41,6 +42,9 @@
 	};
 
 	const project = $derived(projectStore.activeProject);
+	const canUpdateProject = $derived(auth.can('projects', 'update'));
+	const canManageProject = $derived(auth.can('projects', 'manage'));
+	const canCreateTask = $derived(auth.can('tasks', 'create'));
 
 	type TaskWithDepth = { task: (typeof taskStore.items)[number]; depth: number };
 	const taskTree = $derived.by(() => {
@@ -243,74 +247,89 @@
 					<!-- Identifier + Status + Color -->
 					<div class="flex items-center gap-2">
 						<!-- Color picker -->
-						<div class="relative" data-dropdown>
-							<button
-								class="inline-block h-3 w-3 shrink-0 cursor-pointer rounded-full transition-transform hover:scale-125"
+						{#if canUpdateProject}
+							<div class="relative" data-dropdown>
+								<button
+									class="inline-block h-3 w-3 shrink-0 cursor-pointer rounded-full transition-transform hover:scale-125"
+									style="background-color: {project.color ?? '#6366f1'}"
+									onclick={() => (openDropdown = openDropdown === 'color' ? null : 'color')}
+									aria-label="Change color"
+								></button>
+								{#if openDropdown === 'color'}
+									<div
+										class="absolute left-0 z-20 mt-2 flex gap-1.5 border border-surface-border bg-surface p-2.5 shadow-xl"
+									>
+										{#each PRESET_COLORS as c}
+											<button
+												class="h-5 w-5 rounded-full border-2 transition-transform hover:scale-110 {project.color ===
+												c
+													? 'scale-110 border-sidebar-text'
+													: 'border-transparent'}"
+												style="background-color: {c}"
+												aria-label="Select color {c}"
+												onmousedown={(e) => {
+													e.preventDefault();
+													updateField('color', c);
+												}}
+											></button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<span
+								class="inline-block h-3 w-3 shrink-0 rounded-full"
 								style="background-color: {project.color ?? '#6366f1'}"
-								onclick={() => (openDropdown = openDropdown === 'color' ? null : 'color')}
-								aria-label="Change color"
-							></button>
-							{#if openDropdown === 'color'}
-								<div
-									class="absolute left-0 z-20 mt-2 flex gap-1.5 border border-surface-border bg-surface p-2.5 shadow-xl"
-								>
-									{#each PRESET_COLORS as c}
-										<button
-											class="h-5 w-5 rounded-full border-2 transition-transform hover:scale-110 {project.color ===
-											c
-												? 'scale-110 border-sidebar-text'
-												: 'border-transparent'}"
-											style="background-color: {c}"
-											aria-label="Select color {c}"
-											onmousedown={(e) => {
-												e.preventDefault();
-												updateField('color', c);
-											}}
-										></button>
-									{/each}
-								</div>
-							{/if}
-						</div>
+							></span>
+						{/if}
 
 						<span class="text-[11px] font-semibold tracking-wider text-muted">
 							{project.identifier}
 						</span>
 
 						<!-- Status dropdown -->
-						<div class="relative" data-dropdown>
-							<button
-								class="cursor-pointer px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80 {statusColors[
-									project.status
-								] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
-								onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
+						{#if canUpdateProject}
+							<div class="relative" data-dropdown>
+								<button
+									class="cursor-pointer px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80 {statusColors[
+										project.status
+									] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
+									onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
+								>
+									{formatStatus(project.status)}
+								</button>
+								{#if openDropdown === 'status'}
+									<div
+										class="absolute left-0 z-20 mt-1.5 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl"
+									>
+										{#each PROJECT_STATUSES as s}
+											<button
+												class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {project.status ===
+												s
+													? 'font-medium text-accent'
+													: 'text-sidebar-text'}"
+												onmousedown={(e) => {
+													e.preventDefault();
+													updateField('status', s);
+												}}
+											>
+												{formatStatus(s)}
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<span
+								class="px-2 py-0.5 text-[10px] font-medium {statusColors[project.status] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
 							>
 								{formatStatus(project.status)}
-							</button>
-							{#if openDropdown === 'status'}
-								<div
-									class="absolute left-0 z-20 mt-1.5 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl"
-								>
-									{#each PROJECT_STATUSES as s}
-										<button
-											class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {project.status ===
-											s
-												? 'font-medium text-accent'
-												: 'text-sidebar-text'}"
-											onmousedown={(e) => {
-												e.preventDefault();
-												updateField('status', s);
-											}}
-										>
-											{formatStatus(s)}
-										</button>
-									{/each}
-								</div>
-							{/if}
-						</div>
+							</span>
+						{/if}
 					</div>
 
 					<!-- Editable name -->
-					{#if editingName}
+					{#if canUpdateProject && editingName}
 						<div class="mt-1 flex items-center gap-2">
 							<input
 								type="text"
@@ -336,17 +355,21 @@
 								<X size={16} />
 							</button>
 						</div>
-					{:else}
+					{:else if canUpdateProject}
 						<button
 							class="mt-1 cursor-pointer text-left text-lg font-semibold text-sidebar-text transition-colors hover:text-accent"
 							onclick={startEditName}
 						>
 							{project.name}
 						</button>
+					{:else}
+						<h1 class="mt-1 text-lg font-semibold text-sidebar-text">
+							{project.name}
+						</h1>
 					{/if}
 
 					<!-- Editable description -->
-					{#if editingDescription}
+					{#if canUpdateProject && editingDescription}
 						<div class="mt-2">
 							<textarea
 								bind:value={descriptionDraft}
@@ -372,13 +395,17 @@
 								</button>
 							</div>
 						</div>
-					{:else}
+					{:else if canUpdateProject}
 						<button
 							class="mt-1.5 cursor-pointer text-left text-xs leading-relaxed text-muted transition-colors hover:text-sidebar-text"
 							onclick={startEditDescription}
 						>
 							{project.description || 'Add a description…'}
 						</button>
+					{:else}
+						<p class="mt-1.5 text-xs leading-relaxed text-muted">
+							{project.description || 'No description.'}
+						</p>
 					{/if}
 				</div>
 			</div>
@@ -402,25 +429,33 @@
 				<div class="flex items-center gap-5">
 					<div>
 						<span class="text-sidebar-icon">Start</span>
-						<label class="flex items-center gap-1">
-							<input
-								type="date"
-								value={toInputDate(project.start_at)}
-								class="border border-surface-border bg-surface px-2 py-1 text-xs text-sidebar-text outline-none hover:border-sidebar-icon/30"
-								onchange={(e) => handleDateChange('start_at', (e.target as HTMLInputElement).value)}
-							/>
-						</label>
+						{#if canUpdateProject}
+							<label class="flex items-center gap-1">
+								<input
+									type="date"
+									value={toInputDate(project.start_at)}
+									class="border border-surface-border bg-surface px-2 py-1 text-xs text-sidebar-text outline-none hover:border-sidebar-icon/30"
+									onchange={(e) => handleDateChange('start_at', (e.target as HTMLInputElement).value)}
+								/>
+							</label>
+						{:else}
+							<p class="text-xs text-sidebar-text">{formatDate(project.start_at)}</p>
+						{/if}
 					</div>
 					<div>
 						<span class="text-sidebar-icon">End</span>
-						<label class="flex items-center gap-1">
-							<input
-								type="date"
-								value={toInputDate(project.end_at)}
-								class="border border-surface-border bg-surface px-2 py-1 text-xs text-sidebar-text outline-none hover:border-sidebar-icon/30"
-								onchange={(e) => handleDateChange('end_at', (e.target as HTMLInputElement).value)}
-							/>
-						</label>
+						{#if canUpdateProject}
+							<label class="flex items-center gap-1">
+								<input
+									type="date"
+									value={toInputDate(project.end_at)}
+									class="border border-surface-border bg-surface px-2 py-1 text-xs text-sidebar-text outline-none hover:border-sidebar-icon/30"
+									onchange={(e) => handleDateChange('end_at', (e.target as HTMLInputElement).value)}
+								/>
+							</label>
+						{:else}
+							<p class="text-xs text-sidebar-text">{formatDate(project.end_at)}</p>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -430,6 +465,7 @@
 		<div class="border-b border-surface-border px-4 py-4">
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">Members</h2>
+				{#if canManageProject}
 				<div class="relative" data-dropdown>
 					<button
 						class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
@@ -513,6 +549,7 @@
 						</div>
 					{/if}
 				</div>
+				{/if}
 			</div>
 
 			{#if project.members && project.members.length > 0}
@@ -542,13 +579,15 @@
 									<p class="text-[10px] text-muted">{member.role.name}</p>
 								{/if}
 							</div>
-							<button
-								class="ml-1 p-0.5 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
-								onclick={() => removeMember(member.user_id)}
-								aria-label="Remove {member.user.full_name}"
-							>
-								<X size={13} />
-							</button>
+							{#if canManageProject}
+								<button
+									class="ml-1 p-0.5 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+									onclick={() => removeMember(member.user_id)}
+									aria-label="Remove {member.user.full_name}"
+								>
+									<X size={13} />
+								</button>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -565,12 +604,14 @@
 					<span class="ml-1 text-muted">({taskStore.count})</span>
 				{/if}
 			</h2>
-			<button
-				class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
-				onclick={() => (createModalOpen = true)}
-			>
-				<Plus size={13} /> Add
-			</button>
+			{#if canCreateTask}
+				<button
+					class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
+					onclick={() => (createModalOpen = true)}
+				>
+					<Plus size={13} /> Add
+				</button>
+			{/if}
 		</div>
 
 		{#if taskStore.loading}

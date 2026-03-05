@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { sidebarSections } from '$lib/config/sidebar';
+	import { auth } from '$lib/stores/auth.svelte';
 	import { PanelLeftClose, PanelLeftOpen } from '@lucide/svelte';
 	import logo from '$lib/assets/logo.png';
 
@@ -8,6 +9,9 @@
 
 	let hovered = $state(false);
 	let expanded = $derived(pinned || hovered);
+	let filteredSections = $derived(
+		sidebarSections.filter((s) => s.title !== 'Administration' || auth.isAdminRole)
+	);
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -29,7 +33,7 @@
 	</div>
 
 	<nav class="flex-1 overflow-y-auto overflow-x-hidden py-2">
-		{#each sidebarSections as section, sectionIdx}
+		{#each filteredSections as section, sectionIdx}
 			<div class="overflow-hidden px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest text-sidebar-label uppercase">
 				{#if expanded}
 					<span class="whitespace-nowrap">{section.title}</span>

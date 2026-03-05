@@ -2,6 +2,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import { ticketStore } from '$lib/stores/tickets.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 
 	interface CustomerOption {
 		id: string;
@@ -30,6 +31,8 @@
 	const TICKET_CATEGORIES = ['billing', 'technical_issue', 'feature_request', 'general'] as const;
 	const TICKET_CHANNELS = ['email', 'api', 'chat', 'web_form'] as const;
 
+	const isSelfService = $derived(auth.isClient && !!auth.user);
+
 	let subject = $state('');
 	let description = $state('');
 	let customerId = $state('');
@@ -41,10 +44,12 @@
 
 	let openDropdown = $state<string | null>(null);
 
+	const effectiveCustomerId = $derived(isSelfService ? auth.user!.id : customerId);
+
 	const canSubmit = $derived(
 		!!subject.trim() &&
-			(organizationId === null || !!customerId) &&
-			(organizationId === null || customers.length > 0)
+			(organizationId === null || !!effectiveCustomerId) &&
+			(organizationId === null || isSelfService || customers.length > 0)
 	);
 
 	function toggleDropdown(key: string) {
@@ -76,7 +81,7 @@
 			await ticketStore.create({
 				subject: subject.trim(),
 				description: description.trim() || undefined,
-				customer_id: customerId,
+				customer_id: effectiveCustomerId,
 				organization_id: organizationId,
 				priority: priority || undefined,
 				channel: channel || 'web_form',
@@ -126,7 +131,7 @@
 				>
 					Close
 				</button>
-			{:else if customers.length === 0}
+			{:else if !isSelfService && customers.length === 0}
 				<p class="mb-4 text-xs text-sidebar-icon">
 					No customers in this organization. Add customers before creating tickets.
 				</p>
@@ -162,42 +167,44 @@
 						></textarea>
 					</div>
 
-					<!-- Customer dropdown -->
-					<div>
-						<span class={labelClass}>Customer</span>
-						<div class="relative" data-dropdown>
-							<button
-								type="button"
-								class={dropdownBtnClass}
-								onclick={() => toggleDropdown('customer')}
-							>
-								<span class="truncate">
-									{#if customerId}
-										{@const selected = customers.find(c => c.id === customerId)}
-										{selected?.full_name ?? '—'}
-									{:else}
-										Select customer
-									{/if}
-								</span>
-								<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'customer' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-								</svg>
-							</button>
-							{#if openDropdown === 'customer'}
-								<div class={dropdownPanelClass}>
-									{#each customers as c (c.id)}
-										<button
-											type="button"
-											class="{dropdownItemBase} {customerId === c.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-											onmousedown={(e) => { e.preventDefault(); customerId = c.id; openDropdown = null; }}
-										>
-											{c.full_name}{#if c.email} <span class="ml-1 text-sidebar-icon">({c.email})</span>{/if}
-										</button>
-									{/each}
-								</div>
-							{/if}
+					{#if !isSelfService}
+						<!-- Customer dropdown -->
+						<div>
+							<span class={labelClass}>Customer</span>
+							<div class="relative" data-dropdown>
+								<button
+									type="button"
+									class={dropdownBtnClass}
+									onclick={() => toggleDropdown('customer')}
+								>
+									<span class="truncate">
+										{#if customerId}
+											{@const selected = customers.find(c => c.id === customerId)}
+											{selected?.full_name ?? '—'}
+										{:else}
+											Select customer
+										{/if}
+									</span>
+									<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'customer' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+									</svg>
+								</button>
+								{#if openDropdown === 'customer'}
+									<div class={dropdownPanelClass}>
+										{#each customers as c (c.id)}
+											<button
+												type="button"
+												class="{dropdownItemBase} {customerId === c.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+												onmousedown={(e) => { e.preventDefault(); customerId = c.id; openDropdown = null; }}
+											>
+												{c.full_name}{#if c.email} <span class="ml-1 text-sidebar-icon">({c.email})</span>{/if}
+											</button>
+										{/each}
+									</div>
+								{/if}
+							</div>
 						</div>
-					</div>
+					{/if}
 
 					<!-- Priority / Category / Channel side by side -->
 					<div class="grid grid-cols-3 gap-3">

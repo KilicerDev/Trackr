@@ -9,6 +9,7 @@ class AuthState {
     user = $state<AppUser | null>(null);
     role = $state<UserRole | null>(null);
     permissions = $state<UserPermission[]>([]);
+    isPlatformMember = $state(false);
 
     get isAuthenticated() {
         return this.user !== null;
@@ -18,8 +19,16 @@ class AuthState {
         return this.role?.role_slug === "owner";
     }
 
+    get isDeveloper() {
+        return this.role?.role_slug === "developer";
+    }
+
     get isClient() {
         return this.role?.role_slug === "client";
+    }
+
+    get isAdminRole() {
+        return this.isPlatformMember || this.isOwner || this.isDeveloper;
     }
 
     get organizationId() {
@@ -52,17 +61,20 @@ class AuthState {
     init(
         user: AppUser | null,
         role: UserRole | null,
-        permissions: UserPermission[]
+        permissions: UserPermission[],
+        isPlatformMember = false
     ) {
         this.user = user;
         this.role = role;
         this.permissions = permissions;
+        this.isPlatformMember = isPlatformMember;
     }
 
     clear() {
         this.user = null;
         this.role = null;
         this.permissions = [];
+        this.isPlatformMember = false;
     }
 }
 
