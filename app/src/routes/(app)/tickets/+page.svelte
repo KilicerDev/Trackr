@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { replaceState, afterNavigate } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { ticketStore } from '$lib/stores/tickets.svelte';
 	import { api } from '$lib/api';
@@ -26,6 +28,7 @@
 	type Member = {
 		user_id: string;
 		user: { id: string; full_name: string; avatar_url: string | null };
+		role: { id: string; name: string; slug: string } | null;
 	};
 	type CustomerOption = { id: string; full_name: string; email: string; avatar_url: string | null };
 
@@ -52,6 +55,17 @@
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
 	let selectedTicketId = $state<string | null>(null);
+
+	function selectTicket(id: string | null) {
+		selectedTicketId = id;
+		const url = new URL(window.location.href);
+		if (id) {
+			url.searchParams.set('id', id);
+		} else {
+			url.searchParams.delete('id');
+		}
+		replaceState(url, {});
+	}
 
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 
@@ -183,6 +197,14 @@
 				customers = [];
 			}
 		}
+
+		const ticketIdParam = page.url.searchParams.get('id');
+		if (ticketIdParam) selectTicket(ticketIdParam);
+	});
+
+	afterNavigate(({ to }) => {
+		const ticketIdParam = to?.url.searchParams.get('id') ?? null;
+		if (ticketIdParam) selectedTicketId = ticketIdParam;
 	});
 </script>
 
@@ -810,9 +832,7 @@
 					start_at: ticket.created_at,
 					end_at: ticket.resolved_at
 				}}
-				onclick={() => {
-					selectedTicketId = ticket.id;
-				}}
+				onclick={() => selectTicket(ticket.id)}
 			/>
 			{/each}
 		</div>
@@ -825,9 +845,7 @@
 	<TicketDetailPanel
 		ticketId={selectedTicketId}
 		{members}
-		onClose={() => {
-			selectedTicketId = null;
-		}}
+		onClose={() => selectTicket(null)}
 		onUpdate={() => applyFilters()}
 	/>
 {/if}

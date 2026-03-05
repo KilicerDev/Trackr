@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { replaceState, afterNavigate } from '$app/navigation';
 	import { projectStore } from '$lib/stores/projects.svelte';
 	import type { ProjectMember } from '$lib/stores/projects.svelte';
 	import { taskStore } from '$lib/stores/tasks.svelte';
@@ -73,6 +74,18 @@
 	});
 
 	let selectedTaskId = $state<string | null>(null);
+
+	function selectTask(id: string | null) {
+		selectedTaskId = id;
+		const url = new URL(window.location.href);
+		if (id) {
+			url.searchParams.set('task', id);
+		} else {
+			url.searchParams.delete('task');
+		}
+		replaceState(url, {});
+	}
+
 	let createModalOpen = $state(false);
 	let openDropdown = $state<string | null>(null);
 	let editingName = $state(false);
@@ -222,6 +235,14 @@
 			orgMembers = m as OrgMember[];
 			roles = r as Role[];
 		}
+
+		const taskParam = new URL(window.location.href).searchParams.get('task');
+		if (taskParam) selectTask(taskParam);
+	});
+
+	afterNavigate(({ to }) => {
+		const taskParam = to?.url.searchParams.get('task') ?? null;
+		if (taskParam) selectedTaskId = taskParam;
 	});
 </script>
 
@@ -623,7 +644,7 @@
 		{:else}
 			<div>
 				{#each taskTree as { task, depth } (task.id)}
-					<TaskRow {task} {depth} onclick={() => (selectedTaskId = task.id)} />
+					<TaskRow {task} {depth} onclick={() => selectTask(task.id)} />
 				{/each}
 			</div>
 		{/if}
@@ -634,7 +655,7 @@
 	<CreateTaskModal
 		projectId={project.id}
 		onClose={() => (createModalOpen = false)}
-		onCreated={(id) => (selectedTaskId = id)}
+		onCreated={(id) => selectTask(id)}
 	/>
 {/if}
 
@@ -645,6 +666,6 @@
 			user_id: m.user_id,
 			user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url }
 		}))}
-		onClose={() => (selectedTaskId = null)}
+		onClose={() => selectTask(null)}
 	/>
 {/if}

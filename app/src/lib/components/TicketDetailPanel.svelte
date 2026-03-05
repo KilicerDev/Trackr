@@ -18,6 +18,7 @@
 	type Member = {
 		user_id: string;
 		user: { id: string; full_name: string; avatar_url: string | null };
+		role: { id: string; name: string; slug: string } | null;
 	};
 
 	type TicketDetail = {
@@ -67,6 +68,11 @@
 	}
 
 	let { ticketId, members, onClose, onUpdate }: Props = $props();
+
+	const ASSIGNABLE_ROLES = ['owner', 'developer', 'manager'];
+	const assignableMembers = $derived(
+		members.filter((m) => m.role && ASSIGNABLE_ROLES.includes(m.role.slug))
+	);
 
 	let ticket = $state<TicketDetail | null>(null);
 	let messages = $state<Message[]>([]);
@@ -550,7 +556,7 @@
 													updateField('assigned_agent_id', null);
 												}}>Unassigned</button
 											>
-											{#each members as m (m.user_id)}
+											{#each assignableMembers as m (m.user_id)}
 												<button
 													class="{dropdownItemBase} {ticket.assigned_agent_id ===
 													m.user_id
