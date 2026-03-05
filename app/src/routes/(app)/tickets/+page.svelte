@@ -67,6 +67,7 @@
 		replaceState(url, {});
 	}
 
+	const ticketOrgs = $derived(organizations.filter((o) => o.support_tier_id !== null));
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 
 	function getFilters(): TicketFilters {
@@ -186,7 +187,7 @@
 			organizations = [];
 		}
 		const orgId = auth.organizationId;
-		selectedOrgId = organizations.some((o) => o.id === orgId) ? orgId : null;
+		selectedOrgId = ticketOrgs.some((o) => o.id === orgId) ? orgId : null;
 		ticketStore.load(selectedOrgId ?? undefined, getFilters());
 		if (selectedOrgId) {
 			try {
@@ -259,7 +260,7 @@
 						>
 							All Organizations
 						</button>
-						{#each organizations as org (org.id)}
+						{#each ticketOrgs as org (org.id)}
 							<button
 								class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId ===
 								org.id
