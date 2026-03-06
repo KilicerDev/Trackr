@@ -1,115 +1,10 @@
 -- ============================================
--- MIGRATION: RLS Policies
+-- RLS POLICIES: All policies (final correct versions)
 -- ============================================
 
 
 -- ============================================
--- 1. CORE AUTHORIZE FUNCTION
--- ============================================
-
-CREATE OR REPLACE FUNCTION public.authorize(
-  _resource text,
-  _action text,
-  _org_id uuid,
-  _is_owner boolean DEFAULT false
-)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-AS $$
-DECLARE
-  _scope public.permission_scope;
-BEGIN
-  SELECT rp.scope INTO _scope
-  FROM public.organization_members om
-  JOIN public.role_permissions rp ON rp.role_id = om.role_id
-  JOIN public.permissions p ON p.id = rp.permission_id
-  WHERE om.organization_id = _org_id
-    AND om.user_id = auth.uid()
-    AND p.resource = _resource
-    AND p.action = _action;
-
-  IF _scope IS NULL THEN RETURN false; END IF;
-  IF _scope = 'all' THEN RETURN true; END IF;
-  IF _scope = 'own' THEN RETURN _is_owner; END IF;
-
-  RETURN false;
-END;
-$$;
-
-
--- Helper: check if user is a member of an org (no permission check, just membership)
-CREATE OR REPLACE FUNCTION public.is_member_of(
-  _org_id uuid
-)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.organization_members
-    WHERE organization_id = _org_id
-      AND user_id = auth.uid()
-  );
-$$;
-
-
--- Helper: resolve org_id from a project
-CREATE OR REPLACE FUNCTION public.project_org_id(_project_id uuid)
-RETURNS uuid
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT organization_id FROM public.projects WHERE id = _project_id;
-$$;
-
-
--- Helper: resolve org_id from a task (through project)
-CREATE OR REPLACE FUNCTION public.task_org_id(_task_id uuid)
-RETURNS uuid
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT p.organization_id
-  FROM public.tasks t
-  JOIN public.projects p ON p.id = t.project_id
-  WHERE t.id = _task_id;
-$$;
-
-
--- Helper: resolve org_id from a ticket
-CREATE OR REPLACE FUNCTION public.ticket_org_id(_ticket_id uuid)
-RETURNS uuid
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT organization_id FROM public.support_tickets WHERE id = _ticket_id;
-$$;
-
-
--- Helper: check if current user owns or is assigned to a task
-CREATE OR REPLACE FUNCTION public.is_task_owner(_task_id uuid, _created_by uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT
-    _created_by = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.task_assignments
-      WHERE task_id = _task_id AND user_id = auth.uid()
-    );
-$$;
-
-
--- ============================================
--- 2. PERMISSIONS (reference table — read-only for authenticated)
+-- 1. PERMISSIONS (reference table — read-only)
 -- ============================================
 
 CREATE POLICY "permissions_select"
@@ -119,7 +14,7 @@ CREATE POLICY "permissions_select"
 
 
 -- ============================================
--- 3. ROLES (system roles + own org custom roles)
+-- 2. ROLES
 -- ============================================
 
 CREATE POLICY "roles_select"
@@ -158,7 +53,7 @@ CREATE POLICY "roles_delete"
 
 
 -- ============================================
--- 4. ROLE_PERMISSIONS
+-- 3. ROLE_PERMISSIONS
 -- ============================================
 
 CREATE POLICY "role_permissions_select"
@@ -207,13 +102,33 @@ CREATE POLICY "role_permissions_delete"
 
 
 -- ============================================
--- 5. ORGANIZATIONS
+-- 4. ORGANIZATIONS
+-- (includes owner visibility + cross-org project access + insert policy)
 -- ============================================
 
 CREATE POLICY "organizations_select"
   ON public.organizations FOR SELECT
   TO authenticated
-  USING (public.is_member_of(id));
+  USING (
+    public.is_member_of(id)
+    OR EXISTS (
+      SELECT 1 FROM public.organization_members om
+      JOIN public.roles r ON r.id = om.role_id
+      WHERE om.user_id = auth.uid() AND r.slug = 'owner' AND r.is_system = true
+    )
+    OR public.has_project_in_org(id)
+  );
+
+CREATE POLICY "organizations_insert"
+  ON public.organizations FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.organization_members om
+      JOIN public.roles r ON r.id = om.role_id
+      WHERE om.user_id = auth.uid() AND r.slug = 'owner' AND r.is_system = true
+    )
+  );
 
 CREATE POLICY "organizations_update"
   ON public.organizations FOR UPDATE
@@ -227,10 +142,10 @@ CREATE POLICY "organizations_delete"
 
 
 -- ============================================
--- 6. USERS
+-- 5. USERS
+-- (includes platform member visibility in both directions)
 -- ============================================
 
--- Users can see other members in their org
 CREATE POLICY "users_select"
   ON public.users FOR SELECT
   TO authenticated
@@ -240,18 +155,27 @@ CREATE POLICY "users_select"
       organization_id IS NOT NULL
       AND public.is_member_of(organization_id)
     )
+    -- Platform org members can see all users
+    OR public.is_platform_member(auth.uid())
+    -- All authenticated users can see platform org members (support team)
+    OR public.is_platform_member(id)
   );
 
--- Users can only update their own profile
 CREATE POLICY "users_update"
   ON public.users FOR UPDATE
   TO authenticated
-  USING (id = auth.uid())
-  WITH CHECK (id = auth.uid());
+  USING (
+    id = auth.uid()
+    OR public.authorize('members', 'manage_roles', organization_id)
+  )
+  WITH CHECK (
+    id = auth.uid()
+    OR public.authorize('members', 'manage_roles', organization_id)
+  );
 
 
 -- ============================================
--- 7. ORGANIZATION_MEMBERS
+-- 6. ORGANIZATION_MEMBERS
 -- ============================================
 
 CREATE POLICY "org_members_select"
@@ -269,7 +193,6 @@ CREATE POLICY "org_members_update"
   TO authenticated
   USING (
     public.authorize('members', 'manage_roles', organization_id)
-    -- prevent users from changing their own role
     AND user_id != auth.uid()
   );
 
@@ -277,15 +200,14 @@ CREATE POLICY "org_members_delete"
   ON public.organization_members FOR DELETE
   TO authenticated
   USING (
-    -- can remove others if has permission
     (public.authorize('members', 'remove', organization_id) AND user_id != auth.uid())
-    -- can remove self (leave org)
     OR user_id = auth.uid()
   );
 
 
 -- ============================================
--- 8. PROJECTS
+-- 7. PROJECTS
+-- (includes cross-org project member access)
 -- ============================================
 
 CREATE POLICY "projects_select"
@@ -294,13 +216,10 @@ CREATE POLICY "projects_select"
   USING (
     public.authorize(
       'projects', 'read', organization_id,
-      -- "own" scope: user is owner or a project member
       owner_id = auth.uid()
-      OR EXISTS (
-        SELECT 1 FROM public.project_members pm
-        WHERE pm.project_id = id AND pm.user_id = auth.uid()
-      )
+      OR public.is_project_member(id)
     )
+    OR public.is_project_member(id)
   );
 
 CREATE POLICY "projects_insert"
@@ -325,7 +244,8 @@ CREATE POLICY "projects_delete"
 
 
 -- ============================================
--- 9. PROJECT_MEMBERS
+-- 8. PROJECT_MEMBERS
+-- (includes cross-org co-member visibility)
 -- ============================================
 
 CREATE POLICY "project_members_select"
@@ -335,6 +255,7 @@ CREATE POLICY "project_members_select"
     public.authorize('projects', 'read', public.project_org_id(project_id),
       user_id = auth.uid()
     )
+    OR public.is_project_member(project_id)
   );
 
 CREATE POLICY "project_members_insert"
@@ -358,13 +279,13 @@ CREATE POLICY "project_members_delete"
   USING (
     public.authorize('projects', 'manage', public.project_org_id(project_id))
     OR public.authorize('members', 'remove', public.project_org_id(project_id))
-    -- can leave a project yourself
     OR user_id = auth.uid()
   );
 
 
 -- ============================================
--- 10. TASKS
+-- 9. TASKS
+-- (includes cross-org project member access)
 -- ============================================
 
 CREATE POLICY "tasks_select"
@@ -376,6 +297,7 @@ CREATE POLICY "tasks_select"
       public.project_org_id(project_id),
       public.is_task_owner(id, created_by)
     )
+    OR public.is_project_member(project_id)
   );
 
 CREATE POLICY "tasks_insert"
@@ -383,6 +305,7 @@ CREATE POLICY "tasks_insert"
   TO authenticated
   WITH CHECK (
     public.authorize('tasks', 'create', public.project_org_id(project_id))
+    OR public.is_project_member(project_id)
   );
 
 CREATE POLICY "tasks_update"
@@ -394,6 +317,7 @@ CREATE POLICY "tasks_update"
       public.project_org_id(project_id),
       public.is_task_owner(id, created_by)
     )
+    OR public.is_project_member(project_id)
   );
 
 CREATE POLICY "tasks_delete"
@@ -405,7 +329,8 @@ CREATE POLICY "tasks_delete"
 
 
 -- ============================================
--- 11. TASK_ASSIGNMENTS
+-- 10. TASK_ASSIGNMENTS
+-- (includes cross-org project member access)
 -- ============================================
 
 CREATE POLICY "task_assignments_select"
@@ -417,6 +342,7 @@ CREATE POLICY "task_assignments_select"
       public.task_org_id(task_id),
       user_id = auth.uid()
     )
+    OR public.is_project_member_via_task(task_id)
   );
 
 CREATE POLICY "task_assignments_insert"
@@ -424,6 +350,7 @@ CREATE POLICY "task_assignments_insert"
   TO authenticated
   WITH CHECK (
     public.authorize('tasks', 'assign', public.task_org_id(task_id))
+    OR public.is_project_member_via_task(task_id)
   );
 
 CREATE POLICY "task_assignments_delete"
@@ -431,13 +358,13 @@ CREATE POLICY "task_assignments_delete"
   TO authenticated
   USING (
     public.authorize('tasks', 'assign', public.task_org_id(task_id))
-    -- can unassign yourself
     OR user_id = auth.uid()
+    OR public.is_project_member_via_task(task_id)
   );
 
 
 -- ============================================
--- 12. TASK_ACTIVITIES (read follows task, insert if can update task)
+-- 11. TASK_ACTIVITIES
 -- ============================================
 
 CREATE POLICY "task_activities_select"
@@ -460,7 +387,7 @@ CREATE POLICY "task_activities_insert"
 
 
 -- ============================================
--- 13. TASK_COMMENTS
+-- 12. TASK_COMMENTS
 -- ============================================
 
 CREATE POLICY "task_comments_select"
@@ -474,7 +401,6 @@ CREATE POLICY "task_comments_select"
     )
   );
 
--- can comment if can read the task
 CREATE POLICY "task_comments_insert"
   ON public.task_comments FOR INSERT
   TO authenticated
@@ -482,13 +408,11 @@ CREATE POLICY "task_comments_insert"
     public.authorize('tasks', 'read', public.task_org_id(task_id), true)
   );
 
--- can only edit own comments
 CREATE POLICY "task_comments_update"
   ON public.task_comments FOR UPDATE
   TO authenticated
   USING (user_id = auth.uid());
 
--- can delete own comments OR has tasks.delete
 CREATE POLICY "task_comments_delete"
   ON public.task_comments FOR DELETE
   TO authenticated
@@ -499,7 +423,8 @@ CREATE POLICY "task_comments_delete"
 
 
 -- ============================================
--- 14. SUPPORT_TICKETS
+-- 13. SUPPORT_TICKETS
+-- (tickets_insert: allows admins on behalf + requires support_tier_id)
 -- ============================================
 
 CREATE POLICY "tickets_select"
@@ -517,8 +442,11 @@ CREATE POLICY "tickets_insert"
   TO authenticated
   WITH CHECK (
     public.authorize('support_tickets', 'create', organization_id, customer_id = auth.uid())
-    -- clients can only create tickets as themselves
-    AND customer_id = auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM public.organizations o
+      WHERE o.id = organization_id
+        AND o.support_tier_id IS NOT NULL
+    )
   );
 
 CREATE POLICY "tickets_update"
@@ -540,7 +468,7 @@ CREATE POLICY "tickets_delete"
 
 
 -- ============================================
--- 15. SUPPORT_TICKET_MESSAGES
+-- 14. SUPPORT_TICKET_MESSAGES
 -- ============================================
 
 CREATE POLICY "ticket_messages_select"
@@ -557,7 +485,6 @@ CREATE POLICY "ticket_messages_select"
           AND (t.customer_id = auth.uid() OR t.assigned_agent_id = auth.uid())
       )
     )
-    -- internal notes: only visible to non-clients (scope: all)
     AND (
       is_internal_note = false
       OR public.authorize('support_tickets', 'update', public.ticket_org_id(ticket_id))
@@ -568,7 +495,6 @@ CREATE POLICY "ticket_messages_insert"
   ON public.support_ticket_messages FOR INSERT
   TO authenticated
   WITH CHECK (
-    -- can message if can read the ticket
     public.authorize(
       'support_tickets', 'read',
       public.ticket_org_id(ticket_id),
@@ -579,12 +505,10 @@ CREATE POLICY "ticket_messages_insert"
           AND (t.customer_id = auth.uid() OR t.assigned_agent_id = auth.uid())
       )
     )
-    -- only agents/admins can write internal notes
     AND (
       is_internal_note = false
       OR public.authorize('support_tickets', 'update', public.ticket_org_id(ticket_id))
     )
-    -- must be the sender
     AND sender_id = auth.uid()
   );
 
@@ -597,10 +521,232 @@ CREATE POLICY "ticket_messages_delete"
 
 
 -- ============================================
--- 16. PERFORMANCE INDEXES for RLS
+-- 15. SUPPORT TIERS
 -- ============================================
 
--- These support the joins in authorize() and helper functions
+CREATE POLICY "support_tiers_select" ON public.support_tiers
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "support_tiers_insert" ON public.support_tiers
+  FOR INSERT TO authenticated WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.organization_members om
+      JOIN public.roles r ON r.id = om.role_id
+      WHERE om.user_id = auth.uid() AND r.slug = 'owner' AND r.is_system = true
+    )
+  );
+
+CREATE POLICY "support_tiers_update" ON public.support_tiers
+  FOR UPDATE TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM public.organization_members om
+      JOIN public.roles r ON r.id = om.role_id
+      WHERE om.user_id = auth.uid() AND r.slug = 'owner' AND r.is_system = true
+    )
+  );
+
+CREATE POLICY "support_tiers_delete" ON public.support_tiers
+  FOR DELETE TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM public.organization_members om
+      JOIN public.roles r ON r.id = om.role_id
+      WHERE om.user_id = auth.uid() AND r.slug = 'owner' AND r.is_system = true
+    )
+  );
+
+
+-- ============================================
+-- 16. SYSTEM CONFIG
+-- ============================================
+
+CREATE POLICY "system_config_select" ON public.system_config
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "system_config_update" ON public.system_config
+  FOR UPDATE TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM public.organization_members om
+      JOIN public.roles r ON r.id = om.role_id
+      WHERE om.user_id = auth.uid() AND r.slug = 'owner' AND r.is_system = true
+    )
+  );
+
+
+-- ============================================
+-- 17. ORGANIZATION SETTINGS
+-- ============================================
+
+CREATE POLICY "org_settings_select" ON public.organization_settings
+  FOR SELECT TO authenticated
+  USING (public.is_member_of(organization_id));
+
+CREATE POLICY "org_settings_insert" ON public.organization_settings
+  FOR INSERT TO authenticated
+  WITH CHECK (public.authorize('organizations', 'update', organization_id));
+
+CREATE POLICY "org_settings_update" ON public.organization_settings
+  FOR UPDATE TO authenticated
+  USING (public.authorize('organizations', 'update', organization_id));
+
+
+-- ============================================
+-- 18. SLA BREACHES
+-- ============================================
+
+CREATE POLICY "sla_breaches_select" ON public.sla_breaches
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.support_tickets t
+      WHERE t.id = ticket_id
+        AND public.authorize('support_tickets', 'read', t.organization_id, t.customer_id = auth.uid())
+    )
+  );
+
+
+-- ============================================
+-- 19. TICKET WORK LOGS
+-- (insert requires support_tickets.update, not just read)
+-- ============================================
+
+CREATE POLICY "ticket_work_logs_select"
+  ON public.ticket_work_logs FOR SELECT
+  TO authenticated
+  USING (
+    public.authorize(
+      'support_tickets', 'read',
+      public.ticket_org_id(ticket_id),
+      user_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.support_tickets t
+        WHERE t.id = ticket_id
+          AND (t.customer_id = auth.uid() OR t.assigned_agent_id = auth.uid())
+      )
+    )
+  );
+
+CREATE POLICY "ticket_work_logs_insert"
+  ON public.ticket_work_logs FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.authorize(
+      'support_tickets', 'update',
+      public.ticket_org_id(ticket_id),
+      user_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.support_tickets t
+        WHERE t.id = ticket_id
+          AND (t.customer_id = auth.uid() OR t.assigned_agent_id = auth.uid())
+      )
+    )
+    AND user_id = auth.uid()
+  );
+
+CREATE POLICY "ticket_work_logs_delete"
+  ON public.ticket_work_logs FOR DELETE
+  TO authenticated
+  USING (
+    user_id = auth.uid()
+    OR public.authorize('support_tickets', 'delete', public.ticket_org_id(ticket_id))
+  );
+
+
+-- ============================================
+-- 20. TASK WORK LOGS
+-- ============================================
+
+CREATE POLICY "task_work_logs_select"
+  ON public.task_work_logs FOR SELECT
+  TO authenticated
+  USING (
+    public.authorize(
+      'tasks', 'read',
+      public.task_org_id(task_id),
+      user_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.task_assignments ta
+        WHERE ta.task_id = task_work_logs.task_id
+          AND ta.user_id = auth.uid()
+      )
+    )
+  );
+
+CREATE POLICY "task_work_logs_insert"
+  ON public.task_work_logs FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.authorize(
+      'tasks', 'read',
+      public.task_org_id(task_id),
+      user_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.task_assignments ta
+        WHERE ta.task_id = task_work_logs.task_id
+          AND ta.user_id = auth.uid()
+      )
+    )
+    AND user_id = auth.uid()
+  );
+
+CREATE POLICY "task_work_logs_delete"
+  ON public.task_work_logs FOR DELETE
+  TO authenticated
+  USING (
+    user_id = auth.uid()
+    OR public.authorize('tasks', 'delete', public.task_org_id(task_id))
+  );
+
+
+-- ============================================
+-- 21. ORGANIZATION INVITATIONS
+-- ============================================
+
+CREATE POLICY "invitations_select"
+  ON public.organization_invitations FOR SELECT
+  TO authenticated
+  USING (public.is_member_of(organization_id));
+
+CREATE POLICY "invitations_insert"
+  ON public.organization_invitations FOR INSERT
+  TO authenticated
+  WITH CHECK (public.authorize('members', 'invite', organization_id));
+
+CREATE POLICY "invitations_update"
+  ON public.organization_invitations FOR UPDATE
+  TO authenticated
+  USING (public.authorize('members', 'invite', organization_id));
+
+CREATE POLICY "invitations_delete"
+  ON public.organization_invitations FOR DELETE
+  TO authenticated
+  USING (public.authorize('members', 'invite', organization_id));
+
+
+-- ============================================
+-- 22. NOTIFICATIONS
+-- ============================================
+
+CREATE POLICY "notifications_select" ON public.notifications
+  FOR SELECT TO authenticated
+  USING (recipient_id = auth.uid());
+
+CREATE POLICY "notifications_update" ON public.notifications
+  FOR UPDATE TO authenticated
+  USING (recipient_id = auth.uid());
+
+CREATE POLICY "notifications_delete" ON public.notifications
+  FOR DELETE TO authenticated
+  USING (recipient_id = auth.uid());
+
+CREATE POLICY "notifications_insert" ON public.notifications
+  FOR INSERT TO authenticated
+  WITH CHECK (false);
+
+
+-- ============================================
+-- 23. PERFORMANCE INDEXES for RLS
+-- ============================================
+
 CREATE INDEX IF NOT EXISTS idx_org_members_user_org_role
   ON public.organization_members (user_id, organization_id, role_id);
 

@@ -1,73 +1,10 @@
 -- ============================================
--- MIGRATION: In-App Notification Center
+-- NOTIFICATIONS: Trigger functions and triggers
 -- ============================================
 
 
 -- ============================================
--- 1. NOTIFICATION TYPE ENUM
--- ============================================
-
-CREATE TYPE public.notification_type AS ENUM (
-  'ticket_created',
-  'ticket_assigned',
-  'ticket_resolved',
-  'ticket_message',
-  'task_assigned',
-  'task_status_change',
-  'task_comment',
-  'sla_breach'
-);
-
-
--- ============================================
--- 2. NOTIFICATIONS TABLE
--- ============================================
-
-CREATE TABLE public.notifications (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  recipient_id    uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  actor_id        uuid REFERENCES public.users(id) ON DELETE SET NULL,
-  type            public.notification_type NOT NULL,
-  title           text NOT NULL,
-  body            text,
-  resource_type   text,
-  resource_id     uuid,
-  is_read         boolean NOT NULL DEFAULT false,
-  read_at         timestamptz,
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_notifications_recipient ON public.notifications (recipient_id, is_read, created_at DESC);
-CREATE INDEX idx_notifications_org       ON public.notifications (organization_id, created_at DESC);
-
-
--- ============================================
--- 3. RLS POLICIES
--- ============================================
-
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "notifications_select" ON public.notifications
-  FOR SELECT TO authenticated
-  USING (recipient_id = auth.uid());
-
-CREATE POLICY "notifications_update" ON public.notifications
-  FOR UPDATE TO authenticated
-  USING (recipient_id = auth.uid());
-
-CREATE POLICY "notifications_delete" ON public.notifications
-  FOR DELETE TO authenticated
-  USING (recipient_id = auth.uid());
-
-CREATE POLICY "notifications_insert" ON public.notifications
-  FOR INSERT TO authenticated
-  WITH CHECK (false);
-
-
--- ============================================
--- 4. CORE HELPER: insert_notification()
---    Checks org settings + don't-notify-self
+-- 1. CORE HELPER: insert_notification()
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.insert_notification(
@@ -121,8 +58,7 @@ $$;
 
 
 -- ============================================
--- 5a. Ticket created
---     Recipients: org members with support_tickets.read scope=all
+-- 2. Ticket created
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_ticket_created()
@@ -165,8 +101,7 @@ CREATE TRIGGER trg_notify_ticket_created
 
 
 -- ============================================
--- 5b. Ticket assigned
---     Recipient: the newly assigned agent
+-- 3. Ticket assigned
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_ticket_assigned()
@@ -196,8 +131,7 @@ CREATE TRIGGER trg_notify_ticket_assigned
 
 
 -- ============================================
--- 5c. Ticket resolved
---     Recipient: the customer
+-- 4. Ticket resolved
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_ticket_resolved()
@@ -225,9 +159,7 @@ CREATE TRIGGER trg_notify_ticket_resolved
 
 
 -- ============================================
--- 5d. Ticket message
---     Recipients: customer + assigned agent (participants)
---     Internal notes skip the customer
+-- 5. Ticket message
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_ticket_message()
@@ -279,8 +211,7 @@ CREATE TRIGGER trg_notify_ticket_message
 
 
 -- ============================================
--- 5e. Task assigned
---     Recipient: the assignee
+-- 6. Task assigned
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_task_assigned()
@@ -317,8 +248,7 @@ CREATE TRIGGER trg_notify_task_assigned
 
 
 -- ============================================
--- 5f. Task status change
---     Recipients: task creator + all assignees
+-- 7. Task status change
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_task_status_change()
@@ -376,8 +306,7 @@ CREATE TRIGGER trg_notify_task_status_change
 
 
 -- ============================================
--- 5g. Task comment
---     Recipients: task creator + all assignees
+-- 8. Task comment
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_task_comment()
@@ -429,8 +358,7 @@ CREATE TRIGGER trg_notify_task_comment
 
 
 -- ============================================
--- 5h. SLA breach
---     Recipients: assigned agent + org owner/admin roles
+-- 9. SLA breach
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.trg_notify_sla_breach()
@@ -486,9 +414,7 @@ CREATE TRIGGER trg_notify_sla_breach
 
 
 -- ============================================
--- 6. SOFT-DELETE CLEANUP
---    When a task or ticket is soft-deleted,
---    remove its notifications so the inbox stays clean.
+-- 10. SOFT-DELETE CLEANUP
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.cleanup_notifications_on_soft_delete()
@@ -514,10 +440,3 @@ CREATE TRIGGER trg_cleanup_notifications_task
 CREATE TRIGGER trg_cleanup_notifications_ticket
   AFTER UPDATE OF deleted_at ON public.support_tickets
   FOR EACH ROW EXECUTE FUNCTION public.cleanup_notifications_on_soft_delete('ticket');
-
-
--- ============================================
--- 7. REALTIME PUBLICATION
--- ============================================
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
