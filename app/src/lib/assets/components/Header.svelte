@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Bell, Moon, Sun } from "@lucide/svelte";
+	import { Bell, Moon, Sun, LogOut } from "@lucide/svelte";
 	import { theme } from '$lib/stores/theme.svelte';
 	import { notificationCenter } from '$lib/stores/notificationCenter.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
+	import { getClient } from '$lib/api/client';
 	import NotificationPanel from '$lib/components/NotificationPanel.svelte';
 </script>
 
@@ -41,5 +42,16 @@
 				<NotificationPanel />
 			{/if}
 		</div>
+		<button
+			type="button"
+			class="text-sidebar-icon hover:text-sidebar-text cursor-pointer p-2 hover:bg-sidebar-hover-bg"
+			aria-label="Log out"
+			onclick={async () => {
+				await getClient().auth.signOut();
+				window.location.href = '/login';
+			}}
+		>
+			<LogOut size={16} />
+		</button>
     </div>
 </div>

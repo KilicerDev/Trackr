@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { projectStore } from '$lib/stores/projects.svelte';
 	import { api } from '$lib/api';
@@ -18,13 +20,22 @@
 		archived: 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'
 	};
 
+	const initStatus = page.url.searchParams.get('status') ?? '';
+	const initOrg = page.url.searchParams.get('org') ?? null;
+
 	let organizations = $state<Organization[]>([]);
-	let selectedOrgId = $state<string | null>(null);
+	let selectedOrgId = $state<string | null>(initOrg);
 	let orgDropdownOpen = $state(false);
-	let statusFilter = $state<string>('');
+	let statusFilter = $state<string>(
+		(PROJECT_STATUSES as readonly string[]).includes(initStatus) ? initStatus : ''
+	);
 	let createModalOpen = $state(false);
 
+	let orgsLoaded = $state(false);
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
+	const orgDropdownLabel = $derived(
+		selectedOrg?.name ?? (selectedOrgId && !orgsLoaded ? 'Loading…' : 'Select Organization')
+	);
 
 	const filteredProjects = $derived(
 		statusFilter
@@ -32,14 +43,29 @@
 			: projectStore.items
 	);
 
+	function syncUrlParams() {
+		const url = new URL(window.location.href);
+		if (selectedOrgId) url.searchParams.set('org', selectedOrgId);
+		else url.searchParams.delete('org');
+		if (statusFilter) url.searchParams.set('status', statusFilter);
+		else url.searchParams.delete('status');
+		replaceState(url, {});
+	}
+
 	function selectOrg(orgId: string | null) {
 		selectedOrgId = orgId;
 		orgDropdownOpen = false;
+		syncUrlParams();
 		if (orgId) {
 			projectStore.load(orgId);
 		} else {
 			projectStore.clear();
 		}
+	}
+
+	function setStatusFilter(value: string) {
+		statusFilter = value;
+		syncUrlParams();
 	}
 
 	function formatDate(dateStr: string | null): string {
@@ -90,8 +116,17 @@
 			organizations = clientOrgs;
 		}
 
-		const orgId = auth.organizationId;
-		selectedOrgId = organizations.some((o) => o.id === orgId) ? orgId : null;
+		orgsLoaded = true;
+
+		if (initOrg && organizations.some((o) => o.id === initOrg)) {
+			selectedOrgId = initOrg;
+		} else {
+			const orgId = auth.organizationId;
+			selectedOrgId = organizations.some((o) => o.id === orgId) ? orgId : null;
+		}
+
+		syncUrlParams();
+
 		if (selectedOrgId) {
 			projectStore.load(selectedOrgId);
 		}
@@ -114,7 +149,7 @@
 					class="flex min-w-[11rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs font-medium text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
 					onclick={() => (orgDropdownOpen = !orgDropdownOpen)}
 				>
-					<span>{selectedOrg?.name ?? 'Select Organization'}</span>
+					<span>{orgDropdownLabel}</span>
 					<svg
 						class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {orgDropdownOpen
 							? 'rotate-180'
@@ -163,7 +198,7 @@
 					class="border border-surface-border px-2.5 py-2 text-xs transition-colors {statusFilter === ''
 						? 'bg-accent text-white'
 						: 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
-					onclick={() => (statusFilter = '')}
+					onclick={() => setStatusFilter('')}
 				>
 					All
 				</button>
@@ -173,7 +208,7 @@
 						s
 							? 'bg-accent text-white'
 							: 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
-						onclick={() => (statusFilter = s)}
+						onclick={() => setStatusFilter(s)}
 					>
 						{formatStatus(s)}
 					</button>

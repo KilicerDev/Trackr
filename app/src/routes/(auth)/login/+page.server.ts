@@ -11,7 +11,7 @@ export const actions: Actions = {
       return fail(400, { email, message: "Email and password are required" });
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -20,6 +20,32 @@ export const actions: Actions = {
       return fail(401, { email, message: error.message });
     }
 
-    redirect(303, "/");
+    let redirectTo = "/";
+
+    try {
+      const user = data.user;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("organization_id")
+          .eq("id", user.id)
+          .single();
+
+        if (profile?.organization_id) {
+          const { data: roles } = await supabase.rpc("get_user_role", {
+            _user_id: user.id,
+            _organization_id: profile.organization_id,
+          });
+
+          if (roles?.[0]?.role_slug === "client") {
+            redirectTo = "/c";
+          }
+        }
+      }
+    } catch {
+      // Role check failed — fall through to default redirect
+    }
+
+    redirect(303, redirectTo);
   },
 };

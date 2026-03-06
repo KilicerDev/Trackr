@@ -10,7 +10,16 @@
 	let hovered = $state(false);
 	let expanded = $derived(pinned || hovered);
 	let filteredSections = $derived(
-		sidebarSections.filter((s) => s.title !== 'Administration' || auth.isAdminRole)
+		sidebarSections
+			.filter((s) => s.title !== 'Administration' || auth.isAdminRole)
+			.map((s) => ({
+				...s,
+				items: s.items.filter((item) => {
+					if (!item.requiredPermission) return true;
+					return auth.can(item.requiredPermission.resource, item.requiredPermission.action);
+				})
+			}))
+			.filter((s) => s.items.length > 0)
 	);
 </script>
 

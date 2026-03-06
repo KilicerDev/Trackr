@@ -699,7 +699,7 @@
 													{#if canManageRoles && selectedUser && m.user_id !== auth.user?.id}
 														<div class="relative" data-dropdown>
 															<button
-																class="text-[11px] text-sidebar-icon hover:text-accent transition-colors"
+																class="flex items-center gap-1 text-[11px] text-sidebar-icon hover:text-accent transition-colors"
 																onclick={() => toggleDropdown(`role-${m.id}`)}
 															>
 																{m.role?.name ?? 'Unknown'} {@html chevronSvg}
