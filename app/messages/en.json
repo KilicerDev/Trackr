@@ -11,6 +11,7 @@
 	"auth_send": "Send",
 	"auth_create_account": "Create an account",
 	"auth_invalid_credentials": "Invalid Login Credentials",
+	"auth_reset_email_sent": "If an account exists with that email, you'll receive a password reset link shortly.",
 	"setup_subtitle": "Set up your platform",
 	"setup_org_name": "Organization Name",
 	"setup_full_name": "Full Name",

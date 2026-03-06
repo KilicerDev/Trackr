@@ -3,6 +3,9 @@
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
 	import { getClient } from '$lib/api/client';
 	import logo from '$lib/assets/logo.png';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	let password = $state('');
 	let confirmPassword = $state('');
@@ -30,7 +33,7 @@
 				return;
 			}
 
-			goto('/');
+			goto(data.redirectTo);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Something went wrong';
 		} finally {

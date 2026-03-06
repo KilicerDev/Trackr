@@ -11,6 +11,7 @@
 	"auth_send": "Senden",
 	"auth_create_account": "Konto erstellen",
 	"auth_invalid_credentials": "Ungültige Anmeldedaten",
+	"auth_reset_email_sent": "Falls ein Konto mit dieser E-Mail existiert, erhalten Sie in Kürze einen Link zum Zurücksetzen des Passworts.",
 	"setup_subtitle": "Plattform einrichten",
 	"setup_org_name": "Organisationsname",
 	"setup_full_name": "Vollständiger Name",

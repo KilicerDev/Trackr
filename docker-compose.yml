@@ -111,6 +111,16 @@ services:
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: ${MAILER_URLPATHS_CONFIRMATION}
       GOTRUE_MAILER_URLPATHS_RECOVERY: ${MAILER_URLPATHS_RECOVERY}
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: ${MAILER_URLPATHS_EMAIL_CHANGE}
+      GOTRUE_MAILER_TEMPLATES_INVITE: http://trackr-app:3000/templates/invite.html
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://trackr-app:3000/templates/confirmation.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://trackr-app:3000/templates/recovery.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://trackr-app:3000/templates/email_change.html
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://trackr-app:3000/templates/magic_link.html
+      GOTRUE_MAILER_SUBJECTS_INVITE: "You've been invited to Trackr"
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: "Confirm your Trackr account"
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: "Reset your Trackr password"
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: "Confirm your email change"
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "Your Trackr sign-in link"
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
 
