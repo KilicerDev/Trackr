@@ -10,5 +10,10 @@
 	"auth_forgot_password_title": "Forgot Password?",
 	"auth_send": "Send",
 	"auth_create_account": "Create an account",
-	"auth_invalid_credentials": "Invalid Login Credentials"
+	"auth_invalid_credentials": "Invalid Login Credentials",
+	"setup_subtitle": "Set up your platform",
+	"setup_org_name": "Organization Name",
+	"setup_full_name": "Full Name",
+	"setup_confirm_password": "Confirm Password",
+	"setup_submit": "Create Platform"
 }

@@ -10,6 +10,11 @@
 *.userosscache
 *.sln.docstates
 *.env
+!.env.example
+
+# Docker persistent data
+docker/volumes/db/data/
+docker/volumes/storage/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

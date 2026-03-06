@@ -1,5 +1,5 @@
 import { sequence } from "@sveltejs/kit/hooks";
-import type { Handle } from "@sveltejs/kit";
+import { redirect, type Handle } from "@sveltejs/kit";
 import { getTextDirection } from "$lib/paraglide/runtime";
 import { paraglideMiddleware } from "$lib/paraglide/server";
 import { createServerClient } from "@supabase/ssr";
@@ -7,8 +7,27 @@ import {
   PUBLIC_SUPABASE_URL,
   PUBLIC_SUPABASE_ANON_KEY,
 } from "$env/static/public";
+import { env } from "$env/dynamic/private";
+import { isSetupComplete } from "$lib/server/setup-check";
+
+const handleSetup: Handle = async ({ event, resolve }) => {
+  const path = event.url.pathname;
+
+  if (path === "/setup" || path.startsWith("/_app/") || path.startsWith("/favicon")) {
+    return resolve(event);
+  }
+
+  const done = await isSetupComplete();
+  if (!done) {
+    redirect(303, "/setup");
+  }
+
+  return resolve(event);
+};
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
+  const internalUrl = env.SUPABASE_URL;
+
   event.locals.supabase = createServerClient(
     PUBLIC_SUPABASE_URL,
     PUBLIC_SUPABASE_ANON_KEY,
@@ -24,6 +43,17 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
           });
         },
       },
+      ...(internalUrl && internalUrl !== PUBLIC_SUPABASE_URL
+        ? {
+            global: {
+              fetch: (input, init) => {
+                const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+                const rewritten = url.replace(PUBLIC_SUPABASE_URL, internalUrl);
+                return fetch(rewritten, init);
+              },
+            },
+          }
+        : {}),
     }
   );
 
@@ -60,4 +90,4 @@ const handleParaglide: Handle = ({ event, resolve }) =>
     });
   });
 
-export const handle = sequence(handleParaglide, handleSupabase);
+export const handle = sequence(handleParaglide, handleSetup, handleSupabase);

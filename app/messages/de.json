@@ -10,5 +10,10 @@
 	"auth_forgot_password_title": "Passwort vergessen?",
 	"auth_send": "Senden",
 	"auth_create_account": "Konto erstellen",
-	"auth_invalid_credentials": "Ungültige Anmeldedaten"
+	"auth_invalid_credentials": "Ungültige Anmeldedaten",
+	"setup_subtitle": "Plattform einrichten",
+	"setup_org_name": "Organisationsname",
+	"setup_full_name": "Vollständiger Name",
+	"setup_confirm_password": "Passwort bestätigen",
+	"setup_submit": "Plattform erstellen"
 }
