@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import Modal from '$lib/components/Modal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import type { Role, Permission, PermissionEntry } from '$lib/api/roles';
 
 	let loaded = $state(false);
@@ -34,7 +35,8 @@
 	let editSuccess = $state<string | null>(null);
 
 	// Permission editing
-	let editPermissions = $state<Map<string, 'own' | 'all'>>(new Map());
+	// eslint-disable-next-line svelte/no-unnecessary-state-wrap -- variable is reassigned, not just mutated
+	let editPermissions = $state(new SvelteMap<string, 'own' | 'all'>());
 	let permsSaving = $state(false);
 	let permsError = $state<string | null>(null);
 	let permsSuccess = $state<string | null>(null);
@@ -54,13 +56,10 @@
 		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
 	const btnPrimary =
 		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
-	const btnDestructive =
-		'bg-red-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-red-600 disabled:opacity-50';
-
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
 
 	const permissionGroups = $derived.by(() => {
-		const groups = new Map<string, Permission[]>();
+		const groups = new SvelteMap<string, Permission[]>();
 		for (const p of allPermissions) {
 			const list = groups.get(p.resource) ?? [];
 			list.push(p);
@@ -137,7 +136,7 @@
 	}
 
 	function applyPermissionFields(role: Role) {
-		const map = new Map<string, 'own' | 'all'>();
+		const map = new SvelteMap<string, 'own' | 'all'>();
 		for (const rp of role.permissions) {
 			map.set(rp.permission_id, rp.scope);
 		}
@@ -170,7 +169,7 @@
 	// ── Permissions ──
 
 	function togglePermission(permId: string) {
-		const newMap = new Map(editPermissions);
+		const newMap = new SvelteMap(editPermissions);
 		if (newMap.has(permId)) {
 			newMap.delete(permId);
 		} else {
@@ -180,7 +179,7 @@
 	}
 
 	function toggleScope(permId: string) {
-		const newMap = new Map(editPermissions);
+		const newMap = new SvelteMap(editPermissions);
 		const current = newMap.get(permId);
 		if (current === 'own') {
 			newMap.set(permId, 'all');
@@ -276,16 +275,6 @@
 		})();
 	});
 </script>
-
-{#snippet toggle(checked: boolean, onToggle: () => void, label: string)}
-	<button type="button" class="flex items-center gap-3" onclick={onToggle}>
-		<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-			{checked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
-			{#if checked}{@html checkSvg}{/if}
-		</span>
-		<span class="text-xs text-sidebar-text">{label}</span>
-	</button>
-{/snippet}
 
 <div class="mx-auto w-full max-w-[1200px]">
 	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
@@ -488,7 +477,7 @@
 												onclick={() => { if (isEditable) togglePermission(perm.id); }}
 												disabled={!isEditable}
 											>
-												<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
+												<span 												class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
 													{isChecked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}
 													{!isEditable ? 'opacity-60' : ''}">
 													{#if isChecked}{@html checkSvg}{/if}

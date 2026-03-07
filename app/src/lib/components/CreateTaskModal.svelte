@@ -151,8 +151,8 @@
 								class={dropdownBtnClass}
 								onclick={() => toggleDropdown('parent')}
 							>
-								<span class="truncate">{selectedParentLabel}</span>
-								{@html chevronSvg}
+							<span class="truncate">{selectedParentLabel}</span>
+							{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'parent'}
 								<div class={dropdownPanelClass}>
@@ -196,7 +196,7 @@
 							</button>
 							{#if openDropdown === 'type'}
 								<div class={dropdownPanelClass}>
-									{#each TASK_TYPES as t}
+									{#each TASK_TYPES as t (t)}
 										<button
 											type="button"
 											class="{dropdownItemBase} {type === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
@@ -220,12 +220,12 @@
 								class={dropdownBtnClass}
 								onclick={() => toggleDropdown('priority')}
 							>
-								<span class="truncate">{displayName(priority)}</span>
-								{@html chevronSvg}
+							<span class="truncate">{displayName(priority)}</span>
+							{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'priority'}
 								<div class={dropdownPanelClass}>
-									{#each TASK_PRIORITIES as p}
+									{#each TASK_PRIORITIES as p (p)}
 										<button
 											type="button"
 											class="{dropdownItemBase} {priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
@@ -248,12 +248,12 @@
 								class={dropdownBtnClass}
 								onclick={() => toggleDropdown('status')}
 							>
-								<span class="truncate">{displayName(status)}</span>
-								{@html chevronSvg}
+							<span class="truncate">{displayName(status)}</span>
+							{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'status'}
 								<div class={dropdownPanelClass}>
-									{#each TASK_STATUSES as s}
+									{#each TASK_STATUSES as s (s)}
 										<button
 											type="button"
 											class="{dropdownItemBase} {status === s ? 'font-medium text-accent' : 'text-sidebar-text'}"

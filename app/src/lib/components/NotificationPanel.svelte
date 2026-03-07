@@ -3,6 +3,7 @@
 	import { notificationCenter } from '$lib/stores/notificationCenter.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { api } from '$lib/api';
+	import { localizeHref } from '$lib/paraglide/runtime';
 	import { CheckCheck, Loader2 } from '@lucide/svelte';
 	import NotificationPanelItem from './NotificationPanelItem.svelte';
 	import type { AppNotification } from '$lib/api/notifications';
@@ -14,12 +15,12 @@
 		notificationCenter.close();
 
 		if (n.resource_type === 'ticket' && n.resource_id) {
-			await goto(`/tickets?id=${n.resource_id}`);
+			await goto(localizeHref(`/tickets?id=${n.resource_id}`));
 		} else if (n.resource_type === 'task' && n.resource_id) {
 			try {
 				const task = await api.tasks.getById(n.resource_id);
 				if (task?.project_id) {
-					await goto(`/projects/${task.project_id}?task=${n.resource_id}`);
+					await goto(localizeHref(`/projects/${task.project_id}?task=${n.resource_id}`));
 				}
 			} catch {
 				notifications.add('error', 'Could not open task');

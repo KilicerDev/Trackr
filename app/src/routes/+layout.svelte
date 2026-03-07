@@ -8,7 +8,9 @@
 	import { theme } from '$lib/stores/theme.svelte';
 	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
-	let { data, children }: { data: LayoutData; children: any } = $props();
+	import type { Snippet } from 'svelte';
+
+	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	$effect(() => {
 		auth.init(data.user, data.role, data.permissions, data.isPlatformMember);
@@ -26,7 +28,7 @@
 <NotificationContainer />
 
 <div style="display:none">
-	{#each locales as locale}
+	{#each locales as locale (locale)}
 		<a href={localizeHref(page.url.pathname, { locale })}>{locale}</a>
 	{/each}
 </div>

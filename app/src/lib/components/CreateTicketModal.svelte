@@ -13,7 +13,6 @@
 
 	interface Props {
 		organizationId: string | null;
-		organizationName: string;
 		customers: CustomerOption[];
 		onClose: () => void;
 		onSuccess?: () => void;
@@ -21,7 +20,6 @@
 
 	let {
 		organizationId,
-		organizationName,
 		customers,
 		onClose,
 		onSuccess
@@ -54,10 +52,6 @@
 
 	function toggleDropdown(key: string) {
 		openDropdown = openDropdown === key ? null : key;
-	}
-
-	function closeDropdowns() {
-		openDropdown = null;
 	}
 
 	$effect(() => {
@@ -224,7 +218,7 @@
 								</button>
 								{#if openDropdown === 'priority'}
 									<div class={dropdownPanelUpClass}>
-										{#each TICKET_PRIORITIES as p}
+										{#each TICKET_PRIORITIES as p (p)}
 											<button
 												type="button"
 												class="{dropdownItemBase} {priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
@@ -261,7 +255,7 @@
 										>
 											None
 										</button>
-										{#each TICKET_CATEGORIES as c}
+										{#each TICKET_CATEGORIES as c (c)}
 											<button
 												type="button"
 												class="{dropdownItemBase} {category === c ? 'font-medium text-accent' : 'text-sidebar-text'}"
@@ -291,7 +285,7 @@
 								</button>
 								{#if openDropdown === 'channel'}
 									<div class={dropdownPanelUpClass}>
-										{#each TICKET_CHANNELS as ch}
+										{#each TICKET_CHANNELS as ch (ch)}
 											<button
 												type="button"
 												class="{dropdownItemBase} {channel === ch ? 'font-medium text-accent' : 'text-sidebar-text'}"

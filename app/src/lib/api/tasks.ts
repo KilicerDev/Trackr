@@ -1,5 +1,6 @@
 import { getClient } from "./client";
 import { TASK_SELECT, TASK_MINIMAL_SELECT } from "./queries";
+import { indexDocument, deleteDocument } from "./search-index";
 
 export type TaskFilters = {
   project_id?: string;
@@ -100,6 +101,7 @@ export const tasks = {
       .single();
 
     if (error) throw error;
+    if (data) indexDocument("task", data.id);
     return data;
   },
 
@@ -113,6 +115,7 @@ export const tasks = {
       .single();
 
     if (error) throw error;
+    if (data) indexDocument("task", data.id);
     return data;
   },
 
@@ -132,6 +135,7 @@ export const tasks = {
       .eq("id", id);
 
     if (error) throw error;
+    deleteDocument("task", id);
   },
 
   async assign(taskId: string, userId: string, assignedBy: string) {
@@ -187,6 +191,7 @@ export const tasks = {
       .single();
 
     if (error) throw error;
+    if (data) indexDocument("task_comment", data.id);
     return data;
   },
 

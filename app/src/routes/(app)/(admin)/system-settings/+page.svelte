@@ -540,9 +540,9 @@
 							{@render toggle(signupsEnabled, () => { signupsEnabled = !signupsEnabled; }, 'Signups enabled')}
 							<div class="flex items-center gap-3">
 								<button type="button" class="flex items-center gap-3" onclick={() => { maintenanceMode = !maintenanceMode; }}>
-									<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-										{maintenanceMode ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
-										{#if maintenanceMode}{@html checkSvg}{/if}
+								<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
+									{maintenanceMode ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+									{#if maintenanceMode}{@html checkSvg}{/if}
 									</span>
 									<span class="text-xs text-sidebar-text">Maintenance mode</span>
 								</button>
@@ -641,8 +641,8 @@
 					<div class="flex items-end pb-1">
 						<button type="button" class="flex items-center gap-3" onclick={() => { tierActive = !tierActive; }}>
 							<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-								{tierActive ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
-								{#if tierActive}{@html checkSvg}{/if}
+							{tierActive ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+							{#if tierActive}{@html checkSvg}{/if}
 							</span>
 							<span class="text-xs text-sidebar-text">Active</span>
 						</button>

@@ -25,7 +25,9 @@
 			await navigator.clipboard.writeText(notification.description);
 			copied = true;
 			setTimeout(() => (copied = false), 1500);
-		} catch {}
+		} catch {
+		// no-op
+	}
 	}
 </script>
 

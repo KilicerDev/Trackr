@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X, Send, Trash2, User, Clock, Plus } from '@lucide/svelte';
+	import { X, Send, Trash2, Clock, Plus } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { taskStore } from '$lib/stores/tasks.svelte';
 	import type { Task } from '$lib/stores/tasks.svelte';
@@ -85,14 +85,6 @@
 		feature: '✦',
 		improvement: '▲',
 		epic: '◆'
-	};
-
-	const priorityColors: Record<string, string> = {
-		urgent: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300',
-		high: 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
-		medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300',
-		low: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
-		none: 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'
 	};
 
 	const statusColors: Record<string, string> = {
@@ -314,7 +306,11 @@
 	}
 
 	const displayId = $derived(
-		task?.project?.identifier ? `${task.project.identifier}-${task.short_id}` : task?.short_id ?? ''
+		task?.short_id
+			? task.short_id
+			: task?.project?.identifier
+				? `${task.project.identifier}-?`
+				: '—'
 	);
 
 	const labelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
@@ -438,11 +434,11 @@
 										></span>
 										{displayName(task.status)}
 									</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'status'}
-									<div class={dropdownPanelClass}>
-										{#each TASK_STATUSES as s}
+								{@html chevronSvg}
+							</button>
+							{#if openDropdown === 'status'}
+								<div class={dropdownPanelClass}>
+									{#each TASK_STATUSES as s (s)}
 											<button
 												class="{dropdownItemBase} {task.status === s ? 'font-medium text-accent' : 'text-sidebar-text'}"
 												onmousedown={(e) => {
@@ -465,11 +461,11 @@
 									onclick={() => (openDropdown = openDropdown === 'priority' ? null : 'priority')}
 								>
 									<span class="truncate">{displayName(task.priority)}</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'priority'}
-									<div class={dropdownPanelClass}>
-										{#each TASK_PRIORITIES as p}
+								{@html chevronSvg}
+							</button>
+							{#if openDropdown === 'priority'}
+								<div class={dropdownPanelClass}>
+									{#each TASK_PRIORITIES as p (p)}
 											<button
 												class="{dropdownItemBase} {task.priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
 												onmousedown={(e) => {
@@ -495,11 +491,11 @@
 										<span class="text-xs leading-none">{typeIcons[task.type] ?? '☰'}</span>
 										{displayName(task.type)}
 									</span>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'type'}
-									<div class={dropdownPanelClass}>
-										{#each TASK_TYPES as t}
+								{@html chevronSvg}
+							</button>
+							{#if openDropdown === 'type'}
+								<div class={dropdownPanelClass}>
+									{#each TASK_TYPES as t (t)}
 											<button
 												class="{dropdownItemBase} {task.type === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
 												onmousedown={(e) => {
@@ -591,7 +587,7 @@
 					</div>
 					{#if task.assignments && task.assignments.length > 0}
 						<div class="space-y-1.5">
-							{#each task.assignments as a}
+							{#each task.assignments as a (a.user_id)}
 								<div class="group flex items-center justify-between gap-2">
 									<div class="flex items-center gap-2">
 										{#if a.user.avatar_url}

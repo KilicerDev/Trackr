@@ -179,7 +179,7 @@
 								</button>
 								{#if openDropdown === 'status'}
 									<div class={dropdownPanelClass}>
-										{#each PROJECT_STATUSES as s}
+										{#each PROJECT_STATUSES as s (s)}
 											<button
 												type="button"
 												class="{dropdownItemBase} {status === s
@@ -214,7 +214,7 @@
 					<div>
 						<span class={labelClass}>Color</span>
 						<div class="flex items-center gap-2">
-							{#each PRESET_COLORS as c}
+							{#each PRESET_COLORS as c (c)}
 								<button
 									type="button"
 									aria-label="Select color {c}"

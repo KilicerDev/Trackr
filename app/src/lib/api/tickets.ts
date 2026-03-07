@@ -2,6 +2,7 @@
 
 import { getClient } from "./client";
 import { TICKET_SELECT } from "./queries";
+import { indexDocument } from "./search-index";
 
 /** Use "none" for assigned_agent_id to filter for unassigned tickets */
 export type TicketFilters = {
@@ -111,6 +112,7 @@ export const tickets = {
       .single();
 
     if (error) throw error;
+    if (data) indexDocument("ticket", data.id);
     return data;
   },
 
@@ -124,6 +126,7 @@ export const tickets = {
       .single();
 
     if (error) throw error;
+    if (data) indexDocument("ticket", data.id);
     return data;
   },
 
@@ -174,6 +177,7 @@ export const tickets = {
       .single();
 
     if (error) throw error;
+    if (data) indexDocument("ticket_message", data.id);
     return data;
   },
 

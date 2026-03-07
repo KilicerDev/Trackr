@@ -4,6 +4,7 @@
 	import type { Project } from '$lib/stores/projects.svelte';
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import type { Ticket } from '$lib/stores/tickets.svelte';
+	import { localizeHref } from '$lib/paraglide/runtime';
 	import DashboardChart from '$lib/components/DashboardChart.svelte';
 	import {
 		FolderKanban,
@@ -262,7 +263,7 @@
 						<DashboardChart type="doughnut" data={taskStatusData} options={chartOptions} />
 					</div>
 					<div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
-						{#each TASK_STATUSES as s}
+						{#each TASK_STATUSES as s (s)}
 							<div class="flex items-center gap-1.5">
 								<span class="inline-block h-[7px] w-[7px] rounded-full" style="background:{taskStatusColors[s]}"></span>
 								<span class="text-[11px] text-muted">{taskStatusLabels[s]}</span>
@@ -285,7 +286,7 @@
 						<DashboardChart type="doughnut" data={ticketPriorityData} options={chartOptions} />
 					</div>
 					<div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
-						{#each TICKET_PRIORITIES as p}
+						{#each TICKET_PRIORITIES as p (p)}
 							<div class="flex items-center gap-1.5">
 								<span class="inline-block h-[7px] w-[7px] rounded-full" style="background:{priorityColors[p]}"></span>
 								<span class="text-[11px] text-muted">{p.charAt(0).toUpperCase() + p.slice(1)}</span>
@@ -306,19 +307,19 @@
 			<div class="border border-surface-border bg-surface">
 				<div class="flex items-center justify-between border-b border-surface-border px-4 py-3">
 					<h2 class="text-xs font-semibold uppercase tracking-wide text-muted">My Tasks</h2>
-					<a
-						href="/projects"
-						class="flex items-center gap-1 text-[11px] text-accent hover:underline"
-					>
-						View all <ArrowRight size={12} />
-					</a>
-				</div>
-				{#if myTasks.length > 0}
-					<ul>
-						{#each myTasks as task (task.id)}
-							<li>
-								<a
-									href="/projects/{task.project_id}"
+				<a
+					href={localizeHref("/projects")}
+					class="flex items-center gap-1 text-[11px] text-accent hover:underline"
+				>
+					View all <ArrowRight size={12} />
+				</a>
+			</div>
+			{#if myTasks.length > 0}
+				<ul>
+					{#each myTasks as task (task.id)}
+						<li>
+							<a
+								href={localizeHref(`/projects/${task.project_id}`)}
 									class="flex items-center gap-3 border-b border-surface-border px-4 py-2.5 last:border-0 hover:bg-surface-hover"
 								>
 									<Circle
@@ -355,9 +356,9 @@
 					<h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
 						Recent Tickets
 					</h2>
-					<a
-						href="/tickets"
-						class="flex items-center gap-1 text-[11px] text-accent hover:underline"
+				<a
+					href={localizeHref("/tickets")}
+					class="flex items-center gap-1 text-[11px] text-accent hover:underline"
 					>
 						View all <ArrowRight size={12} />
 					</a>

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getClient } from '$lib/api/client';
+	import { localizeHref } from '$lib/paraglide/runtime';
 
 	onMount(async () => {
 		const supabase = getClient();
@@ -20,7 +21,7 @@
 				});
 
 				if (!error) {
-					goto('/set-password');
+					goto(localizeHref('/set-password'));
 					return;
 				}
 			}
@@ -28,7 +29,7 @@
 			// Check for error in hash (e.g. expired token)
 			const errorDesc = params.get('error_description');
 			if (errorDesc) {
-				goto(`/login`);
+				goto(localizeHref('/login'));
 				return;
 			}
 		}
@@ -37,11 +38,11 @@
 		// check and redirect
 		const { data: { session } } = await supabase.auth.getSession();
 		if (session) {
-			goto('/set-password');
+			goto(localizeHref('/set-password'));
 			return;
 		}
 
-		goto('/login');
+		goto(localizeHref('/login'));
 	});
 </script>
 

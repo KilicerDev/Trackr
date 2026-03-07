@@ -8,6 +8,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import type { Organization } from '$lib/api/organizations';
 	import type { TicketFilters } from '$lib/api/tickets';
+	import { localizeHref } from '$lib/paraglide/runtime';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import CreateTicketModal from '$lib/components/CreateTicketModal.svelte';
 	import TicketDetailPanel from '$lib/components/TicketDetailPanel.svelte';
@@ -64,7 +65,7 @@
 		} else {
 			url.searchParams.delete('id');
 		}
-		replaceState(url, {});
+		replaceState(localizeHref(url.pathname + url.search), {});
 	}
 
 	const ticketOrgs = $derived(organizations.filter((o) => o.support_tier_id !== null));
@@ -311,7 +312,6 @@
 	{#if createModalOpen}
 		<CreateTicketModal
 			organizationId={selectedOrgId}
-			organizationName={selectedOrg?.name ?? ''}
 			{customers}
 			onClose={() => (createModalOpen = false)}
 			onSuccess={() => applyFilters()}
@@ -367,7 +367,7 @@
 										applyFilters();
 									}}>All</button
 								>
-								{#each TICKET_STATUSES as s}
+								{#each TICKET_STATUSES as s (s)}
 									<button
 										class="flex w-full items-center px-4 py-2.5 text-left text-xs whitespace-nowrap transition-colors hover:bg-surface-hover {status ===
 										s
@@ -419,7 +419,7 @@
 										applyFilters();
 									}}>All</button
 								>
-								{#each TICKET_PRIORITIES as p}
+								{#each TICKET_PRIORITIES as p (p)}
 									<button
 										class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {priority ===
 										p
@@ -471,7 +471,7 @@
 										applyFilters();
 									}}>All</button
 								>
-								{#each TICKET_CATEGORIES as c}
+								{#each TICKET_CATEGORIES as c (c)}
 									<button
 										class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {category ===
 										c
@@ -523,7 +523,7 @@
 										applyFilters();
 									}}>All</button
 								>
-								{#each TICKET_CHANNELS as ch}
+								{#each TICKET_CHANNELS as ch (ch)}
 									<button
 										class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {channel ===
 										ch

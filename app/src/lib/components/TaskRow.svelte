@@ -68,7 +68,11 @@
 	}
 
 	const displayId = $derived(
-		task.project?.identifier ? `${task.project.identifier}-${task.short_id}` : task.short_id
+		task.short_id
+			? task.short_id
+			: task.project?.identifier
+				? `${task.project.identifier}-?`
+				: '—'
 	);
 </script>
 

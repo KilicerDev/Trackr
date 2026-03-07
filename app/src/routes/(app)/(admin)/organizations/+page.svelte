@@ -4,7 +4,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import Modal from '$lib/components/Modal.svelte';
-	import type { Organization, CreateOrgInput } from '$lib/api/organizations';
+	import type { Organization } from '$lib/api/organizations';
 	import type { Tier } from '$lib/api/config';
 
 	const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -300,9 +300,9 @@
 	<button type="button" class="flex items-center gap-3" onclick={onToggle}>
 		<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
 			{checked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
-			{#if checked}{@html checkSvg}{/if}
-		</span>
-		<span class="text-xs text-sidebar-text">{label}</span>
+		{#if checked}{@html checkSvg}{/if}
+	</span>
+	<span class="text-xs text-sidebar-text">{label}</span>
 	</button>
 {/snippet}
 
@@ -454,10 +454,10 @@
 										{#if tierSublabel(editTierId)}
 											<span class="ml-1.5 text-sidebar-icon">({tierSublabel(editTierId)})</span>
 										{/if}
-									</div>
-									{@html chevronSvg}
-								</button>
-								{#if openDropdown === 'edit-tier'}
+								</div>
+								{@html chevronSvg}
+							</button>
+							{#if openDropdown === 'edit-tier'}
 									<div class={dropPanelClass}>
 										<button type="button"
 											class="{dropItemBase} {editTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
@@ -537,12 +537,12 @@
 									<span class={labelClass}>Default priority</span>
 									<div class="relative" data-dropdown>
 										<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('settings-priority')}>
-											<span class="truncate">{defaultPriority}</span>
-											{@html chevronSvg}
-										</button>
-										{#if openDropdown === 'settings-priority'}
+								<span class="truncate">{defaultPriority}</span>
+								{@html chevronSvg}
+							</button>
+							{#if openDropdown === 'settings-priority'}
 											<div class={dropPanelClass}>
-												{#each PRIORITIES as p}
+												{#each PRIORITIES as p (p)}
 													<button type="button"
 														class="{dropItemBase} {defaultPriority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
 														onmousedown={(e) => { e.preventDefault(); defaultPriority = p; openDropdown = null; }}
@@ -672,10 +672,10 @@
 								{#if tierSublabel(createTierId)}
 									<span class="ml-1.5 text-sidebar-icon">({tierSublabel(createTierId)})</span>
 								{/if}
-							</div>
-							{@html chevronSvg}
-						</button>
-						{#if openDropdown === 'create-tier'}
+						</div>
+						{@html chevronSvg}
+					</button>
+					{#if openDropdown === 'create-tier'}
 							<div class={dropPanelClass}>
 								<button type="button"
 									class="{dropItemBase} {createTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"

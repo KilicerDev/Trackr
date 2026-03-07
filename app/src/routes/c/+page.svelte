@@ -7,6 +7,8 @@
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { Send, ArrowLeft, Circle, LoaderCircle } from '@lucide/svelte';
 	import type { LayoutData } from './$types';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { localizeHref } from '$lib/paraglide/runtime';
 
 	let { data }: { data: LayoutData } = $props();
 
@@ -67,9 +69,9 @@
 	// Ensure ?org is always set in URL
 	$effect(() => {
 		if (!page.url.searchParams.get('org') && data.organizations.length > 0) {
-			const params = new URLSearchParams(page.url.searchParams);
+			const params = new SvelteURLSearchParams(page.url.searchParams);
 			params.set('org', data.organizations[0].id);
-			goto(`/c?${params.toString()}`, { replaceState: true });
+			goto(`${localizeHref('/c')}?${params.toString()}`, { replaceState: true });
 		}
 	});
 
@@ -134,15 +136,15 @@
 				category,
 				channel: 'web_form'
 			});
-			clientPortal.addTicket(newTicket as any);
+			clientPortal.addTicket(newTicket as unknown as Parameters<typeof clientPortal.addTicket>[0]);
 			handle.success('Ticket created successfully');
 			subject = '';
 			description = '';
 			priority = 'medium';
 			category = 'general';
-			const params = new URLSearchParams(page.url.searchParams);
+			const params = new SvelteURLSearchParams(page.url.searchParams);
 			params.set('ticket', newTicket.id);
-			goto(`/c?${params.toString()}`);
+			goto(`${localizeHref('/c')}?${params.toString()}`);
 		} catch (e) {
 			handle.error(
 				'Failed to create ticket',
@@ -175,9 +177,9 @@
 	}
 
 	function backToCreate() {
-		const params = new URLSearchParams(page.url.searchParams);
+		const params = new SvelteURLSearchParams(page.url.searchParams);
 		params.delete('ticket');
-		goto(`/c?${params.toString()}`);
+		goto(`${localizeHref('/c')}?${params.toString()}`);
 	}
 
 	function displayName(val: string): string {
@@ -202,12 +204,6 @@
 		const d = new Date(dateStr);
 		if (isNaN(d.getTime())) return '';
 		return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-	}
-
-	function formatDate(dateStr: string): string {
-		const d = new Date(dateStr);
-		if (isNaN(d.getTime())) return '';
-		return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 	}
 
 	$effect(() => {
@@ -453,7 +449,7 @@
 							</button>
 							{#if openDropdown === 'priority'}
 								<div class={dropdownPanelClass}>
-									{#each PRIORITIES as p}
+									{#each PRIORITIES as p (p)}
 										<button
 											type="button"
 											class="{dropdownItemBase} {priority === p
@@ -486,7 +482,7 @@
 							</button>
 							{#if openDropdown === 'category'}
 								<div class={dropdownPanelClass}>
-									{#each CATEGORIES as c}
+									{#each CATEGORIES as c (c)}
 										<button
 											type="button"
 											class="{dropdownItemBase} {category === c

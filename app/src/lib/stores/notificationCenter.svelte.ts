@@ -27,8 +27,8 @@ class NotificationCenterStore {
 					table: "notifications",
 					filter: `recipient_id=eq.${userId}`,
 				},
-				(payload) => {
-					const n = payload.new as AppNotification;
+			(payload: { new: Record<string, unknown> }) => {
+				const n = payload.new as AppNotification;
 					this.items = [n, ...this.items];
 					this.unreadCount++;
 				}

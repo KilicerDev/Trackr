@@ -17,9 +17,11 @@ export const load: LayoutServerLoad = async ({
     )
     .eq("user_id", user.id);
 
+  type Org = { id: string; name: string; slug: string; logo_url: string | null };
+
   const organizations = (memberships ?? [])
-    .map((m) => m.organization as { id: string; name: string; slug: string; logo_url: string | null } | null)
-    .filter((o): o is NonNullable<typeof o> => o !== null);
+    .map((m) => m.organization as unknown as Org | null)
+    .filter((o): o is Org => o !== null);
 
   return { organizations };
 };

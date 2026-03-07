@@ -7,7 +7,8 @@
 	import { api } from '$lib/api';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import type { Organization } from '$lib/api/organizations';
-	import { Users, Calendar, ArrowRight } from '@lucide/svelte';
+	import { localizeHref } from '$lib/paraglide/runtime';
+	import { Users } from '@lucide/svelte';
 	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte';
 
 	const PROJECT_STATUSES = ['planning', 'active', 'paused', 'completed', 'archived'] as const;
@@ -49,7 +50,7 @@
 		else url.searchParams.delete('org');
 		if (statusFilter) url.searchParams.set('status', statusFilter);
 		else url.searchParams.delete('status');
-		replaceState(url, {});
+		replaceState(localizeHref(url.pathname + url.search), {});
 	}
 
 	function selectOrg(orgId: string | null) {
@@ -202,7 +203,7 @@
 				>
 					All
 				</button>
-				{#each PROJECT_STATUSES as s}
+				{#each PROJECT_STATUSES as s (s)}
 					<button
 						class="border border-surface-border px-2.5 py-2 text-xs transition-colors {statusFilter ===
 						s
@@ -253,7 +254,7 @@
 		<div>
 			{#each filteredProjects as project (project.id)}
 				<a
-					href="/projects/{project.id}"
+					href={localizeHref(`/projects/${project.id}`)}
 					class="group flex w-full items-center gap-4 border-b border-surface-border px-4 py-3 transition-colors hover:bg-surface-hover"
 				>
 					<span

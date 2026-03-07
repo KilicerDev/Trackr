@@ -6,6 +6,8 @@
 	import { ChevronDown, Circle, LogOut } from '@lucide/svelte';
 	import { getClient } from '$lib/api/client';
 	import logo from '$lib/assets/logo.png';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { localizeHref } from '$lib/paraglide/runtime';
 
 	interface Props {
 		organizations: { id: string; name: string; slug: string; logo_url: string | null }[];
@@ -33,16 +35,16 @@
 
 	function selectOrg(orgId: string) {
 		orgDropdownOpen = false;
-		const params = new URLSearchParams(page.url.searchParams);
+		const params = new SvelteURLSearchParams(page.url.searchParams);
 		params.set('org', orgId);
 		params.delete('ticket');
-		goto(`/c?${params.toString()}`, { replaceState: true });
+		goto(localizeHref(`/c?${params.toString()}`), { replaceState: true });
 	}
 
 	function selectTicket(ticketId: string) {
-		const params = new URLSearchParams(page.url.searchParams);
+		const params = new SvelteURLSearchParams(page.url.searchParams);
 		params.set('ticket', ticketId);
-		goto(`/c?${params.toString()}`);
+		goto(localizeHref(`/c?${params.toString()}`));
 	}
 
 	const statusColor: Record<string, string> = {

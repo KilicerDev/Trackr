@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X, Mail, UserPlus, Shield, Building2, Clock, Ban } from '@lucide/svelte';
+	import { X, Mail, UserPlus, Shield, Building2, Ban } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { api } from '$lib/api';
@@ -30,6 +30,7 @@
 	let systemRoles = $state<Role[]>([]);
 
 	const canInvite = $derived(auth.can('members', 'invite'));
+	const canRemoveMember = $derived(auth.can('members', 'remove'));
 	const canManageRoles = $derived(auth.can('members', 'manage_roles'));
 
 	// ── Invite modal ──
@@ -81,8 +82,6 @@
 		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
 	const btnPrimary =
 		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
-	const btnDanger =
-		'bg-red-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-red-700 disabled:opacity-50';
 	const sectionLabel = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
 	const dropBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
@@ -702,7 +701,7 @@
 																class="flex items-center gap-1 text-[11px] text-sidebar-icon hover:text-accent transition-colors"
 																onclick={() => toggleDropdown(`role-${m.id}`)}
 															>
-																{m.role?.name ?? 'Unknown'} {@html chevronSvg}
+															{m.role?.name ?? 'Unknown'} {@html chevronSvg}
 															</button>
 															{#if openDropdown === `role-${m.id}`}
 																<div class="absolute left-0 z-30 mt-1 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl">
@@ -723,15 +722,15 @@
 												</div>
 											</div>
 										</div>
-										{#if canInvite && selectedUser && m.user_id !== auth.user?.id}
-											<button
-												class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-red-500"
-												onclick={() => confirmRemoveMembership(m)}
-												aria-label="Remove membership"
-											>
-												<Ban size={14} />
-											</button>
-										{/if}
+									{#if canRemoveMember && selectedUser && m.user_id !== auth.user?.id}
+										<button
+											class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-red-500"
+											onclick={() => confirmRemoveMembership(m)}
+											aria-label="Remove membership"
+										>
+											<Ban size={14} />
+										</button>
+									{/if}
 									</div>
 								{/each}
 							</div>
@@ -822,9 +821,9 @@
 				<div>
 					<span class={labelClass}>Organization</span>
 					<div class="relative" data-dropdown>
-						<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('invite-org')}>
-							<span class="truncate">{orgName(inviteOrgId)}</span>
-							{@html chevronSvg}
+					<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('invite-org')}>
+						<span class="truncate">{orgName(inviteOrgId)}</span>
+						{@html chevronSvg}
 						</button>
 						{#if openDropdown === 'invite-org'}
 							<div class={dropPanelClass}>
@@ -845,9 +844,9 @@
 				<div>
 					<span class={labelClass}>Role</span>
 					<div class="relative" data-dropdown>
-						<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('invite-role')}>
-							<span class="truncate">{roleName(inviteRoleId)}</span>
-							{@html chevronSvg}
+					<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('invite-role')}>
+						<span class="truncate">{roleName(inviteRoleId)}</span>
+						{@html chevronSvg}
 						</button>
 						{#if openDropdown === 'invite-role'}
 							<div class={dropPanelClass}>

@@ -53,7 +53,7 @@
 				<div
 					class="absolute right-0 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white"
 				>
-					{#each locales as loc}
+					{#each locales as loc (loc)}
 						<a
 							href={localizeHref(page.url.pathname, { locale: loc })}
 							onclick={(e) => {

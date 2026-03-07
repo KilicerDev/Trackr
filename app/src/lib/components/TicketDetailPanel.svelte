@@ -386,12 +386,12 @@
 										class={propBtnClass}
 										onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
 									>
-										<span class="truncate">{displayName(ticket.status)}</span>
-										{@html chevronSvg}
-									</button>
-									{#if openDropdown === 'status'}
-										<div class={dropdownPanelClass}>
-											{#each TICKET_STATUSES as s}
+									<span class="truncate">{displayName(ticket.status)}</span>
+									{@html chevronSvg}
+								</button>
+								{#if openDropdown === 'status'}
+									<div class={dropdownPanelClass}>
+										{#each TICKET_STATUSES as s (s)}
 												<button
 													class="{dropdownItemBase} {ticket.status === s
 														? 'font-medium text-accent'
@@ -422,12 +422,12 @@
 										onclick={() =>
 											(openDropdown = openDropdown === 'priority' ? null : 'priority')}
 									>
-										<span class="truncate">{displayName(ticket.priority)}</span>
-										{@html chevronSvg}
-									</button>
-									{#if openDropdown === 'priority'}
-										<div class={dropdownPanelClass}>
-											{#each TICKET_PRIORITIES as p}
+									<span class="truncate">{displayName(ticket.priority)}</span>
+									{@html chevronSvg}
+								</button>
+								{#if openDropdown === 'priority'}
+									<div class={dropdownPanelClass}>
+										{#each TICKET_PRIORITIES as p (p)}
 												<button
 													class="{dropdownItemBase} {ticket.priority === p
 														? 'font-medium text-accent'
@@ -458,23 +458,23 @@
 										onclick={() =>
 											(openDropdown = openDropdown === 'category' ? null : 'category')}
 									>
-										<span class="truncate"
-											>{ticket.category ? displayName(ticket.category) : '—'}</span
+									<span class="truncate"
+										>{ticket.category ? displayName(ticket.category) : '—'}</span
+									>
+									{@html chevronSvg}
+								</button>
+								{#if openDropdown === 'category'}
+									<div class={dropdownPanelClass}>
+										<button
+											class="{dropdownItemBase} {!ticket.category
+												? 'font-medium text-accent'
+												: 'text-sidebar-text'}"
+											onmousedown={(e) => {
+												e.preventDefault();
+												updateField('category', null);
+											}}>None</button
 										>
-										{@html chevronSvg}
-									</button>
-									{#if openDropdown === 'category'}
-										<div class={dropdownPanelClass}>
-											<button
-												class="{dropdownItemBase} {!ticket.category
-													? 'font-medium text-accent'
-													: 'text-sidebar-text'}"
-												onmousedown={(e) => {
-													e.preventDefault();
-													updateField('category', null);
-												}}>None</button
-											>
-											{#each TICKET_CATEGORIES as c}
+										{#each TICKET_CATEGORIES as c (c)}
 												<button
 													class="{dropdownItemBase} {ticket.category === c
 														? 'font-medium text-accent'
@@ -505,12 +505,12 @@
 										onclick={() =>
 											(openDropdown = openDropdown === 'channel' ? null : 'channel')}
 									>
-										<span class="truncate">{displayName(ticket.channel)}</span>
-										{@html chevronSvg}
-									</button>
-									{#if openDropdown === 'channel'}
-										<div class={dropdownPanelClass}>
-											{#each TICKET_CHANNELS as ch}
+									<span class="truncate">{displayName(ticket.channel)}</span>
+									{@html chevronSvg}
+								</button>
+								{#if openDropdown === 'channel'}
+									<div class={dropdownPanelClass}>
+										{#each TICKET_CHANNELS as ch (ch)}
 												<button
 													class="{dropdownItemBase} {ticket.channel === ch
 														? 'font-medium text-accent'
@@ -540,10 +540,10 @@
 										class={propBtnClass}
 										onclick={() => (openDropdown = openDropdown === 'agent' ? null : 'agent')}
 									>
-										<span class="truncate"
-											>{ticket.agent?.full_name ?? 'Unassigned'}</span
-										>
-										{@html chevronSvg}
+									<span class="truncate"
+										>{ticket.agent?.full_name ?? 'Unassigned'}</span
+									>
+									{@html chevronSvg}
 									</button>
 									{#if openDropdown === 'agent'}
 										<div class={dropdownPanelClass}>

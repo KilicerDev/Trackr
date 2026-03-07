@@ -33,6 +33,26 @@ New database migrations are applied automatically by the `db-migrations` service
 | Studio | 8000 (via Kong) | Supabase dashboard (basic auth) |
 | Inbucket | 9000 | Email testing UI |
 | Postgres | 5432 | Database (via Supavisor) |
+| Ollama | — | Embedding model (internal only) |
+| Embed | — | Go vector search service (internal only) |
+
+### Semantic Search Setup
+
+After the first `docker compose up`, pull the embedding model:
+
+```bash
+docker exec -it trackr-ollama ollama pull nomic-embed-text
+```
+
+To index all existing data, run:
+
+```bash
+docker exec -it trackr-embed wget -qO- \
+  --header="Authorization: Bearer <your-EMBED_SERVICE_TOKEN>" \
+  --post-data='' http://localhost:8080/reindex
+```
+
+Use **Cmd+K** (Mac) or **Ctrl+K** (Windows/Linux) in the app to open the universal search palette.
 
 ### Stopping
 

@@ -417,6 +417,48 @@ services:
       - ${INBUCKET_PORT:-9000}:9000
 
   # ──────────────────────────────────────────────
+  # Ollama (embedding model)
+  # ──────────────────────────────────────────────
+
+  ollama:
+    container_name: trackr-ollama
+    image: ollama/ollama
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ──────────────────────────────────────────────
+  # Go embed service (vector search)
+  # ──────────────────────────────────────────────
+
+  embed:
+    container_name: trackr-embed
+    build: ./embed-service
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      db-migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    environment:
+      SERVICE_TOKEN: ${EMBED_SERVICE_TOKEN}
+      OLLAMA_URL: http://trackr-ollama:11434
+      DATABASE_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+
+  # ──────────────────────────────────────────────
   # Trackr migration runner (runs once, then exits)
   # ──────────────────────────────────────────────
 
@@ -461,8 +503,11 @@ services:
       ORIGIN: ${SITE_URL}
       SUPABASE_URL: http://kong:8000
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      EMBED_SERVICE_URL: http://trackr-embed:8080
+      EMBED_SERVICE_TOKEN: ${EMBED_SERVICE_TOKEN}
 
 volumes:
   db-data:
   db-config:
   deno-cache:
+  ollama-data:

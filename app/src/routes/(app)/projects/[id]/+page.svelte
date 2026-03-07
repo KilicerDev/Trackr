@@ -3,16 +3,17 @@
 	import { page } from '$app/stores';
 	import { replaceState, afterNavigate } from '$app/navigation';
 	import { projectStore } from '$lib/stores/projects.svelte';
-	import type { ProjectMember } from '$lib/stores/projects.svelte';
 	import { taskStore } from '$lib/stores/tasks.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import type { Role } from '$lib/api/roles';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { ArrowLeft, Users, Calendar, User, Check, X, Plus, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, Users, User, Check, X, Plus } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
+	import { localizeHref } from '$lib/paraglide/runtime';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	const PROJECT_STATUSES = ['planning', 'active', 'paused', 'completed', 'archived'] as const;
 	const PRESET_COLORS = [
@@ -50,7 +51,7 @@
 	type TaskWithDepth = { task: (typeof taskStore.items)[number]; depth: number };
 	const taskTree = $derived.by(() => {
 		const items = taskStore.items;
-		const childrenMap = new Map<string | null, typeof items>();
+		const childrenMap = new SvelteMap<string | null, typeof items>();
 		for (const t of items) {
 			const pid = (t.parent_id as string | null) ?? null;
 			let list = childrenMap.get(pid);
@@ -83,7 +84,7 @@
 		} else {
 			url.searchParams.delete('task');
 		}
-		replaceState(url, {});
+		replaceState(localizeHref(url.pathname + url.search), {});
 	}
 
 	let createModalOpen = $state(false);
@@ -249,7 +250,7 @@
 <div class="mx-auto w-full max-w-[1200px]">
 	<div class="flex items-center gap-3 border-b border-surface-border px-4 py-3">
 		<a
-			href="/projects"
+			href={localizeHref('/projects' + (project?.organization_id ? `?org=${project.organization_id}` : ''))}
 			class="flex items-center gap-1 text-xs text-muted transition-colors hover:text-sidebar-text"
 		>
 			<ArrowLeft size={14} />
@@ -280,7 +281,7 @@
 									<div
 										class="absolute left-0 z-20 mt-2 flex gap-1.5 border border-surface-border bg-surface p-2.5 shadow-xl"
 									>
-										{#each PRESET_COLORS as c}
+										{#each PRESET_COLORS as c (c)}
 											<button
 												class="h-5 w-5 rounded-full border-2 transition-transform hover:scale-110 {project.color ===
 												c
@@ -323,7 +324,7 @@
 									<div
 										class="absolute left-0 z-20 mt-1.5 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl"
 									>
-										{#each PROJECT_STATUSES as s}
+										{#each PROJECT_STATUSES as s (s)}
 											<button
 												class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {project.status ===
 												s
@@ -575,7 +576,7 @@
 
 			{#if project.members && project.members.length > 0}
 				<div class="flex flex-wrap gap-3">
-					{#each project.members as member}
+					{#each project.members as member (member.user_id)}
 						<div
 							class="group flex items-center gap-2 border border-surface-border bg-surface px-3 py-2"
 						>
