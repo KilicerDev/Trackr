@@ -26,7 +26,7 @@
 	onMount(() => {
 		chart = new Chart(canvas, {
 			type,
-			data,
+			data: $state.snapshot(data) as ChartData,
 			options: options as never
 		});
 
@@ -38,7 +38,7 @@
 
 	$effect(() => {
 		if (!chart) return;
-		chart.data = data;
+		chart.data = $state.snapshot(data) as ChartData;
 		chart.update();
 	});
 </script>

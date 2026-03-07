@@ -2,7 +2,6 @@ _format_version: '2.1'
 _transform: true
 
 consumers:
-  - username: DASHBOARD
   - username: anon
     keyauth_credentials:
       - key: $SUPABASE_ANON_KEY
@@ -15,11 +14,6 @@ acls:
     group: anon
   - consumer: service_role
     group: admin
-
-basicauth_credentials:
-  - consumer: DASHBOARD
-    username: '$DASHBOARD_USERNAME'
-    password: '$DASHBOARD_PASSWORD'
 
 services:
   ## Open Auth routes
@@ -173,48 +167,3 @@ services:
     plugins:
       - name: cors
 
-  ## Edge Functions routes
-  - name: functions-v1
-    _comment: 'Edge Functions: /functions/v1/* -> http://functions:9000/*'
-    url: http://functions:9000/
-    routes:
-      - name: functions-v1-all
-        strip_path: true
-        paths:
-          - /functions/v1/
-    plugins:
-      - name: cors
-
-  ## Secure Database routes
-  - name: meta
-    _comment: 'pg-meta: /pg/* -> http://pg-meta:8080/*'
-    url: http://meta:8080/
-    routes:
-      - name: meta-all
-        strip_path: true
-        paths:
-          - /pg/
-    plugins:
-      - name: key-auth
-        config:
-          hide_credentials: false
-      - name: acl
-        config:
-          hide_groups_header: true
-          allow:
-            - admin
-
-  ## Protected Dashboard - catch all remaining routes
-  - name: dashboard
-    _comment: 'Studio: /* -> http://studio:3000/*'
-    url: http://studio:3000/
-    routes:
-      - name: dashboard-all
-        strip_path: true
-        paths:
-          - /
-    plugins:
-      - name: cors
-      - name: basic-auth
-        config:
-          hide_credentials: true
