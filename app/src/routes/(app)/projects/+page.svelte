@@ -25,7 +25,7 @@
 	const initOrg = page.url.searchParams.get('org') ?? null;
 
 	let organizations = $state<Organization[]>([]);
-	let selectedOrgId = $state<string | null>(initOrg);
+	let selectedOrgId = $state<string | null>(initOrg ?? projectStore.lastLoadedOrgId);
 	let orgDropdownOpen = $state(false);
 	let statusFilter = $state<string>(
 		(PROJECT_STATUSES as readonly string[]).includes(initStatus) ? initStatus : ''
@@ -35,7 +35,7 @@
 	let orgsLoaded = $state(false);
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 	const orgDropdownLabel = $derived(
-		selectedOrg?.name ?? (selectedOrgId && !orgsLoaded ? 'Loading…' : 'Select Organization')
+		selectedOrg?.name ?? (selectedOrgId ? 'Loading…' : 'Select Organization')
 	);
 
 	const filteredProjects = $derived(
@@ -121,7 +121,7 @@
 
 		if (initOrg && organizations.some((o) => o.id === initOrg)) {
 			selectedOrgId = initOrg;
-		} else {
+		} else if (!selectedOrgId || !organizations.some((o) => o.id === selectedOrgId)) {
 			const orgId = auth.organizationId;
 			selectedOrgId = organizations.some((o) => o.id === orgId) ? orgId : null;
 		}
@@ -129,7 +129,7 @@
 		syncUrlParams();
 
 		if (selectedOrgId) {
-			projectStore.load(selectedOrgId);
+			projectStore.loadIfNeeded(selectedOrgId);
 		}
 	});
 </script>

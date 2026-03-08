@@ -29,8 +29,10 @@ class TicketStore {
   activeTicket = $state<Ticket | null>(null);
   filters = $state<TicketFilters>({});
   page = $state(1);
+  lastLoadedOrgId = $state<string | null | undefined>(null);
 
   async load(orgId?: string | null, filters?: TicketFilters, page = 1) {
+    this.lastLoadedOrgId = orgId;
     this.loading = true;
     this.error = null;
     const f = filters ?? this.filters;
@@ -51,6 +53,13 @@ class TicketStore {
     } finally {
       this.loading = false;
     }
+  }
+
+  async loadIfNeeded(orgId?: string | null, filters?: TicketFilters) {
+    const f = filters ?? this.filters;
+    const filtersMatch = JSON.stringify(f) === JSON.stringify(this.filters);
+    if (this.lastLoadedOrgId === orgId && filtersMatch && this.items.length > 0) return;
+    await this.load(orgId, f);
   }
 
   async loadById(id: string) {
@@ -105,6 +114,7 @@ class TicketStore {
     this.activeTicket = null;
     this.error = null;
     this.filters = {};
+    this.lastLoadedOrgId = null;
   }
 }
 

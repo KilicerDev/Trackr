@@ -39,8 +39,10 @@ class ProjectStore {
   loading = $state(false);
   error = $state<string | null>(null);
   activeProject = $state<Project | null>(null);
+  lastLoadedOrgId = $state<string | null>(null);
 
   async load(orgId: string) {
+    this.lastLoadedOrgId = orgId;
     this.loading = true;
     this.error = null;
 
@@ -53,6 +55,11 @@ class ProjectStore {
     } finally {
       this.loading = false;
     }
+  }
+
+  async loadIfNeeded(orgId: string) {
+    if (this.lastLoadedOrgId === orgId && this.items.length > 0) return;
+    await this.load(orgId);
   }
 
   async loadById(id: string) {
@@ -115,6 +122,7 @@ class ProjectStore {
     this.items = [];
     this.activeProject = null;
     this.error = null;
+    this.lastLoadedOrgId = null;
   }
 }
 

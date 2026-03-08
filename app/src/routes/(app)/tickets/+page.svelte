@@ -34,7 +34,7 @@
 	type CustomerOption = { id: string; full_name: string; email: string; avatar_url: string | null };
 
 	let organizations = $state<Organization[]>([]);
-	let selectedOrgId = $state<string | null>(null);
+	let selectedOrgId = $state<string | null>(ticketStore.lastLoadedOrgId ?? null);
 	let orgDropdownOpen = $state(false);
 
 	let status = $state<string>('');
@@ -187,17 +187,22 @@
 		} catch {
 			organizations = [];
 		}
-		const orgId = auth.organizationId;
-		selectedOrgId = ticketOrgs.some((o) => o.id === orgId) ? orgId : null;
-		ticketStore.load(selectedOrgId ?? undefined, getFilters());
+
+		if (!selectedOrgId || !ticketOrgs.some((o) => o.id === selectedOrgId)) {
+			const orgId = auth.organizationId;
+			selectedOrgId = ticketOrgs.some((o) => o.id === orgId) ? orgId : null;
+		}
+
+		ticketStore.loadIfNeeded(selectedOrgId ?? undefined, getFilters());
+
 		if (selectedOrgId) {
-			try {
-				members = (await api.members.getAll(selectedOrgId)) as Member[];
-				customers = await api.tickets.getCustomersByOrg(selectedOrgId);
-			} catch {
-				members = [];
-				customers = [];
-			}
+			Promise.all([
+				api.members.getAll(selectedOrgId).catch(() => [] as Member[]),
+				api.tickets.getCustomersByOrg(selectedOrgId).catch(() => [] as CustomerOption[]),
+			]).then(([m, c]) => {
+				members = m as Member[];
+				customers = c;
+			});
 		}
 
 		const ticketIdParam = page.url.searchParams.get('id');
