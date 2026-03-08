@@ -49,7 +49,7 @@
 				name="email"
 				type="email"
 				placeholder={m.auth_email()}
-				value={form?.email ?? ''}
+				defaultValue={form?.email ?? ''}
 				required
 				class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
 			/>

@@ -116,7 +116,7 @@
 							name="org_name"
 							type="text"
 							placeholder={m.setup_org_name()}
-							value={form?.orgName ?? ''}
+							defaultValue={form?.orgName ?? ''}
 							required
 							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
 						/>
@@ -134,7 +134,7 @@
 							name="full_name"
 							type="text"
 							placeholder={m.setup_full_name()}
-							value={form?.fullName ?? ''}
+							defaultValue={form?.fullName ?? ''}
 							required
 							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
 						/>
@@ -152,7 +152,7 @@
 							name="email"
 							type="email"
 							placeholder={m.auth_email()}
-							value={form?.email ?? ''}
+							defaultValue={form?.email ?? ''}
 							required
 							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
 						/>
