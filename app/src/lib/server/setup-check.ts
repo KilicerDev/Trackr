@@ -1,6 +1,7 @@
 import { getAdminClient } from "./supabase-admin";
 
 let setupComplete: boolean | null = null;
+let cachedPlatformOrgId: string | null = null;
 
 export async function isSetupComplete(): Promise<boolean> {
   if (setupComplete === true) return true;
@@ -15,6 +16,7 @@ export async function isSetupComplete(): Promise<boolean> {
 
     if (data?.platform_organization_id) {
       setupComplete = true;
+      cachedPlatformOrgId = data.platform_organization_id;
       return true;
     }
   } catch {
@@ -24,6 +26,11 @@ export async function isSetupComplete(): Promise<boolean> {
   return false;
 }
 
+export function getPlatformOrgId(): string | null {
+  return cachedPlatformOrgId;
+}
+
 export function invalidateSetupCache() {
   setupComplete = null;
+  cachedPlatformOrgId = null;
 }

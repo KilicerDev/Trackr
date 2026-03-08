@@ -1,4 +1,5 @@
 import type { LayoutServerLoad } from "./$types";
+import { getPlatformOrgId } from "$lib/server/setup-check";
 
 export const load: LayoutServerLoad = async ({
   locals: { supabase, user: authUser },
@@ -23,34 +24,38 @@ export const load: LayoutServerLoad = async ({
     return { user, role: null, permissions: [], isPlatformMember: false };
   }
 
-  const [{ data: roles }, { data: permissions }, { data: config }] =
-    await Promise.all([
-      supabase.rpc("get_user_role", {
-        _user_id: authUser.id,
-        _organization_id: organizationId,
-      }),
-      supabase.rpc("get_user_permissions", {
-        _user_id: authUser.id,
-        _organization_id: organizationId,
-      }),
-      supabase
-        .from("system_config")
-        .select("platform_organization_id")
-        .limit(1)
-        .single(),
-    ]);
+  const platformOrgId = getPlatformOrgId();
 
-  const platformOrgId = config?.platform_organization_id ?? null;
-  let isPlatformMember = false;
+  const queries: [
+    Promise<{ data: any }>,
+    Promise<{ data: any }>,
+    Promise<{ count: number | null }> | null,
+  ] = [
+    supabase.rpc("get_user_role", {
+      _user_id: authUser.id,
+      _organization_id: organizationId,
+    }),
+    supabase.rpc("get_user_permissions", {
+      _user_id: authUser.id,
+      _organization_id: organizationId,
+    }),
+    platformOrgId
+      ? supabase
+          .from("organization_members")
+          .select("*", { count: "exact", head: true })
+          .eq("organization_id", platformOrgId)
+          .eq("user_id", authUser.id)
+      : null,
+  ];
 
-  if (platformOrgId) {
-    const { count } = await supabase
-      .from("organization_members")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", platformOrgId)
-      .eq("user_id", authUser.id);
-    isPlatformMember = (count ?? 0) > 0;
-  }
+  const [{ data: roles }, { data: permissions }, memberResult] =
+    await Promise.all(
+      queries.map((q) => q ?? Promise.resolve({ count: null, data: null })),
+    );
+
+  const isPlatformMember = platformOrgId
+    ? ((memberResult as { count: number | null }).count ?? 0) > 0
+    : false;
 
   return {
     user,

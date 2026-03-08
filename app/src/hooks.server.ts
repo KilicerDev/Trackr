@@ -57,13 +57,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
     }
   );
 
-  const {
-    data: { session },
-  } = await event.locals.supabase.auth.getSession();
-
-  const {
-    data: { user },
-  } = await event.locals.supabase.auth.getUser();
+  const [{ data: { session } }, { data: { user } }] = await Promise.all([
+    event.locals.supabase.auth.getSession(),
+    event.locals.supabase.auth.getUser(),
+  ]);
 
   event.locals.session = session;
   event.locals.user = user;
