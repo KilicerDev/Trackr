@@ -4,9 +4,9 @@
 	import { replaceState, afterNavigate } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { ticketStore } from '$lib/stores/tickets.svelte';
+	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
 	import { clickOutside } from '$lib/actions/clickOutside';
-	import type { Organization } from '$lib/api/organizations';
 	import type { TicketFilters } from '$lib/api/tickets';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import TaskRow from '$lib/components/TaskRow.svelte';
@@ -33,7 +33,7 @@
 	};
 	type CustomerOption = { id: string; full_name: string; email: string; avatar_url: string | null };
 
-	let organizations = $state<Organization[]>([]);
+	const organizations = $derived(orgStore.all);
 	let selectedOrgId = $state<string | null>(ticketStore.lastLoadedOrgId ?? null);
 	let orgDropdownOpen = $state(false);
 
@@ -182,11 +182,7 @@
 		'absolute left-0 z-20 mt-1.5 max-h-56 min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
 
 	onMount(async () => {
-		try {
-			organizations = await api.organizations.getAll();
-		} catch {
-			organizations = [];
-		}
+		await orgStore.loadIfNeeded();
 
 		if (!selectedOrgId || !ticketOrgs.some((o) => o.id === selectedOrgId)) {
 			const orgId = auth.organizationId;

@@ -4,9 +4,8 @@
 	import { replaceState } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { projectStore } from '$lib/stores/projects.svelte';
-	import { api } from '$lib/api';
+	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
-	import type { Organization } from '$lib/api/organizations';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { Users } from '@lucide/svelte';
 	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte';
@@ -24,7 +23,6 @@
 	const initStatus = page.url.searchParams.get('status') ?? '';
 	const initOrg = page.url.searchParams.get('org') ?? null;
 
-	let organizations = $state<Organization[]>([]);
 	let selectedOrgId = $state<string | null>(initOrg ?? projectStore.lastLoadedOrgId);
 	let orgDropdownOpen = $state(false);
 	let statusFilter = $state<string>(
@@ -32,7 +30,7 @@
 	);
 	let createModalOpen = $state(false);
 
-	let orgsLoaded = $state(false);
+	const organizations = $derived(orgStore.all);
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 	const orgDropdownLabel = $derived(
 		selectedOrg?.name ?? (selectedOrgId ? 'Loading…' : 'Select Organization')
@@ -80,44 +78,10 @@
 		return status.charAt(0).toUpperCase() + status.slice(1);
 	}
 
-	let platformOrgId = $state<string | null>(null);
+	const platformOrgId = $derived(orgStore.platformOrgId);
 
 	onMount(async () => {
-		const [clientOrgs, sysConfig] = await Promise.all([
-			api.organizations.getAll().catch(() => [] as Organization[]),
-			api.config.getSystem().catch(() => null)
-		]);
-
-		const platformOrg = sysConfig?.platform_organization as {
-			id: string;
-			name: string;
-			slug: string;
-		} | null;
-		platformOrgId = platformOrg?.id ?? null;
-
-		if (platformOrg) {
-			organizations = [
-				{
-					id: platformOrg.id,
-					name: platformOrg.name,
-					slug: platformOrg.slug,
-					domain: null,
-					logo_url: null,
-					website_url: null,
-					notes: null,
-					support_tier_id: null,
-					support_tier: null,
-					is_active: true,
-					created_at: '',
-					updated_at: ''
-				},
-				...clientOrgs
-			];
-		} else {
-			organizations = clientOrgs;
-		}
-
-		orgsLoaded = true;
+		await orgStore.loadIfNeeded();
 
 		if (initOrg && organizations.some((o) => o.id === initOrg)) {
 			selectedOrgId = initOrg;
