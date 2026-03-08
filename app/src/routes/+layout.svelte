@@ -26,6 +26,13 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<meta name="robots" content="noindex, nofollow" />
+	<meta title="Trackr" />
+	<meta name="description" content="Trackr is a platform for tracking your tasks and projects." />
+	<meta name="keywords" content="trackr, tasks, projects, tracking" />
+	<meta name="author" content="Trackr" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<meta name="robots" content="noindex, nofollow" />
+	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 {@render children()}
