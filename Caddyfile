@@ -1,0 +1,7 @@
+trackr.dev {
+	reverse_proxy app:3000
+}
+
+api.trackr.dev {
+	reverse_proxy kong:8000
+}

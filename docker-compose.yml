@@ -46,9 +46,6 @@ services:
     container_name: supabase-kong
     image: kong:2.8.1
     restart: unless-stopped
-    ports:
-      - ${KONG_HTTP_PORT}:8000/tcp
-      - ${KONG_HTTPS_PORT}:8443/tcp
     volumes:
       - ./docker/volumes/api/kong.yml:/home/kong/temp.yml:ro,z
     environment:
@@ -339,8 +336,6 @@ services:
         PUBLIC_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
         PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
     restart: unless-stopped
-    ports:
-      - ${APP_PORT:-3000}:3000
     depends_on:
       kong:
         condition: service_started
@@ -355,7 +350,29 @@ services:
       EMBED_SERVICE_URL: http://trackr-embed:8080
       EMBED_SERVICE_TOKEN: ${EMBED_SERVICE_TOKEN}
 
+  # ──────────────────────────────────────────────
+  # Caddy (reverse proxy + automatic TLS)
+  # ──────────────────────────────────────────────
+
+  caddy:
+    container_name: trackr-caddy
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - kong
+      - app
+
 volumes:
   db-data:
   db-config:
   ollama-data:
+  caddy-data:
+  caddy-config:
