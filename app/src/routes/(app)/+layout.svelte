@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Sidebar from '$lib/assets/components/Sidebar.svelte';
 	import Header from '$lib/assets/components/Header.svelte';
 	import SearchPalette from '$lib/components/SearchPalette.svelte';
@@ -12,8 +13,13 @@
 	$effect(() => {
 		const userId = auth.user?.id;
 		if (!userId) return;
-		notificationCenter.init(userId);
-		if (auth.isAdminRole) updateChecker.check();
+		const isAdmin = auth.isAdminRole;
+
+		untrack(() => {
+			notificationCenter.init(userId);
+			if (isAdmin) updateChecker.check();
+		});
+
 		return () => notificationCenter.destroy();
 	});
 </script>
