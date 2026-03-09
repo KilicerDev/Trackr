@@ -28,6 +28,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     throw error(403, "You do not have permission to invite users");
   }
 
+  // Validate role is allowed for target organization type
+  const { data: sysConfig } = await supabase
+    .from("system_config")
+    .select("platform_organization_id")
+    .single();
+
+  const { data: role } = await supabase
+    .from("roles")
+    .select("slug")
+    .eq("id", role_id)
+    .single();
+
+  if (role?.slug === "owner") {
+    throw error(400, "The owner role cannot be assigned");
+  }
+  const isPlatformOrg =
+    sysConfig?.platform_organization_id === organization_id;
+  if (isPlatformOrg && role?.slug === "client") {
+    throw error(
+      400,
+      "Client role cannot be assigned to the platform organization"
+    );
+  }
+  if (!isPlatformOrg && role?.slug === "admin") {
+    throw error(
+      400,
+      "Admin role can only be assigned to the platform organization"
+    );
+  }
+
   const { data: existing } = await supabase
     .from("organization_invitations")
     .select("id, status")

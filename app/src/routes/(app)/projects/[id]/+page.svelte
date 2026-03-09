@@ -7,7 +7,6 @@
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
-	import type { Role } from '$lib/api/roles';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import { ArrowLeft, Users, User, Check, X, Plus } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
@@ -96,16 +95,16 @@
 	let savingField = $state(false);
 
 	let orgMembers = $state<OrgMember[]>([]);
-	let roles = $state<Role[]>([]);
-	let addMemberUserId = $state('');
-	let addMemberRoleId = $state('');
 	let addingMember = $state(false);
+
+	const PROJECT_ASSIGNABLE_ROLES = ['owner', 'admin', 'manager', 'agent'];
 
 	const availableMembers = $derived(
 		orgMembers.filter(
 			(om) =>
 				!project?.members?.some((pm) => pm.user_id === om.user_id) &&
-				(!addMemberRoleId || om.role?.id === addMemberRoleId)
+				om.role &&
+				PROJECT_ASSIGNABLE_ROLES.includes(om.role.slug)
 		)
 	);
 
@@ -193,15 +192,13 @@
 		await updateField(field, value ? `${value}T00:00:00.000Z` : null);
 	}
 
-	async function addMember() {
-		if (!project || !addMemberUserId || !addMemberRoleId || addingMember) return;
+	async function addMember(userId: string, roleId: string) {
+		if (!project || !userId || !roleId || addingMember) return;
 		addingMember = true;
 		const n = notifications.action('Adding member');
 		try {
-			await api.projects.addMember(project.id, addMemberUserId, addMemberRoleId);
+			await api.projects.addMember(project.id, userId, roleId);
 			await projectStore.loadById(project.id);
-			addMemberUserId = '';
-			addMemberRoleId = '';
 			openDropdown = null;
 			n.success('Member added');
 		} catch (e) {
@@ -229,12 +226,7 @@
 
 		const orgId = projectStore.activeProject?.organization_id;
 		if (orgId) {
-			const [m, r] = await Promise.all([
-				api.members.getAll(orgId).catch(() => []),
-				api.roles.getAll(orgId).catch(() => [])
-			]);
-			orgMembers = m as OrgMember[];
-			roles = r as Role[];
+			orgMembers = (await api.members.getAll(orgId).catch(() => [])) as OrgMember[];
 		}
 
 		const taskParam = new URL(window.location.href).searchParams.get('task');
@@ -497,77 +489,48 @@
 					</button>
 					{#if openDropdown === 'add-member'}
 						<div
-							class="absolute right-0 z-20 mt-1.5 w-[260px] border border-surface-border bg-surface shadow-xl"
+							class="absolute right-0 z-20 mt-1.5 w-[280px] border border-surface-border bg-surface shadow-xl"
 						>
-							{#if addMemberRoleId}
-								<div class="border-b border-surface-border px-3 py-2">
-									<span class="text-[10px] font-medium tracking-wider text-sidebar-icon uppercase"
-										>Select user</span
-									>
-								</div>
-								<div class="max-h-56 overflow-y-auto py-1">
-									{#each availableMembers as om (om.user_id)}
-										<button
-											class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-surface-hover"
-											disabled={addingMember}
-											onmousedown={(e) => {
-												e.preventDefault();
-												addMemberUserId = om.user_id;
-												addMember();
-											}}
-										>
-											{#if om.user.avatar_url}
-												<img
-													src={om.user.avatar_url}
-													alt={om.user.full_name}
-													class="h-5 w-5 rounded-full object-cover"
-												/>
-											{:else}
-												<span
-													class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[9px] font-medium text-accent"
-												>
-													{om.user.full_name.charAt(0)}
-												</span>
-											{/if}
-											<span class="truncate text-sidebar-text">{om.user.full_name}</span>
-										</button>
-									{:else}
-										<p class="px-3 py-3 text-xs text-muted">No more users available.</p>
-									{/each}
-								</div>
-								<button
-									class="w-full border-t border-surface-border px-3 py-2 text-left text-[11px] text-muted transition-colors hover:bg-surface-hover"
-									onmousedown={(e) => {
-										e.preventDefault();
-										e.stopPropagation();
-										addMemberRoleId = '';
-									}}
+							<div class="border-b border-surface-border px-3 py-2">
+								<span class="text-[10px] font-medium tracking-wider text-sidebar-icon uppercase"
+									>Add member</span
 								>
-									&larr; Back to roles
-								</button>
-							{:else}
-								<div class="border-b border-surface-border px-3 py-2">
-									<span class="text-[10px] font-medium tracking-wider text-sidebar-icon uppercase"
-										>Select role first</span
+							</div>
+							<div class="max-h-64 overflow-y-auto py-1">
+								{#each availableMembers as om (om.user_id)}
+									<button
+										class="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-surface-hover"
+										disabled={addingMember}
+										onmousedown={(e) => {
+											e.preventDefault();
+											addMember(om.user_id, om.role!.id);
+										}}
 									>
-								</div>
-								<div class="max-h-56 overflow-y-auto py-1">
-									{#each roles as role (role.id)}
-										<button
-											class="flex w-full items-center px-3 py-2 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
-											onmousedown={(e) => {
-												e.preventDefault();
-												e.stopPropagation();
-												addMemberRoleId = role.id;
-											}}
-										>
-											{role.name}
-										</button>
-									{:else}
-										<p class="px-3 py-3 text-xs text-muted">No roles found.</p>
-									{/each}
-								</div>
-							{/if}
+										{#if om.user.avatar_url}
+											<img
+												src={om.user.avatar_url}
+												alt={om.user.full_name}
+												class="h-6 w-6 shrink-0 rounded-full object-cover"
+											/>
+										{:else}
+											<span
+												class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[9px] font-medium text-accent"
+											>
+												{om.user.full_name.charAt(0)}
+											</span>
+										{/if}
+										<div class="min-w-0 flex-1">
+											<div class="flex items-center gap-2">
+												<span class="truncate text-xs font-medium text-sidebar-text">{om.user.full_name}</span>
+												<span class="shrink-0 rounded-sm bg-sidebar-icon/10 px-1.5 py-0.5 text-[9px] font-medium text-sidebar-icon">{om.role!.name}</span>
+											</div>
+											<p class="truncate text-[10px] text-muted">{om.user.email}</p>
+										</div>
+									</button>
+								{:else}
+									<p class="px-3 py-3 text-xs text-muted">No more users available.</p>
+								{/each}
+							</div>
 						</div>
 					{/if}
 				</div>

@@ -2,6 +2,7 @@
 	import { X, Mail, UserPlus, Shield, Building2, Ban } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
+	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
 	import Modal from '$lib/components/Modal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -147,7 +148,8 @@
 		inviteEmail = '';
 		inviteFullName = '';
 		inviteOrgId = organizations[0]?.id ?? '';
-		inviteRoleId = systemRoles.find((r) => r.slug === 'client')?.id ?? systemRoles[0]?.id ?? '';
+		const roles = allowedRoles(inviteOrgId);
+		inviteRoleId = roles[0]?.id ?? '';
 		openDropdown = null;
 		inviteModalOpen = true;
 	}
@@ -254,7 +256,8 @@
 		const existingOrgIds = new Set(memberships.map((m) => m.organization_id));
 		const available = organizations.filter((o) => !existingOrgIds.has(o.id));
 		addOrgId = available[0]?.id ?? '';
-		addRoleId = systemRoles.find((r) => r.slug === 'client')?.id ?? systemRoles[0]?.id ?? '';
+		const roles = allowedRoles(addOrgId);
+		addRoleId = roles[0]?.id ?? '';
 		addMembershipOpen = true;
 	}
 
@@ -357,6 +360,15 @@
 	const availableOrgsForMembership = $derived(
 		organizations.filter((o) => !memberships.some((m) => m.organization_id === o.id))
 	);
+
+	const platformOrgId = $derived(orgStore.platformOrgId);
+
+	function allowedRoles(orgId: string): Role[] {
+		if (orgId === platformOrgId) {
+			return systemRoles.filter((r) => ['admin', 'manager', 'agent'].includes(r.slug));
+		}
+		return systemRoles.filter((r) => ['client', 'manager', 'agent'].includes(r.slug));
+	}
 
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
 </script>
@@ -705,7 +717,7 @@
 															</button>
 															{#if openDropdown === `role-${m.id}`}
 																<div class="absolute left-0 z-30 mt-1 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl">
-																	{#each systemRoles as r (r.id)}
+																	{#each allowedRoles(m.organization_id) as r (r.id)}
 																		<button
 																			class="{dropItemBase} {m.role_id === r.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 																			onmousedown={(e) => { e.preventDefault(); updateMemberRole(m, r.id); }}
@@ -752,7 +764,7 @@
 												{#each availableOrgsForMembership as org (org.id)}
 													<button
 														class="{dropItemBase} {addOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-														onmousedown={(e) => { e.preventDefault(); addOrgId = org.id; openDropdown = null; }}
+														onmousedown={(e) => { e.preventDefault(); addOrgId = org.id; addRoleId = allowedRoles(org.id)[0]?.id ?? ''; openDropdown = null; }}
 													>
 														{org.name}
 													</button>
@@ -770,7 +782,7 @@
 										</button>
 										{#if openDropdown === 'add-role'}
 											<div class={dropPanelClass}>
-												{#each systemRoles as r (r.id)}
+												{#each allowedRoles(addOrgId) as r (r.id)}
 													<button
 														class="{dropItemBase} {addRoleId === r.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 														onmousedown={(e) => { e.preventDefault(); addRoleId = r.id; openDropdown = null; }}
@@ -830,9 +842,9 @@
 								{#each organizations as org (org.id)}
 									<button
 										class="{dropItemBase} {inviteOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-										onmousedown={(e) => { e.preventDefault(); inviteOrgId = org.id; openDropdown = null; }}
-									>
-										{org.name}
+									onmousedown={(e) => { e.preventDefault(); inviteOrgId = org.id; inviteRoleId = allowedRoles(org.id)[0]?.id ?? ''; openDropdown = null; }}
+								>
+									{org.name}
 									</button>
 								{/each}
 							</div>
@@ -850,7 +862,7 @@
 						</button>
 						{#if openDropdown === 'invite-role'}
 							<div class={dropPanelClass}>
-								{#each systemRoles as r (r.id)}
+								{#each allowedRoles(inviteOrgId) as r (r.id)}
 									<button
 										class="{dropItemBase} {inviteRoleId === r.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 										onmousedown={(e) => { e.preventDefault(); inviteRoleId = r.id; openDropdown = null; }}
