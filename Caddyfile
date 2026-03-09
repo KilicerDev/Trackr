@@ -3,7 +3,28 @@ trackr.dev {
 }
 
 api.trackr.dev {
-	reverse_proxy kong:8000 {
-		flush_interval -1
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "https://trackr.dev"
+		header Access-Control-Allow-Methods "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, apikey, x-client-info, Prefer, Range, Accept-Profile, Content-Profile"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Max-Age "3600"
+		respond "" 204
+	}
+
+	handle {
+		reverse_proxy kong:8000 {
+			flush_interval -1
+			header_down -Access-Control-Allow-Origin
+			header_down -Access-Control-Allow-Credentials
+			header_down -Access-Control-Allow-Methods
+			header_down -Access-Control-Allow-Headers
+			header_down -Access-Control-Expose-Headers
+			header_down -Access-Control-Max-Age
+		}
+		header Access-Control-Allow-Origin "https://trackr.dev"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Expose-Headers "Content-Range, X-Supabase-Api-Version"
 	}
 }

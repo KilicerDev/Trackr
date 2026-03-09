@@ -1,6 +1,3 @@
-const VERSION_URL =
-	'https://gist.githubusercontent.com/KilicerDev/a0b8c050b67775ede6a63620389596f9/raw/version.json';
-
 type VersionInfo = {
 	latest: string;
 	releaseUrl: string;
@@ -35,7 +32,7 @@ class UpdateCheckerState {
 		if (this.loading) return;
 		this.loading = true;
 		try {
-			const res = await fetch(`${VERSION_URL}?t=${Date.now()}`);
+			const res = await fetch('/api/version-check');
 			if (!res.ok) return;
 			const data: VersionInfo = await res.json();
 			this.latestVersion = data.latest;

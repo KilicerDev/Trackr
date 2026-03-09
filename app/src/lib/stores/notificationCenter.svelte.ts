@@ -14,7 +14,11 @@ class NotificationCenterStore {
 	private channel: RealtimeChannel | null = null;
 
 	async init(userId: string) {
-		this.unreadCount = await notificationsApi.getUnreadCount();
+		try {
+			this.unreadCount = await notificationsApi.getUnreadCount();
+		} catch {
+			// API may be unreachable; keep default count and retry on next load
+		}
 
 		const supabase = getClient();
 		this.channel = supabase
