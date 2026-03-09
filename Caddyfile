@@ -3,5 +3,7 @@ trackr.dev {
 }
 
 api.trackr.dev {
-	reverse_proxy kong:8000
+	reverse_proxy kong:8000 {
+		flush_interval -1
+	}
 }

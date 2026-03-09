@@ -26,6 +26,20 @@ services:
           - /auth/v1/verify
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
   - name: auth-v1-open-callback
     url: http://auth:9999/callback
     routes:
@@ -35,6 +49,20 @@ services:
           - /auth/v1/callback
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
   - name: auth-v1-open-authorize
     url: http://auth:9999/authorize
     routes:
@@ -44,6 +72,20 @@ services:
           - /auth/v1/authorize
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
 
   ## Secure Auth routes
   - name: auth-v1
@@ -56,6 +98,20 @@ services:
           - /auth/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
       - name: key-auth
         config:
           hide_credentials: false
@@ -77,6 +133,24 @@ services:
           - /rest/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+            - Prefer
+            - Range
+            - Accept-Profile
+            - Content-Profile
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
       - name: key-auth
         config:
           hide_credentials: true
@@ -98,6 +172,22 @@ services:
           - /graphql/v1
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+            - Accept-Profile
+            - Content-Profile
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
       - name: key-auth
         config:
           hide_credentials: true
@@ -125,6 +215,17 @@ services:
           - /realtime/v1/
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          max_age: 3600
       - name: key-auth
         config:
           hide_credentials: false
@@ -145,6 +246,17 @@ services:
           - /realtime/v1/api
     plugins:
       - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          max_age: 3600
       - name: key-auth
         config:
           hide_credentials: false
@@ -166,4 +278,19 @@ services:
           - /storage/v1/
     plugins:
       - name: cors
-
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+            - Range
+          exposed_headers:
+            - Content-Range
+            - Content-Length
+            - Content-Type
+          max_age: 3600
