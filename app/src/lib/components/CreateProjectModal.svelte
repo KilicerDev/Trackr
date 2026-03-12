@@ -75,6 +75,7 @@
 				description: description.trim() || undefined,
 				owner_id: auth.user!.id,
 				organization_id: organizationId,
+				status,
 				color: color || undefined,
 				start_at: startAt ? `${startAt}T00:00:00.000Z` : undefined,
 				end_at: endAt ? `${endAt}T00:00:00.000Z` : undefined

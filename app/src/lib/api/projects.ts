@@ -7,6 +7,7 @@ export type CreateProjectInput = {
   description?: string;
   owner_id: string;
   organization_id: string;
+  status?: string;
   color?: string;
   icon?: string;
   start_at?: string;
