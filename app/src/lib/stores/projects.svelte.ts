@@ -57,6 +57,22 @@ class ProjectStore {
     }
   }
 
+  async loadAll() {
+    this.lastLoadedOrgId = "__all__";
+    this.loading = true;
+    this.error = null;
+
+    try {
+      const data = await api.projects.getAllAcrossOrgs();
+      this.items = data as Project[];
+    } catch (e) {
+      this.error =
+        e instanceof Error ? e.message : "Failed to load projects";
+    } finally {
+      this.loading = false;
+    }
+  }
+
   async loadIfNeeded(orgId: string) {
     if (this.lastLoadedOrgId === orgId && this.items.length > 0) return;
     await this.load(orgId);

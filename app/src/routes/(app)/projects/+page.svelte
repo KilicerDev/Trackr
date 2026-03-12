@@ -30,10 +30,21 @@
 	);
 	let createModalOpen = $state(false);
 
+	const ALL_ORGS = '__all__';
+	const isAllOrgs = $derived(selectedOrgId === ALL_ORGS);
+
 	const organizations = $derived(orgStore.all);
-	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
+	const selectedOrg = $derived(
+		isAllOrgs ? null : (organizations.find((o) => o.id === selectedOrgId) ?? null)
+	);
 	const orgDropdownLabel = $derived(
-		selectedOrg?.name ?? (selectedOrgId ? 'Loading…' : 'Select Organization')
+		isAllOrgs
+			? 'All Organizations'
+			: (selectedOrg?.name ?? (selectedOrgId ? 'Loading…' : 'Select Organization'))
+	);
+
+	const orgNameMap = $derived(
+		Object.fromEntries(organizations.map((o) => [o.id, o.name]))
 	);
 
 	const filteredProjects = $derived(
@@ -41,6 +52,31 @@
 			? projectStore.items.filter((p) => p.status === statusFilter)
 			: projectStore.items
 	);
+
+	const groupedProjects = $derived.by(() => {
+		if (!isAllOrgs) return null;
+		const groups: { orgId: string; orgName: string; projects: typeof filteredProjects }[] = [];
+		const map = new Map<string, typeof filteredProjects>();
+		const order: string[] = [];
+
+		for (const p of filteredProjects) {
+			const oid = p.organization_id;
+			if (!map.has(oid)) {
+				map.set(oid, []);
+				order.push(oid);
+			}
+			map.get(oid)!.push(p);
+		}
+
+		for (const oid of order) {
+			const first = map.get(oid)![0];
+			const org = (first as Record<string, unknown>).organization as { name: string } | null;
+			const orgName = orgNameMap[oid] ?? org?.name ?? 'Unknown';
+			groups.push({ orgId: oid, orgName, projects: map.get(oid)! });
+		}
+
+		return groups;
+	});
 
 	function syncUrlParams() {
 		const url = new URL(window.location.href);
@@ -55,7 +91,9 @@
 		selectedOrgId = orgId;
 		orgDropdownOpen = false;
 		syncUrlParams();
-		if (orgId) {
+		if (orgId === ALL_ORGS) {
+			projectStore.loadAll();
+		} else if (orgId) {
 			projectStore.load(orgId);
 		} else {
 			projectStore.clear();
@@ -83,7 +121,9 @@
 	onMount(async () => {
 		await orgStore.loadIfNeeded();
 
-		if (initOrg && organizations.some((o) => o.id === initOrg)) {
+		if (initOrg === ALL_ORGS) {
+			selectedOrgId = ALL_ORGS;
+		} else if (initOrg && organizations.some((o) => o.id === initOrg)) {
 			selectedOrgId = initOrg;
 		} else if (!selectedOrgId || !organizations.some((o) => o.id === selectedOrgId)) {
 			const orgId = auth.organizationId;
@@ -92,7 +132,9 @@
 
 		syncUrlParams();
 
-		if (selectedOrgId) {
+		if (selectedOrgId === ALL_ORGS) {
+			projectStore.loadAll();
+		} else if (selectedOrgId) {
 			projectStore.loadIfNeeded(selectedOrgId);
 		}
 	});
@@ -131,31 +173,43 @@
 						/>
 					</svg>
 				</button>
-				{#if orgDropdownOpen}
-					<div
-						class="absolute left-0 z-10 mt-1.5 min-w-[200px] overflow-hidden border border-surface-border bg-surface py-1 shadow-xl"
+			{#if orgDropdownOpen}
+				<div
+					class="absolute left-0 z-10 mt-1.5 min-w-[200px] overflow-hidden border border-surface-border bg-surface py-1 shadow-xl"
+				>
+					<button
+						class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {isAllOrgs
+							? 'font-medium text-accent'
+							: 'text-sidebar-text'}"
+						onmousedown={(e) => {
+							e.preventDefault();
+							selectOrg(ALL_ORGS);
+						}}
 					>
-						{#each organizations as org (org.id)}
-							<button
-								class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {selectedOrgId ===
-								org.id
-									? 'font-medium text-accent'
-									: 'text-sidebar-text'}"
-								onmousedown={(e) => {
-									e.preventDefault();
-									selectOrg(org.id);
-								}}
-							>
-								<span class="whitespace-nowrap">{org.name}</span>
-								{#if org.id === platformOrgId}
-									<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
-										Internal
-									</span>
-								{/if}
-							</button>
-						{/each}
-					</div>
-				{/if}
+						<span class="whitespace-nowrap">All Organizations</span>
+					</button>
+					<div class="mx-3 my-1 border-t border-surface-border"></div>
+					{#each organizations as org (org.id)}
+						<button
+							class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!isAllOrgs && selectedOrgId ===
+							org.id
+								? 'font-medium text-accent'
+								: 'text-sidebar-text'}"
+							onmousedown={(e) => {
+								e.preventDefault();
+								selectOrg(org.id);
+							}}
+						>
+							<span class="whitespace-nowrap">{org.name}</span>
+							{#if org.id === platformOrgId}
+								<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
+									Internal
+								</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 			</div>
 
 			<div class="flex items-center gap-1">
@@ -181,7 +235,7 @@
 			</div>
 		</div>
 
-		{#if auth.can('projects', 'create')}
+		{#if auth.can('projects', 'create') && !isAllOrgs}
 			<button
 				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
 				onclick={() => (createModalOpen = true)}
@@ -191,7 +245,7 @@
 		{/if}
 	</div>
 
-	{#if createModalOpen}
+	{#if createModalOpen && selectedOrgId && !isAllOrgs}
 		<CreateProjectModal
 			organizationId={selectedOrgId}
 			organizationName={selectedOrg?.name ?? ''}
@@ -201,6 +255,62 @@
 			}}
 		/>
 	{/if}
+
+	{#snippet projectRow(project: typeof filteredProjects[number])}
+		<a
+			href={localizeHref(`/projects/${project.id}`)}
+			class="group flex w-full items-center gap-4 border-b border-surface-border px-4 py-3 transition-colors hover:bg-surface-hover"
+		>
+			<span
+				class="h-2.5 w-2.5 shrink-0 rounded-full"
+				style="background-color: {project.color ?? 'var(--color-accent)'}"
+			></span>
+
+			<span class="shrink-0 w-[60px] text-xs font-medium text-accent">
+				{project.identifier}
+			</span>
+
+			<span class="min-w-0 flex-1 truncate text-sm text-sidebar-text">
+				{project.name}
+			</span>
+
+			<span
+				class="shrink-0 inline-flex min-w-[80px] justify-center px-2 py-0.5 text-[10px] font-medium {statusColors[
+					project.status
+				] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
+			>
+				{formatStatus(project.status)}
+			</span>
+
+			<span class="shrink-0 flex items-center gap-1 text-[11px] text-muted w-[50px]">
+				<Users size={12} />
+				{project.members?.length ?? 0}
+			</span>
+
+			<span class="shrink-0 w-[90px] text-right text-xs text-muted">
+				{formatDate(project.start_at)}
+			</span>
+
+			{#if project.owner}
+				<span class="shrink-0 flex items-center gap-1.5 w-[130px]">
+					{#if project.owner.avatar_url}
+						<img
+							src={project.owner.avatar_url}
+							alt={project.owner.full_name}
+							class="h-5 w-5 rounded-full object-cover"
+						/>
+					{:else}
+						<span
+							class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[10px] font-medium text-accent"
+						>
+							{project.owner.full_name.charAt(0)}
+						</span>
+					{/if}
+					<span class="truncate text-[11px] text-muted">{project.owner.full_name}</span>
+				</span>
+			{/if}
+		</a>
+	{/snippet}
 
 	{#if !selectedOrgId}
 		<p class="px-4 py-12 text-center text-sm text-muted">
@@ -214,62 +324,30 @@
 		<p class="px-4 py-12 text-center text-sm text-muted">
 			{statusFilter ? 'No projects match this filter.' : 'No projects yet.'}
 		</p>
+	{:else if isAllOrgs && groupedProjects}
+		<div>
+			{#each groupedProjects as group (group.orgId)}
+				<div class="flex items-center gap-2 border-b border-surface-border bg-surface-hover/50 px-4 py-2">
+					<span class="text-[11px] font-semibold uppercase tracking-wider text-muted">
+						{group.orgName}
+					</span>
+					<span class="text-[10px] text-muted/60">
+						({group.projects.length})
+					</span>
+				</div>
+				{#each group.projects as project (project.id)}
+					{@render projectRow(project)}
+				{/each}
+			{/each}
+		</div>
+
+		<p class="px-4 py-3 text-xs text-muted">
+			{filteredProjects.length} project{filteredProjects.length === 1 ? '' : 's'} across {groupedProjects.length} organization{groupedProjects.length === 1 ? '' : 's'}
+		</p>
 	{:else}
 		<div>
 			{#each filteredProjects as project (project.id)}
-				<a
-					href={localizeHref(`/projects/${project.id}`)}
-					class="group flex w-full items-center gap-4 border-b border-surface-border px-4 py-3 transition-colors hover:bg-surface-hover"
-				>
-					<span
-						class="h-2.5 w-2.5 shrink-0 rounded-full"
-						style="background-color: {project.color ?? 'var(--color-accent)'}"
-					></span>
-
-					<span class="shrink-0 w-[60px] text-xs font-medium text-accent">
-						{project.identifier}
-					</span>
-
-					<span class="min-w-0 flex-1 truncate text-sm text-sidebar-text">
-						{project.name}
-					</span>
-
-					<span
-						class="shrink-0 inline-flex min-w-[80px] justify-center px-2 py-0.5 text-[10px] font-medium {statusColors[
-							project.status
-						] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
-					>
-						{formatStatus(project.status)}
-					</span>
-
-					<span class="shrink-0 flex items-center gap-1 text-[11px] text-muted w-[50px]">
-						<Users size={12} />
-						{project.members?.length ?? 0}
-					</span>
-
-					<span class="shrink-0 w-[90px] text-right text-xs text-muted">
-						{formatDate(project.start_at)}
-					</span>
-
-					{#if project.owner}
-						<span class="shrink-0 flex items-center gap-1.5 w-[130px]">
-							{#if project.owner.avatar_url}
-								<img
-									src={project.owner.avatar_url}
-									alt={project.owner.full_name}
-									class="h-5 w-5 rounded-full object-cover"
-								/>
-							{:else}
-								<span
-									class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[10px] font-medium text-accent"
-								>
-									{project.owner.full_name.charAt(0)}
-								</span>
-							{/if}
-							<span class="truncate text-[11px] text-muted">{project.owner.full_name}</span>
-						</span>
-					{/if}
-				</a>
+				{@render projectRow(project)}
 			{/each}
 		</div>
 

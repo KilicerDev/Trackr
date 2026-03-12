@@ -28,6 +28,19 @@ export const projects = {
     return data ?? [];
   },
 
+  async getAllAcrossOrgs() {
+    const supabase = getClient();
+    const { data, error } = await supabase
+      .from("projects")
+      .select(`${PROJECT_SELECT}, organization:organizations!organization_id(id, name)`)
+      .is("deleted_at", null)
+      .order("organization_id")
+      .order("name");
+
+    if (error) throw error;
+    return data ?? [];
+  },
+
   async getById(id: string) {
     const supabase = getClient();
     const { data, error } = await supabase
