@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { invalidateAll } from '$app/navigation';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import type { LayoutData } from './$types';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { theme } from '$lib/stores/theme.svelte';
+	import { getClient } from '$lib/api/client';
 	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
 	import type { Snippet } from 'svelte';
@@ -14,6 +16,18 @@
 
 	$effect(() => {
 		auth.init(data.user, data.role, data.permissions, data.isPlatformMember);
+	});
+
+	$effect(() => {
+		const supabase = getClient();
+		const {
+			data: { subscription }
+		} = supabase.auth.onAuthStateChange((event: string) => {
+			if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+				invalidateAll();
+			}
+		});
+		return () => subscription.unsubscribe();
 	});
 
 	$effect(() => {
