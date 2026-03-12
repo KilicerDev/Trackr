@@ -3,18 +3,11 @@
 	import { taskStore } from '$lib/stores/tasks.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done'] as const;
-
-	const typeIcons: Record<string, string> = {
-		task: '☰',
-		bug: '🐛',
-		feature: '✦',
-		improvement: '▲',
-		epic: '◆'
-	};
 
 	interface Props {
 		projectId: string;
@@ -47,6 +40,7 @@
 	let openDropdown = $state<string | null>(null);
 
 	const canSubmit = $derived(!!title.trim());
+	const SelectedTypeIcon = $derived(typeIcons[type] ?? defaultTypeIcon);
 
 	function toggleDropdown(key: string) {
 		openDropdown = openDropdown === key ? null : key;
@@ -188,24 +182,25 @@
 								class={dropdownBtnClass}
 								onclick={() => toggleDropdown('type')}
 							>
-								<span class="flex items-center gap-1.5 truncate">
-									<span class="text-sm">{typeIcons[type] ?? '☰'}</span>
-									{displayName(type)}
-								</span>
+							<span class="flex items-center gap-1.5 truncate">
+								<SelectedTypeIcon size={14} />
+								{displayName(type)}
+							</span>
 								{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'type'}
 								<div class={dropdownPanelClass}>
-									{#each TASK_TYPES as t (t)}
-										<button
-											type="button"
-											class="{dropdownItemBase} {type === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
-											onmousedown={(e) => { e.preventDefault(); type = t; openDropdown = null; }}
-										>
-											<span class="mr-2 text-sm">{typeIcons[t] ?? '☰'}</span>
-											{displayName(t)}
-										</button>
-									{/each}
+								{#each TASK_TYPES as t (t)}
+									{@const TypeIcon = typeIcons[t] ?? defaultTypeIcon}
+									<button
+										type="button"
+										class="{dropdownItemBase} {type === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
+										onmousedown={(e) => { e.preventDefault(); type = t; openDropdown = null; }}
+									>
+									<span class="mr-2"><TypeIcon size={14} /></span>
+									{displayName(t)}
+									</button>
+								{/each}
 								</div>
 							{/if}
 						</div>

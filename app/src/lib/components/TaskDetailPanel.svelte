@@ -5,6 +5,7 @@
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
@@ -78,14 +79,6 @@
 	}
 
 	let commentsContainer: HTMLDivElement | undefined = $state();
-
-	const typeIcons: Record<string, string> = {
-		task: '☰',
-		bug: '🐛',
-		feature: '✦',
-		improvement: '▲',
-		epic: '◆'
-	};
 
 	const statusColors: Record<string, string> = {
 		backlog: 'bg-gray-100 text-gray-600 dark:bg-surface-hover dark:text-sidebar-text',
@@ -313,6 +306,8 @@
 				: '—'
 	);
 
+	const CurrentTypeIcon = $derived(typeIcons[task?.type ?? ''] ?? defaultTypeIcon);
+
 	const labelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
 	const propBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-1.5 text-xs text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
@@ -356,9 +351,9 @@
 			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
-						<span class="text-base">{typeIcons[task.type] ?? '☰'}</span>
-						<span class="text-xs font-medium text-accent">{displayId}</span>
-					</div>
+					<CurrentTypeIcon size={16} />
+					<span class="text-xs font-medium text-accent">{displayId}</span>
+				</div>
 					{#if editingTitle}
 						<div class="mt-1 flex items-center gap-2">
 							<input
@@ -487,26 +482,27 @@
 									class={propBtnClass}
 									onclick={() => (openDropdown = openDropdown === 'type' ? null : 'type')}
 								>
-									<span class="flex items-center gap-1.5 truncate">
-										<span class="text-xs leading-none">{typeIcons[task.type] ?? '☰'}</span>
-										{displayName(task.type)}
-									</span>
+								<span class="flex items-center gap-1.5 truncate">
+									<CurrentTypeIcon size={14} />
+									{displayName(task.type)}
+								</span>
 								{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'type'}
 								<div class={dropdownPanelClass}>
-									{#each TASK_TYPES as t (t)}
-											<button
-												class="{dropdownItemBase} {task.type === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
-												onmousedown={(e) => {
-													e.preventDefault();
-													updateField('type', t);
-												}}
-											>
-												<span class="mr-2 text-xs leading-none">{typeIcons[t] ?? '☰'}</span>
-												{displayName(t)}
-											</button>
-										{/each}
+								{#each TASK_TYPES as t (t)}
+									{@const TypeIcon = typeIcons[t] ?? defaultTypeIcon}
+										<button
+											class="{dropdownItemBase} {task.type === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
+											onmousedown={(e) => {
+												e.preventDefault();
+												updateField('type', t);
+											}}
+										>
+									<span class="mr-2"><TypeIcon size={14} /></span>
+										{displayName(t)}
+										</button>
+									{/each}
 									</div>
 								{/if}
 							</div>

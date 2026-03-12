@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Task } from '$lib/stores/tasks.svelte';
+	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 
 	type Props = {
 		task: Task;
@@ -8,14 +9,6 @@
 	};
 
 	let { task, depth = 0, onclick }: Props = $props();
-
-	const typeIcons: Record<string, string> = {
-		task: '☰',
-		bug: '🐛',
-		feature: '✦',
-		improvement: '▲',
-		epic: '◆'
-	};
 
 	const priorityColors: Record<string, string> = {
 		urgent:
@@ -74,6 +67,8 @@
 				? `${task.project.identifier}-?`
 				: '—'
 	);
+
+	const TypeIcon = $derived(typeIcons[task.type] ?? defaultTypeIcon);
 </script>
 
 <button
@@ -81,8 +76,8 @@
 	style="padding-left: {16 + depth * 24}px; padding-right: 16px;"
 	{onclick}
 >
-	<span class="shrink-0 text-base text-muted">
-		{typeIcons[task.type] ?? '☰'}
+	<span class="shrink-0 text-muted">
+		<TypeIcon size={16} />
 	</span>
 
 	<span class="shrink-0 font-medium text-accent">
