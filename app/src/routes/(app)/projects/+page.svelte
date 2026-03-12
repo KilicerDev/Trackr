@@ -23,7 +23,7 @@
 	const initStatus = page.url.searchParams.get('status') ?? '';
 	const initOrg = page.url.searchParams.get('org') ?? null;
 
-	let selectedOrgId = $state<string | null>(initOrg ?? projectStore.lastLoadedOrgId);
+	let selectedOrgId = $state<string | null>(initOrg ?? projectStore.lastLoadedOrgId ?? '__all__');
 	let orgDropdownOpen = $state(false);
 	let statusFilter = $state<string>(
 		(PROJECT_STATUSES as readonly string[]).includes(initStatus) ? initStatus : ''
@@ -121,13 +121,12 @@
 	onMount(async () => {
 		await orgStore.loadIfNeeded();
 
-		if (initOrg === ALL_ORGS) {
+		if (initOrg === ALL_ORGS || (!initOrg && !projectStore.lastLoadedOrgId)) {
 			selectedOrgId = ALL_ORGS;
 		} else if (initOrg && organizations.some((o) => o.id === initOrg)) {
 			selectedOrgId = initOrg;
 		} else if (!selectedOrgId || !organizations.some((o) => o.id === selectedOrgId)) {
-			const orgId = auth.organizationId;
-			selectedOrgId = organizations.some((o) => o.id === orgId) ? orgId : null;
+			selectedOrgId = ALL_ORGS;
 		}
 
 		syncUrlParams();
