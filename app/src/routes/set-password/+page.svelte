@@ -24,17 +24,29 @@
 		error = null;
 
 		try {
-			const supabase = getClient();
-			const { error: updateErr } = await supabase.auth.updateUser({
-				password
-			});
+		const supabase = getClient();
+		const { error: updateErr } = await supabase.auth.updateUser({
+			password
+		});
 
-			if (updateErr) {
-				error = updateErr.message;
-				return;
-			}
+		if (updateErr) {
+			error = updateErr.message;
+			return;
+		}
 
-			goto(localizeHref(data.redirectTo));
+		const { data: rpcResult, error: rpcErr } = await supabase.rpc('accept_invitation');
+
+		if (rpcErr) {
+			error = rpcErr.message;
+			return;
+		}
+
+		if (rpcResult && !rpcResult.success) {
+			error = rpcResult.error ?? 'Failed to accept invitation';
+			return;
+		}
+
+		goto(localizeHref(data.redirectTo));
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Something went wrong';
 		} finally {

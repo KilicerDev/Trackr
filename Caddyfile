@@ -7,7 +7,7 @@ api.trackr.dev {
 	handle @preflight {
 		header Access-Control-Allow-Origin "https://trackr.dev"
 		header Access-Control-Allow-Methods "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
-		header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, apikey, x-client-info, Prefer, Range, Accept-Profile, Content-Profile"
+		header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version, Prefer, Range, Accept-Profile, Content-Profile"
 		header Access-Control-Allow-Credentials "true"
 		header Access-Control-Max-Age "3600"
 		respond "" 204
