@@ -114,17 +114,17 @@
 		error = null;
 		try {
 			const orgId = auth.organizationId ?? '';
-			const [u, inv, orgs, roles] = await Promise.all([
+			await orgStore.loadIfNeeded();
+			const [u, inv, roles] = await Promise.all([
 				api.users.getAll(),
 				auth.can('members', 'invite')
 				? api.users.getInvitations().then((inv) => inv.filter((i) => i.status !== 'accepted'))
 				: Promise.resolve([]),
-				api.organizations.getAll(),
 				orgId ? api.roles.getAll(orgId) : api.roles.getAll('')
 			]);
 			usersList = u;
 			invitations = inv;
-			organizations = orgs;
+			organizations = orgStore.all;
 			systemRoles = roles;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load data';
@@ -463,8 +463,11 @@
 								<td class="px-4 py-2.5 text-sidebar-icon">{user.email}</td>
 								<td class="px-4 py-2.5">
 									{#if user.organization}
-										<span class="inline-block bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+										<span class="inline-flex items-center gap-1 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
 											{user.organization.name}
+											{#if user.organization.id === platformOrgId}
+												<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1 py-px text-[8px] font-semibold uppercase tracking-wide">Internal</span>
+											{/if}
 										</span>
 									{:else}
 										<span class="text-sidebar-icon">—</span>
@@ -511,8 +514,11 @@
 								</td>
 								<td class="px-4 py-2.5">
 									{#if inv.organization}
-										<span class="inline-block bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+										<span class="inline-flex items-center gap-1 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
 											{inv.organization.name}
+											{#if inv.organization_id === platformOrgId}
+												<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1 py-px text-[8px] font-semibold uppercase tracking-wide">Internal</span>
+											{/if}
 										</span>
 									{:else}
 										<span class="text-sidebar-icon">—</span>
@@ -703,7 +709,12 @@
 										<div class="flex items-center gap-2.5 min-w-0">
 											<Building2 size={14} class="shrink-0 text-sidebar-icon" />
 											<div class="min-w-0">
-												<p class="text-xs font-medium text-sidebar-text truncate">{m.organization?.name ?? 'Unknown'}</p>
+												<p class="flex items-center gap-1.5 text-xs font-medium text-sidebar-text">
+													<span class="truncate">{m.organization?.name ?? 'Unknown'}</span>
+													{#if m.organization_id === platformOrgId}
+														<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">Internal</span>
+													{/if}
+												</p>
 												<div class="flex items-center gap-1.5 mt-0.5">
 													<Shield size={10} class="text-sidebar-icon" />
 													<!-- Role dropdown -->
@@ -766,7 +777,10 @@
 														class="{dropItemBase} {addOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 														onmousedown={(e) => { e.preventDefault(); addOrgId = org.id; addRoleId = allowedRoles(org.id)[0]?.id ?? ''; openDropdown = null; }}
 													>
-														{org.name}
+														<span class="truncate">{org.name}</span>
+														{#if org.id === platformOrgId}
+															<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">Internal</span>
+														{/if}
 													</button>
 												{/each}
 											</div>
@@ -844,7 +858,10 @@
 										class="{dropItemBase} {inviteOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 									onmousedown={(e) => { e.preventDefault(); inviteOrgId = org.id; inviteRoleId = allowedRoles(org.id)[0]?.id ?? ''; openDropdown = null; }}
 								>
-									{org.name}
+									<span class="truncate">{org.name}</span>
+									{#if org.id === platformOrgId}
+										<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">Internal</span>
+									{/if}
 									</button>
 								{/each}
 							</div>
