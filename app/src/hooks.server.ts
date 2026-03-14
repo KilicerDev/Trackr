@@ -9,6 +9,7 @@ import {
 } from "$env/static/public";
 import { env } from "$env/dynamic/private";
 import { isSetupComplete } from "$lib/server/setup-check";
+import { getAdminClient } from "$lib/server/supabase-admin";
 
 const handleSetup: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname;
@@ -57,13 +58,26 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
     }
   );
 
-  const [{ data: { session } }, { data: { user } }] = await Promise.all([
-    event.locals.supabase.auth.getSession(),
-    event.locals.supabase.auth.getUser(),
-  ]);
+  const { data: { user } } = await event.locals.supabase.auth.getUser();
 
-  event.locals.session = session;
+  event.locals.session = user ? { user } : null;
   event.locals.user = user;
+
+  // Kick out inactive users (uses admin client to avoid session-based warnings)
+  if (user) {
+    const adminClient = getAdminClient();
+    const { data: dbUser } = await adminClient
+      .from("users")
+      .select("is_active")
+      .eq("id", user.id)
+      .single();
+
+    if (dbUser && !dbUser.is_active) {
+      await event.locals.supabase.auth.signOut();
+      event.locals.session = null;
+      event.locals.user = null;
+    }
+  }
 
   return resolve(event, {
     filterSerializedResponseHeaders(name) {

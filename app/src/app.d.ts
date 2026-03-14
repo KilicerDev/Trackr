@@ -5,7 +5,7 @@ declare global {
 		// interface Error {}
 		interface Locals {
 			supabase: SupabaseClient;
-			session: AuthSession | null;
+			session: { user: User } | null;
 			user: User | null;
 		}
 		// interface PageData {}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { X, Mail, UserPlus, Shield, Building2, Ban } from '@lucide/svelte';
+	import { X, Mail, UserPlus, Shield, Building2, Ban, Trash2 } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { orgStore } from '$lib/stores/organizations.svelte';
@@ -23,7 +23,7 @@
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let pageTab = $state<'users' | 'invitations'>('users');
+	let pageTab = $state<'users' | 'invitations' | 'former'>('users');
 
 	let usersList = $state<UserWithOrg[]>([]);
 	let invitations = $state<Invitation[]>([]);
@@ -73,6 +73,22 @@
 	let confirmOpen = $state(false);
 	let confirmMessage = $state('');
 	let confirmAction = $state<(() => void) | null>(null);
+	let confirmTitle = $state('Remove Membership');
+	let confirmLabel = $state('Remove');
+
+	// Delete user
+	let deleteConfirmOpen = $state(false);
+	let deleting = $state(false);
+
+	// Former users
+	let formerUsers = $state<UserWithOrg[]>([]);
+	let formerLoading = $state(false);
+
+	// Reactivation
+	let reactivateConfirmOpen = $state(false);
+	let reactivateTarget = $state<UserWithOrg | null>(null);
+	let reactivateSendReset = $state(true);
+	let reactivating = $state(false);
 
 	// ── Shared CSS classes ──
 
@@ -306,6 +322,82 @@
 		openDropdown = null;
 	}
 
+	// ── Delete user ──
+
+	function confirmDeleteUser() {
+		if (!selectedUser || selectedUser.id === auth.user?.id) return;
+		deleteConfirmOpen = true;
+	}
+
+	async function deleteUser() {
+		if (!selectedUser) return;
+		deleting = true;
+		const n = notifications.action('Deleting user');
+		try {
+			await api.users.remove(selectedUser.id);
+			n.success('User deleted');
+			deleteConfirmOpen = false;
+			closePanel();
+			const [active, former] = await Promise.all([
+				api.users.getAll(),
+				api.users.getDeleted()
+			]);
+			usersList = active;
+			formerUsers = former;
+		} catch (err) {
+			n.error('Failed to delete', err instanceof Error ? err.message : 'Unknown error');
+		} finally {
+			deleting = false;
+		}
+	}
+
+	// ── Former users ──
+
+	async function loadFormerUsers() {
+		formerLoading = true;
+		try {
+			formerUsers = await api.users.getDeleted();
+		} catch {
+			formerUsers = [];
+		} finally {
+			formerLoading = false;
+		}
+	}
+
+	$effect(() => {
+		if (pageTab === 'former') {
+			loadFormerUsers();
+		}
+	});
+
+	function openReactivateConfirm(user: UserWithOrg) {
+		reactivateTarget = user;
+		reactivateSendReset = true;
+		reactivateConfirmOpen = true;
+	}
+
+	async function reactivateUser() {
+		if (!reactivateTarget) return;
+		reactivating = true;
+		const n = notifications.action('Reactivating user');
+		try {
+			await api.users.reactivate(reactivateTarget.id, reactivateSendReset);
+			n.success('User reactivated');
+			reactivateConfirmOpen = false;
+			reactivateTarget = null;
+			const [active, former] = await Promise.all([
+				api.users.getAll(),
+				api.users.getDeleted()
+			]);
+			usersList = active;
+			formerUsers = former;
+		} catch (err) {
+			n.error('Failed to reactivate', err instanceof Error ? err.message : 'Unknown error');
+		} finally {
+			reactivating = false;
+		}
+	}
+
 	// ── Keyboard ──
 
 	$effect(() => {
@@ -407,6 +499,16 @@
 						Invitations
 					</button>
 				{/if}
+				{#if canRemoveMember}
+					<button
+						class="px-3 py-1.5 text-xs font-medium transition-colors {pageTab === 'former'
+							? 'border-b-2 border-accent text-accent'
+							: 'text-sidebar-icon hover:text-sidebar-text'}"
+						onclick={() => (pageTab = 'former')}
+					>
+						Former Users
+					</button>
+				{/if}
 			</div>
 		</div>
 		{#if canInvite}
@@ -485,7 +587,7 @@
 				</table>
 			</div>
 		{/if}
-	{:else}
+	{:else if pageTab === 'invitations'}
 		<!-- Invitations Table -->
 		{#if invitations.length === 0}
 			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No invitations yet.</p>
@@ -548,6 +650,67 @@
 				</table>
 			</div>
 		{/if}
+	{:else if pageTab === 'former'}
+		<!-- Former Users Table -->
+		{#if formerLoading}
+			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
+		{:else if formerUsers.length === 0}
+			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No former users.</p>
+		{:else}
+			<div class="overflow-x-auto">
+				<table class="w-full text-xs">
+					<thead>
+						<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
+							<th class="px-4 py-2.5">Name</th>
+							<th class="px-4 py-2.5">Email</th>
+							<th class="px-4 py-2.5">Organization</th>
+							<th class="px-4 py-2.5">Deleted</th>
+							<th class="px-4 py-2.5"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each formerUsers as user (user.id)}
+							<tr class="border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50">
+								<td class="px-4 py-2.5">
+									<div class="flex items-center gap-2">
+										{#if user.avatar_url}
+											<img src={user.avatar_url} alt="" class="h-6 w-6 rounded-full object-cover" />
+										{:else}
+											<div class="flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-icon/10 text-[10px] font-medium text-sidebar-icon">
+												{user.full_name.charAt(0).toUpperCase()}
+											</div>
+										{/if}
+										<div>
+											<span class="font-medium text-sidebar-text">{user.full_name}</span>
+											<span class="ml-1 text-sidebar-icon">@{user.username}</span>
+										</div>
+									</div>
+								</td>
+								<td class="px-4 py-2.5 text-sidebar-icon">{user.email}</td>
+								<td class="px-4 py-2.5">
+									{#if user.organization}
+										<span class="inline-flex items-center gap-1 bg-sidebar-icon/10 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-icon">
+											{user.organization.name}
+										</span>
+									{:else}
+										<span class="text-sidebar-icon">—</span>
+									{/if}
+								</td>
+								<td class="px-4 py-2.5 text-sidebar-icon">{formatDate(user.deleted_at)}</td>
+								<td class="px-4 py-2.5">
+									<button
+										class="text-xs font-medium text-accent transition-colors hover:text-accent/80"
+										onclick={() => openReactivateConfirm(user)}
+									>
+										Reactivate
+									</button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{/if}
 	{/if}
 </div>
 
@@ -581,13 +744,24 @@
 						<p class="truncate text-xs text-sidebar-icon">{selectedUser.email}</p>
 					</div>
 				</div>
-				<button
-					class="ml-3 shrink-0 p-1 text-sidebar-icon transition-colors hover:text-sidebar-text"
-					onclick={closePanel}
-					aria-label="Close"
-				>
-					<X size={18} />
-				</button>
+				<div class="ml-3 flex items-center gap-1">
+					{#if canRemoveMember && selectedUser.id !== auth.user?.id}
+						<button
+							class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-red-500"
+							onclick={confirmDeleteUser}
+							aria-label="Delete user"
+						>
+							<Trash2 size={16} />
+						</button>
+					{/if}
+					<button
+						class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-sidebar-text"
+						onclick={closePanel}
+						aria-label="Close"
+					>
+						<X size={18} />
+					</button>
+				</div>
 			</div>
 
 			<!-- Tabs -->
@@ -905,7 +1079,7 @@
 	</Modal>
 {/if}
 
-<!-- Confirm Dialog -->
+<!-- Confirm Dialog (membership removal) -->
 <ConfirmDialog
 	open={confirmOpen}
 	title="Remove Membership"
@@ -915,3 +1089,36 @@
 	onConfirm={() => { confirmAction?.(); confirmOpen = false; }}
 	onCancel={() => (confirmOpen = false)}
 />
+
+<!-- Delete User Confirm Dialog -->
+<ConfirmDialog
+	open={deleteConfirmOpen}
+	title="Delete User"
+	message="This will deactivate {selectedUser?.full_name || 'this user'} and revoke their access. The user can be restored later."
+	confirmLabel="Delete"
+	loading={deleting}
+	destructive
+	onConfirm={deleteUser}
+	onCancel={() => (deleteConfirmOpen = false)}
+/>
+
+<!-- Reactivate User Modal -->
+{#if reactivateConfirmOpen && reactivateTarget}
+	<Modal open={true} onClose={() => (reactivateConfirmOpen = false)} maxWidth="max-w-sm">
+		<div class="border-b border-surface-border px-5 py-3.5">
+			<h2 class="text-[13px] font-semibold text-sidebar-text">Reactivate User</h2>
+		</div>
+		<div class="px-5 py-4 space-y-3">
+			<p class="text-xs leading-relaxed text-sidebar-text/80">
+				Reactivate <strong>{reactivateTarget.full_name}</strong>? They will regain access with their existing organization and memberships.
+			</p>
+			{@render toggle(reactivateSendReset, () => { reactivateSendReset = !reactivateSendReset; }, 'Send password reset email')}
+		</div>
+		<div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3.5">
+			<button class={btnSecondary} disabled={reactivating} onclick={() => (reactivateConfirmOpen = false)}>Cancel</button>
+			<button class={btnPrimary} disabled={reactivating} onclick={reactivateUser}>
+				{reactivating ? 'Reactivating...' : 'Reactivate'}
+			</button>
+		</div>
+	</Modal>
+{/if}

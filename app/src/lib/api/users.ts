@@ -75,6 +75,31 @@ export const users = {
     return (data ?? []) as UserWithOrg[];
   },
 
+  async getDeleted() {
+    const supabase = getClient();
+    const { data, error } = await supabase
+      .from("users")
+      .select(USER_SELECT)
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false });
+
+    if (error) throw error;
+    return (data ?? []) as UserWithOrg[];
+  },
+
+  async reactivate(id: string, sendResetEmail = false) {
+    const res = await fetch(`/api/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ send_reset_email: sendResetEmail }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || `Reactivate failed (${res.status})`);
+    }
+    return res.json();
+  },
+
   async getById(id: string) {
     const supabase = getClient();
     const { data, error } = await supabase
@@ -172,6 +197,15 @@ export const users = {
 
     if (error) throw error;
     return data;
+  },
+
+  async remove(id: string) {
+    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || `Delete failed (${res.status})`);
+    }
+    return res.json();
   },
 
   async removeMembership(orgId: string, userId: string) {

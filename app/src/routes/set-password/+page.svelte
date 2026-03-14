@@ -34,14 +34,10 @@
 			return;
 		}
 
-		const { data: rpcResult, error: rpcErr } = await supabase.rpc('accept_invitation');
+		// Accept pending invitation if one exists (skip for password resets with no invitation)
+		const { data: rpcResult } = await supabase.rpc('accept_invitation');
 
-		if (rpcErr) {
-			error = rpcErr.message;
-			return;
-		}
-
-		if (rpcResult && !rpcResult.success) {
+		if (rpcResult && !rpcResult.success && rpcResult.error !== 'No pending invitation found') {
 			error = rpcResult.error ?? 'Failed to accept invitation';
 			return;
 		}
