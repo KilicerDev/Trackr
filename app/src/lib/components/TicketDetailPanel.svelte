@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { X, Send, Lock, Trash2, Plus, Clock } from '@lucide/svelte';
+	import { X, Send, Lock, Trash2, Plus, Clock, ArrowRightFromLine } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
+	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 
 	const TICKET_STATUSES = [
 		'open',
@@ -88,6 +89,21 @@
 	let isInternalNote = $state(false);
 	let sendingMessage = $state(false);
 
+	type LinkedTask = {
+		id: string;
+		title: string;
+		short_id: string;
+		status: string;
+		priority: string;
+		type: string;
+		project_id: string;
+		created_at: string;
+	};
+
+	let linkedTasks = $state<LinkedTask[]>([]);
+	let loadingLinkedTasks = $state(false);
+	let convertToTaskOpen = $state(false);
+
 	let workLogs = $state<WorkLog[]>([]);
 	let wlHours = $state('');
 	let wlMinutes = $state('');
@@ -147,14 +163,16 @@
 		editingDescription = false;
 		messageBody = '';
 		try {
-			const [t, m, wl] = await Promise.all([
+			const [t, m, wl, lt] = await Promise.all([
 				api.tickets.getById(id),
 				api.tickets.getMessages(id),
-				api.tickets.getWorkLogs(id)
+				api.tickets.getWorkLogs(id),
+				api.tasks.getByTicketId(id)
 			]);
 			ticket = t as TicketDetail;
 			messages = m as Message[];
 			workLogs = wl as WorkLog[];
+			linkedTasks = lt as LinkedTask[];
 			descriptionDraft = ticket.description ?? '';
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load ticket';
@@ -162,6 +180,23 @@
 			loading = false;
 			scrollMessagesToBottom();
 		}
+	}
+
+	async function loadLinkedTasks() {
+		if (!ticket) return;
+		loadingLinkedTasks = true;
+		try {
+			linkedTasks = (await api.tasks.getByTicketId(ticket.id)) as LinkedTask[];
+		} catch {
+			/* silent */
+		} finally {
+			loadingLinkedTasks = false;
+		}
+	}
+
+	function mapTicketPriority(ticketPriority: string): string {
+		const map: Record<string, string> = { low: 'low', medium: 'medium', high: 'high', urgent: 'urgent' };
+		return map[ticketPriority] ?? 'medium';
 	}
 
 	function scrollMessagesToBottom() {
@@ -629,6 +664,48 @@
 						</p>
 					{/if}
 				</div>
+
+				<!-- Linked Tasks -->
+				<div class="border-b border-surface-border px-4 py-3">
+					<div class="mb-2 flex items-center justify-between">
+						<span class={labelClass}>Linked Tasks</span>
+						{#if canUpdate}
+							<button
+								class="flex items-center gap-1 text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+								onclick={() => (convertToTaskOpen = true)}
+							>
+								<ArrowRightFromLine size={12} />
+								Convert to Task
+							</button>
+						{/if}
+					</div>
+					{#if loadingLinkedTasks}
+						<p class="py-2 text-center text-xs text-muted">Loading...</p>
+					{:else if linkedTasks.length === 0}
+						<p class="py-2 text-center text-xs text-muted">No linked tasks</p>
+					{:else}
+						<div class="space-y-1.5">
+							{#each linkedTasks as lt (lt.id)}
+								<div class="flex items-center gap-2 border border-surface-border bg-surface px-3 py-2">
+									<span class="shrink-0 font-mono text-[11px] text-accent">{lt.short_id}</span>
+									<span class="min-w-0 flex-1 truncate text-xs text-sidebar-text">{lt.title}</span>
+									<span class="shrink-0 text-[10px] text-muted">{displayName(lt.status)}</span>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				{#if convertToTaskOpen && ticket}
+					<CreateTaskModal
+						onClose={() => (convertToTaskOpen = false)}
+						onCreated={() => { convertToTaskOpen = false; loadLinkedTasks(); }}
+						supportTicketId={ticket.id}
+						prefillTitle={ticket.subject}
+						prefillDescription={ticket.description ?? ''}
+						prefillPriority={mapTicketPriority(ticket.priority)}
+					/>
+				{/if}
 
 				<!-- Timestamps -->
 				<div class="border-b border-surface-border px-4 py-3">

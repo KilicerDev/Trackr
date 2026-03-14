@@ -9,6 +9,7 @@ export type TaskFilters = {
   type?: string;
   created_by?: string;
   parent_id?: string | null;
+  support_ticket_id?: string;
   search?: string;
 };
 
@@ -20,6 +21,7 @@ export type CreateTaskInput = {
   priority?: string;
   type?: string;
   parent_id?: string;
+  support_ticket_id?: string;
   start_at?: string;
   end_at?: string;
   created_by: string;
@@ -43,6 +45,7 @@ export const tasks = {
     if (filters?.created_by) q = q.eq("created_by", filters.created_by);
     if (filters?.parent_id === null) q = q.is("parent_id", null);
     if (filters?.parent_id) q = q.eq("parent_id", filters.parent_id);
+    if (filters?.support_ticket_id) q = q.eq("support_ticket_id", filters.support_ticket_id);
     if (filters?.search) q = q.ilike("title", `%${filters.search}%`);
 
     const { data, error, count } = await q
@@ -77,6 +80,19 @@ export const tasks = {
 
     if (error) throw error;
     return data;
+  },
+
+  async getByTicketId(ticketId: string) {
+    const supabase = getClient();
+    const { data, error } = await supabase
+      .from("tasks")
+      .select(TASK_MINIMAL_SELECT)
+      .eq("support_ticket_id", ticketId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data ?? [];
   },
 
   async getSubtasks(parentId: string) {

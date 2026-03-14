@@ -7,7 +7,8 @@ export const TASK_SELECT = `
     user:users!user_id(id, full_name, username, avatar_url)
   ),
   created_by_user:users!created_by(id, full_name, avatar_url),
-  parent:tasks!parent_id(id, title, short_id)
+  parent:tasks!parent_id(id, title, short_id),
+  support_ticket:support_tickets!support_ticket_id(id, subject)
 ` as const;
 
 export const TASK_MINIMAL_SELECT = `

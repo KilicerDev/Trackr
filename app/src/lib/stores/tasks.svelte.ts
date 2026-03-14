@@ -17,6 +17,7 @@ export type Task = {
   short_id: string;
   project_id: string;
   created_by: string;
+  support_ticket_id?: string;
   project: {
     id: string;
     name: string;

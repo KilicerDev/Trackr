@@ -29,7 +29,7 @@
 		<div class="absolute inset-0 bg-black/50"></div>
 		<!-- Panel: same surface/border as app dropdowns and filter bar -->
 		<div
-			class="relative w-full {maxWidth} border border-surface-border bg-surface shadow-xl"
+			class="relative w-full {maxWidth} overflow-visible border border-surface-border bg-surface shadow-xl"
 		>
 			{#if children}
 				{@render children()}

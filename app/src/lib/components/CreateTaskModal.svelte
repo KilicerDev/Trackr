@@ -4,24 +4,39 @@
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
+	import { projectStore, type Project } from '$lib/stores/projects.svelte';
 
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done'] as const;
 
 	interface Props {
-		projectId: string;
+		projectId?: string;
 		onClose: () => void;
 		onCreated?: (taskId: string) => void;
+		supportTicketId?: string;
+		prefillTitle?: string;
+		prefillDescription?: string;
+		prefillPriority?: string;
 	}
 
-	let { projectId, onClose, onCreated }: Props = $props();
+	let { projectId, onClose, onCreated, supportTicketId, prefillTitle, prefillDescription, prefillPriority }: Props = $props();
 
-	let title = $state('');
-	let description = $state('');
-	let priority = $state<string>('medium');
+	let selectedProjectId = $state(projectId ?? '');
+	let title = $state(prefillTitle ?? '');
+	let description = $state(prefillDescription ?? '');
+	let priority = $state<string>(prefillPriority ?? 'medium');
 	let type = $state<string>('task');
 	let status = $state<string>('todo');
+
+	const needsProjectSelector = $derived(!projectId);
+	const projects = $derived(projectStore.items);
+
+	$effect(() => {
+		if (needsProjectSelector && projects.length === 0) {
+			projectStore.loadAll();
+		}
+	});
 	let parentId = $state<string>('');
 	let startAt = $state('');
 	let endAt = $state('');
@@ -39,7 +54,8 @@
 
 	let openDropdown = $state<string | null>(null);
 
-	const canSubmit = $derived(!!title.trim());
+	const resolvedProjectId = $derived(projectId ?? selectedProjectId);
+	const canSubmit = $derived(!!title.trim() && !!resolvedProjectId);
 	const SelectedTypeIcon = $derived(typeIcons[type] ?? defaultTypeIcon);
 
 	function toggleDropdown(key: string) {
@@ -67,11 +83,12 @@
 			const task = await taskStore.create({
 				title: title.trim(),
 				description: description.trim() || undefined,
-				project_id: projectId,
+				project_id: resolvedProjectId,
 				priority,
 				type,
 				status,
 				parent_id: parentId || undefined,
+				support_ticket_id: supportTicketId || undefined,
 				start_at: startAt ? `${startAt}T00:00:00.000Z` : undefined,
 				end_at: endAt ? `${endAt}T00:00:00.000Z` : undefined,
 				created_by: auth.user.id
@@ -134,6 +151,36 @@
 						placeholder="Optional details"
 					></textarea>
 				</div>
+
+				<!-- Project selector (shown when no projectId prop) -->
+				{#if needsProjectSelector}
+					<div>
+						<span class={labelClass}>Project</span>
+						<div class="relative" data-dropdown>
+							<button
+								type="button"
+								class={dropdownBtnClass}
+								onclick={() => toggleDropdown('project')}
+							>
+							<span class="truncate">{projects.find((p) => p.id === selectedProjectId)?.name ?? 'Select project'}</span>
+							{@html chevronSvg}
+							</button>
+							{#if openDropdown === 'project'}
+								<div class={dropdownPanelClass}>
+									{#each projects as p (p.id)}
+										<button
+											type="button"
+											class="{dropdownItemBase} {selectedProjectId === p.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+											onmousedown={(e) => { e.preventDefault(); selectedProjectId = p.id; openDropdown = null; }}
+										>
+											{p.name}
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/if}
 
 				<!-- Parent task -->
 				{#if parentOptions.length > 0}
