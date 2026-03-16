@@ -276,7 +276,7 @@
 	});
 </script>
 
-<div class="mx-auto w-full max-w-[1200px]">
+<div class="mx-auto w-full">
 	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
 		<h1 class="text-sm font-semibold text-sidebar-text">Roles</h1>
 		{#if canManage}

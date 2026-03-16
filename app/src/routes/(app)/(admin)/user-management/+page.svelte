@@ -475,7 +475,7 @@
 	</button>
 {/snippet}
 
-<div class="mx-auto w-full max-w-[1200px]">
+<div class="mx-auto w-full">
 	<!-- Header -->
 	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
 		<div class="flex items-center gap-4">

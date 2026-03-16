@@ -283,7 +283,7 @@
 	});
 </script>
 
-<div class="mx-auto w-full max-w-[1200px]">
+<div class="mx-auto w-full">
 	<div class="flex items-center gap-3 border-b border-surface-border px-4 py-3">
 		<button
 			onclick={() => history.back()}

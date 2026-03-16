@@ -212,7 +212,7 @@
 </script>
 
 <div
-	class="mx-auto w-full max-w-[1200px]"
+	class="mx-auto w-full"
 	use:clickOutside={{
 		onClickOutside: () => {
 			orgDropdownOpen = false;
