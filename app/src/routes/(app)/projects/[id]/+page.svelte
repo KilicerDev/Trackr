@@ -61,15 +61,26 @@
 			list.push(t);
 		}
 		const result: TaskWithDepth[] = [];
+		const visited = new Set<string>();
 		function walk(parentId: string | null, depth: number) {
 			const children = childrenMap.get(parentId);
 			if (!children) return;
 			for (const child of children) {
+				if (visited.has(child.id)) continue;
+				visited.add(child.id);
 				result.push({ task: child, depth });
 				walk(child.id, depth + 1);
 			}
 		}
 		walk(null, 0);
+		// Recovery: show cycle/orphan tasks at root level
+		for (const t of items) {
+			if (!visited.has(t.id)) {
+				visited.add(t.id);
+				result.push({ task: t, depth: 0 });
+				walk(t.id, 1);
+			}
+		}
 		return result;
 	});
 

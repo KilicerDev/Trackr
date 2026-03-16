@@ -163,6 +163,7 @@
 		try {
 			const updated = await taskStore.update(task.id, { [field]: value });
 			if (updated) task = updated;
+			if (field === 'parent_id') await loadTask(task!.id);
 		} catch {
 			task = prev;
 		}
@@ -307,6 +308,30 @@
 	);
 
 	const CurrentTypeIcon = $derived(typeIcons[task?.type ?? ''] ?? defaultTypeIcon);
+
+	const parentTask = $derived.by(() => {
+		const pid = task?.parent_id as string | null | undefined;
+		if (!pid) return null;
+		const found = taskStore.items.find((t) => t.id === pid);
+		if (found) return { id: found.id, title: found.title, short_id: found.short_id };
+		return null;
+	});
+
+	const descendantIds = $derived.by(() => {
+		if (!task) return new Set<string>();
+		const ids = new Set<string>();
+		function collect(parentId: string) {
+			for (const t of taskStore.items) {
+				const pid = (t.parent_id as string | null) ?? null;
+				if (pid === parentId && !ids.has(t.id)) {
+					ids.add(t.id);
+					collect(t.id);
+				}
+			}
+		}
+		collect(task.id);
+		return ids;
+	});
 
 	const labelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
 	const propBtnClass =
@@ -529,6 +554,54 @@
 									onchange={(e) => handleDateChange('end_at', (e.target as HTMLInputElement).value)}
 								/>
 							</div>
+						</div>
+
+						<!-- Parent Task -->
+						<div class="col-span-2">
+							<span class="mb-1 block text-[10px] text-muted">Parent Task</span>
+							{#if parentTask}
+								<div class="group flex items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-1.5">
+									<div class="flex items-center gap-2 text-xs">
+										<span class="font-medium text-accent">{parentTask.short_id}</span>
+										<span class="truncate text-sidebar-text">{parentTask.title}</span>
+									</div>
+									<button
+										class="p-0.5 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
+										onclick={() => updateField('parent_id', null)}
+										aria-label="Remove parent task"
+									>
+										<X size={12} />
+									</button>
+								</div>
+							{:else}
+								<div class="relative" data-dropdown>
+									<button
+										class={propBtnClass}
+										onclick={() => (openDropdown = openDropdown === 'parent' ? null : 'parent')}
+									>
+										<span class="truncate text-muted">None</span>
+										{@html chevronSvg}
+									</button>
+									{#if openDropdown === 'parent'}
+										<div class={dropdownPanelClass}>
+											{#each taskStore.items.filter((t) => t.id !== task?.id && !descendantIds.has(t.id)) as t (t.id)}
+												<button
+													class="{dropdownItemBase} text-sidebar-text"
+													onmousedown={(e) => {
+														e.preventDefault();
+														updateField('parent_id', t.id);
+													}}
+												>
+													<span class="mr-2 shrink-0 font-medium text-accent">{t.short_id}</span>
+													{t.title}
+												</button>
+											{:else}
+												<p class="px-3 py-2 text-xs text-muted">No tasks available</p>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
