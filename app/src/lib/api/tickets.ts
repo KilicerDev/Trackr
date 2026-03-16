@@ -181,6 +181,16 @@ export const tickets = {
     return data;
   },
 
+  async updateMessageAttachments(messageId: string, attachmentIds: string[]) {
+    const supabase = getClient();
+    const { error } = await supabase
+      .from("support_ticket_messages")
+      .update({ attachment_ids: attachmentIds })
+      .eq("id", messageId);
+
+    if (error) throw error;
+  },
+
   async getWorkLogs(ticketId: string) {
     const supabase = getClient();
     const { data, error } = await supabase

@@ -1,8 +1,12 @@
 <script lang="ts">
-	import { X, Send, Lock, Trash2, Plus, Clock, ArrowRightFromLine } from '@lucide/svelte';
+	import { X, Send, Lock, Trash2, Plus, Clock, ArrowRightFromLine, Paperclip } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
+	import type { Attachment } from '$lib/api/attachments';
+	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
+	import AttachmentGrid from './AttachmentGrid.svelte';
+	import AttachmentCompact from './AttachmentCompact.svelte';
 
 	const TICKET_STATUSES = [
 		'open',
@@ -48,6 +52,7 @@
 		body: string;
 		is_internal_note: boolean;
 		created_at: string;
+		attachment_ids: string[];
 		sender: { id: string; full_name: string; username: string; avatar_url: string | null } | null;
 	};
 
@@ -103,6 +108,11 @@
 	let linkedTasks = $state<LinkedTask[]>([]);
 	let loadingLinkedTasks = $state(false);
 	let convertToTaskOpen = $state(false);
+
+	let ticketAttachments = $state<Attachment[]>([]);
+	let messageAttachmentIds = $state<Record<string, string[]>>({});
+	let uploadingFiles = $state(false);
+	let messagePendingFiles = $state<File[]>([]);
 
 	let workLogs = $state<WorkLog[]>([]);
 	let wlHours = $state('');
@@ -174,12 +184,57 @@
 			workLogs = wl as WorkLog[];
 			linkedTasks = lt as LinkedTask[];
 			descriptionDraft = ticket.description ?? '';
+			// Restore message → attachment mapping from persisted data
+			const map: Record<string, string[]> = {};
+			for (const msg of messages) {
+				if (msg.attachment_ids && msg.attachment_ids.length > 0) {
+					map[msg.id] = msg.attachment_ids;
+				}
+			}
+			messageAttachmentIds = map;
+			// Load attachments separately so failures don't block ticket loading
+			try {
+				ticketAttachments = await api.attachments.list('support_ticket', id);
+			} catch {
+				ticketAttachments = [];
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load ticket';
 		} finally {
 			loading = false;
 			scrollMessagesToBottom();
 		}
+	}
+
+	async function handleTicketFileUpload(files: File[]) {
+		if (!ticket || !auth.user || uploadingFiles) return;
+		uploadingFiles = true;
+		try {
+			const orgId = (ticket as Record<string, unknown>).organization_id as string;
+			for (const file of files) {
+				const att = await api.attachments.upload(file, 'support_ticket', ticket.id, orgId, auth.user!.id);
+				ticketAttachments = [att, ...ticketAttachments];
+			}
+		} catch {
+			/* silent */
+		} finally {
+			uploadingFiles = false;
+		}
+	}
+
+	async function handleRemoveAttachment(att: Attachment) {
+		try {
+			await api.attachments.remove(att.id, att.storage_path);
+			ticketAttachments = ticketAttachments.filter((a) => a.id !== att.id);
+		} catch {
+			/* silent */
+		}
+	}
+
+	function getMessageAttachments(messageId: string): Attachment[] {
+		const ids = messageAttachmentIds[messageId];
+		if (!ids || ids.length === 0) return [];
+		return ticketAttachments.filter((a) => ids.includes(a.id));
 	}
 
 	async function loadLinkedTasks() {
@@ -258,8 +313,30 @@
 				isInternalNote
 			)) as Message;
 			messages = [...messages, msg];
+			// Upload pending files to the ticket, but remember which belong to this message
+			if (messagePendingFiles.length > 0) {
+				const uploadedIds: string[] = [];
+				const orgId = (ticket as Record<string, unknown>).organization_id as string;
+				if (orgId) {
+					for (const file of messagePendingFiles) {
+						try {
+							const att = await api.attachments.upload(file, 'support_ticket', ticket.id, orgId, auth.user!.id);
+							ticketAttachments = [att, ...ticketAttachments];
+							uploadedIds.push(att.id);
+						} catch {
+							/* silent */
+						}
+					}
+				}
+				if (uploadedIds.length > 0) {
+					messageAttachmentIds = { ...messageAttachmentIds, [msg.id]: uploadedIds };
+					// Persist to DB
+					api.tickets.updateMessageAttachments(msg.id, uploadedIds).catch(() => {});
+				}
+			}
 			messageBody = '';
 			isInternalNote = false;
+			messagePendingFiles = [];
 			scrollMessagesToBottom();
 
 			if (shouldSetFirstResponse) {
@@ -665,6 +742,27 @@
 					{/if}
 				</div>
 
+				<!-- Attachments -->
+				<div class="border-b border-surface-border px-4 py-3">
+					<span class="{labelClass} mb-2 block">Attachments ({ticketAttachments.length})</span>
+					<AttachmentUploadZone
+						onFilesSelected={handleTicketFileUpload}
+						disabled={uploadingFiles}
+					/>
+					{#if uploadingFiles}
+						<p class="mt-2 text-[11px] text-muted">Uploading...</p>
+					{/if}
+					{#if ticketAttachments.length > 0}
+						<div class="mt-2">
+							<AttachmentGrid
+								attachments={ticketAttachments}
+								canDelete={true}
+								onRemove={handleRemoveAttachment}
+							/>
+						</div>
+					{/if}
+				</div>
+
 				<!-- Linked Tasks -->
 				<div class="border-b border-surface-border px-4 py-3">
 					<div class="mb-2 flex items-center justify-between">
@@ -879,6 +977,9 @@
 									</div>
 								</div>
 								<p class="whitespace-pre-wrap text-xs text-sidebar-text">{msg.body}</p>
+								{#if getMessageAttachments(msg.id).length > 0}
+									<AttachmentCompact attachments={getMessageAttachments(msg.id)} />
+								{/if}
 							</div>
 						{/each}
 					</div>
@@ -887,6 +988,19 @@
 
 			<!-- Compose box -->
 			<div class="shrink-0 border-t border-surface-border px-4 py-3">
+				{#if messagePendingFiles.length > 0}
+					<div class="mb-2 flex flex-wrap gap-1">
+						{#each messagePendingFiles as file, i (file.name + i)}
+							<span class="flex items-center gap-1 border border-surface-border bg-surface px-2 py-0.5 text-[10px] text-sidebar-text">
+								<Paperclip size={10} />
+								<span class="max-w-[100px] truncate">{file.name}</span>
+								<button class="text-muted hover:text-red-500" onclick={() => { messagePendingFiles = messagePendingFiles.filter((_, idx) => idx !== i); }}>
+									<X size={10} />
+								</button>
+							</span>
+						{/each}
+					</div>
+				{/if}
 				<div class="flex gap-2">
 					<textarea
 						bind:value={messageBody}
@@ -900,14 +1014,20 @@
 							}
 						}}
 					></textarea>
-					<button
-						class="flex shrink-0 items-center justify-center bg-accent px-3 text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-						disabled={!messageBody.trim() || sendingMessage}
-						onclick={sendMessage}
-						aria-label="Send message"
-					>
-						<Send size={14} />
-					</button>
+					<div class="flex shrink-0 flex-col">
+						<AttachmentUploadZone
+							compact
+							onFilesSelected={(files) => { messagePendingFiles = [...messagePendingFiles, ...files]; }}
+						/>
+						<button
+							class="flex flex-1 items-center justify-center bg-accent px-3 text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+							disabled={!messageBody.trim() || sendingMessage}
+							onclick={sendMessage}
+							aria-label="Send message"
+						>
+							<Send size={14} />
+						</button>
+					</div>
 				</div>
 				{#if !auth.isClient}
 					<label class="mt-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-muted">

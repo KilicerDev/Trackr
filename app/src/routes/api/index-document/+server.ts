@@ -1,6 +1,7 @@
 import { json, error } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
 import { getAdminClient } from "$lib/server/supabase-admin";
+import { extractText } from "$lib/server/extract-text";
 import type { RequestHandler } from "./$types";
 
 type DocumentPayload = {
@@ -134,6 +135,40 @@ async function buildPayload(
         task_title: task.title,
         project_id: task.project_id,
         user_name: user?.full_name ?? null,
+      },
+    };
+  }
+
+  if (sourceType === "attachment") {
+    const { data } = await admin
+      .from("attachments")
+      .select("id, file_name, mime_type, storage_path, entity_type, entity_id, org_id, uploader:users!uploaded_by(full_name)")
+      .eq("id", sourceId)
+      .is("deleted_at", null)
+      .single();
+    if (!data) return null;
+    const uploader = data.uploader as unknown as { full_name: string } | null;
+    let extractedText: string | null = null;
+    try {
+      extractedText = await extractText(data.storage_path, data.mime_type);
+    } catch {
+      // text extraction is best-effort
+    }
+    const content = [data.file_name, extractedText].filter(Boolean).join(" ");
+    return {
+      source_type: "attachment",
+      source_id: data.id,
+      parent_id: data.entity_id,
+      org_id: data.org_id,
+      title: data.file_name,
+      preview: truncate(extractedText, 200),
+      content,
+      metadata: {
+        file_name: data.file_name,
+        mime_type: data.mime_type,
+        entity_type: data.entity_type,
+        entity_id: data.entity_id,
+        uploader_name: uploader?.full_name ?? null,
       },
     };
   }

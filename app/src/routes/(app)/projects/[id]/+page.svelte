@@ -13,6 +13,9 @@
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { SvelteMap } from 'svelte/reactivity';
+	import type { Attachment } from '$lib/api/attachments';
+	import AttachmentUploadZone from '$lib/components/AttachmentUploadZone.svelte';
+	import AttachmentList from '$lib/components/AttachmentList.svelte';
 
 	const PROJECT_STATUSES = ['planning', 'active', 'paused', 'completed', 'archived'] as const;
 	const PRESET_COLORS = [
@@ -107,6 +110,8 @@
 
 	let orgMembers = $state<OrgMember[]>([]);
 	let addingMember = $state(false);
+	let projectAttachments = $state<Attachment[]>([]);
+	let uploadingFiles = $state(false);
 
 	const PROJECT_ASSIGNABLE_ROLES = ['owner', 'admin', 'manager', 'agent'];
 
@@ -233,7 +238,11 @@
 
 	onMount(async () => {
 		const id = $page.params.id!;
-		await Promise.all([taskStore.load({ project_id: id }), projectStore.loadById(id)]);
+		await Promise.all([
+			taskStore.load({ project_id: id }),
+			projectStore.loadById(id),
+			api.attachments.list('project', id).then((att) => { projectAttachments = att; }).catch(() => {})
+		]);
 
 		const orgId = projectStore.activeProject?.organization_id;
 		if (orgId) {
@@ -243,6 +252,30 @@
 		const taskParam = new URL(window.location.href).searchParams.get('task');
 		if (taskParam) selectTask(taskParam);
 	});
+
+	async function handleProjectFileUpload(files: File[]) {
+		if (!project || !auth.user || uploadingFiles) return;
+		uploadingFiles = true;
+		try {
+			for (const file of files) {
+				const att = await api.attachments.upload(file, 'project', project.id, project.organization_id, auth.user!.id);
+				projectAttachments = [att, ...projectAttachments];
+			}
+		} catch {
+			/* silent */
+		} finally {
+			uploadingFiles = false;
+		}
+	}
+
+	async function handleRemoveProjectAttachment(att: Attachment) {
+		try {
+			await api.attachments.remove(att.id, att.storage_path);
+			projectAttachments = projectAttachments.filter((a) => a.id !== att.id);
+		} catch {
+			/* silent */
+		}
+	}
 
 	afterNavigate(({ to }) => {
 		const taskParam = to?.url.searchParams.get('task') ?? null;
@@ -589,6 +622,32 @@
 				</div>
 			{:else}
 				<p class="text-xs text-muted">No members yet.</p>
+			{/if}
+		</div>
+
+		<!-- Attachments -->
+		<div class="border-b border-surface-border px-4 py-4">
+			<h2 class="mb-3 text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">
+				Attachments
+				{#if projectAttachments.length > 0}
+					<span class="ml-1 text-muted">({projectAttachments.length})</span>
+				{/if}
+			</h2>
+			<AttachmentUploadZone
+				onFilesSelected={handleProjectFileUpload}
+				disabled={uploadingFiles}
+			/>
+			{#if uploadingFiles}
+				<p class="mt-2 text-[11px] text-muted">Uploading...</p>
+			{/if}
+			{#if projectAttachments.length > 0}
+				<div class="mt-3">
+					<AttachmentList
+						attachments={projectAttachments}
+						canDelete={canUpdateProject}
+						onRemove={handleRemoveProjectAttachment}
+					/>
+				</div>
 			{/if}
 		</div>
 

@@ -7,6 +7,7 @@ import { config } from "./config";
 import { roles } from "./roles";
 import { users } from "./users";
 import { notificationsApi } from "./notifications";
+import { attachments } from "./attachments";
 
 export const api = {
   tasks,
@@ -18,4 +19,5 @@ export const api = {
   roles,
   users,
   notifications: notificationsApi,
+  attachments,
 };

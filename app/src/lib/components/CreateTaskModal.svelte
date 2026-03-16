@@ -5,6 +5,9 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import { projectStore, type Project } from '$lib/stores/projects.svelte';
+	import { api } from '$lib/api';
+	import { X, Paperclip } from '@lucide/svelte';
+	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
 
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
@@ -41,6 +44,7 @@
 	let startAt = $state('');
 	let endAt = $state('');
 	let submitting = $state(false);
+	let pendingFiles = $state<File[]>([]);
 
 	const parentOptions = $derived(
 		taskStore.items.map((t) => ({
@@ -93,6 +97,20 @@
 				end_at: endAt ? `${endAt}T00:00:00.000Z` : undefined,
 				created_by: auth.user.id
 			});
+			// Upload pending files
+			if (task && pendingFiles.length > 0) {
+				const project = await api.projects.getById(resolvedProjectId);
+				const orgId = (project as Record<string, unknown>)?.organization_id as string;
+				if (orgId) {
+					for (const file of pendingFiles) {
+						try {
+							await api.attachments.upload(file, 'task', task.id, orgId, auth.user!.id);
+						} catch {
+							/* silent - task was created, attachment upload is best-effort */
+						}
+					}
+				}
+			}
 			n.success('Task created');
 			onClose();
 			if (task) onCreated?.(task.id);
@@ -329,6 +347,27 @@
 							class={inputClass}
 						/>
 					</div>
+				</div>
+
+				<div>
+					<span class={labelClass}>Attachments</span>
+					<AttachmentUploadZone
+						onFilesSelected={(files) => { pendingFiles = [...pendingFiles, ...files]; }}
+						disabled={submitting}
+					/>
+					{#if pendingFiles.length > 0}
+						<div class="mt-2 flex flex-wrap gap-1">
+							{#each pendingFiles as file, i (file.name + i)}
+								<span class="flex items-center gap-1 border border-surface-border bg-surface px-2 py-0.5 text-[10px] text-sidebar-text">
+									<Paperclip size={10} />
+									<span class="max-w-[120px] truncate">{file.name}</span>
+									<button type="button" class="text-muted hover:text-red-500" onclick={() => { pendingFiles = pendingFiles.filter((_, idx) => idx !== i); }}>
+										<X size={10} />
+									</button>
+								</span>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
 				<div class="flex justify-end gap-2 border-t border-surface-border pt-4">

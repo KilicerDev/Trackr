@@ -36,3 +36,8 @@ export const MEMBER_SELECT = `
   user:users(id, full_name, username, email, avatar_url, last_seen_at),
   role:roles(id, name, slug)
 ` as const;
+
+export const ATTACHMENT_SELECT = `
+  *,
+  uploader:users!uploaded_by(id, full_name, avatar_url)
+` as const;

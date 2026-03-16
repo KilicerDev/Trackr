@@ -3,6 +3,9 @@
 	import { projectStore } from '$lib/stores/projects.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { api } from '$lib/api';
+	import { X, Paperclip } from '@lucide/svelte';
+	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
 
 	interface Props {
 		organizationId: string | null;
@@ -28,6 +31,7 @@
 	let endAt = $state('');
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
+	let pendingFiles = $state<File[]>([]);
 
 	let openDropdown = $state<string | null>(null);
 
@@ -69,7 +73,7 @@
 		error = null;
 		const n = notifications.action('Creating project');
 		try {
-			await projectStore.create({
+			const project = await projectStore.create({
 				name: name.trim(),
 				identifier: identifier.trim().toUpperCase(),
 				description: description.trim() || undefined,
@@ -80,6 +84,16 @@
 				start_at: startAt ? `${startAt}T00:00:00.000Z` : undefined,
 				end_at: endAt ? `${endAt}T00:00:00.000Z` : undefined
 			});
+			// Upload pending files
+			if (project && pendingFiles.length > 0 && auth.user) {
+				for (const file of pendingFiles) {
+					try {
+						await api.attachments.upload(file, 'project', (project as Record<string, unknown>).id as string, organizationId, auth.user.id);
+					} catch {
+						/* silent */
+					}
+				}
+			}
 			n.success('Project created');
 			onSuccess?.();
 			onClose();
@@ -249,6 +263,27 @@
 								class={inputClass}
 							/>
 						</div>
+					</div>
+
+					<div>
+						<span class={labelClass}>Attachments</span>
+						<AttachmentUploadZone
+							onFilesSelected={(files) => { pendingFiles = [...pendingFiles, ...files]; }}
+							disabled={submitting}
+						/>
+						{#if pendingFiles.length > 0}
+							<div class="mt-2 flex flex-wrap gap-1">
+								{#each pendingFiles as file, i (file.name + i)}
+									<span class="flex items-center gap-1 border border-surface-border bg-surface px-2 py-0.5 text-[10px] text-sidebar-text">
+										<Paperclip size={10} />
+										<span class="max-w-[120px] truncate">{file.name}</span>
+										<button type="button" class="text-muted hover:text-red-500" onclick={() => { pendingFiles = pendingFiles.filter((_, idx) => idx !== i); }}>
+											<X size={10} />
+										</button>
+									</span>
+								{/each}
+							</div>
+						{/if}
 					</div>
 
 					{#if error}

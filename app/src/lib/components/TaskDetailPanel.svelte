@@ -1,11 +1,15 @@
 <script lang="ts">
-	import { X, Send, Trash2, Clock, Plus } from '@lucide/svelte';
+	import { X, Send, Trash2, Clock, Plus, Paperclip } from '@lucide/svelte';
 	import { api } from '$lib/api';
 	import { taskStore } from '$lib/stores/tasks.svelte';
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
+	import type { Attachment } from '$lib/api/attachments';
+	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
+	import AttachmentGrid from './AttachmentGrid.svelte';
+	import AttachmentCompact from './AttachmentCompact.svelte';
 
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
@@ -20,6 +24,7 @@
 		id: string;
 		content: string;
 		created_at: string;
+		attachment_ids: string[];
 		user: { id: string; full_name: string; username: string; avatar_url: string | null } | null;
 	};
 
@@ -60,6 +65,11 @@
 
 	let confirmDeleteOpen = $state(false);
 	let deleting = $state(false);
+
+	let taskAttachments = $state<Attachment[]>([]);
+	let commentAttachmentIds = $state<Record<string, string[]>>({});
+	let uploadingFiles = $state(false);
+	let commentPendingFiles = $state<File[]>([]);
 
 	let workLogs = $state<WorkLog[]>([]);
 	let wlHours = $state('');
@@ -138,12 +148,60 @@
 			workLogs = wl as WorkLog[];
 			titleDraft = task.title;
 			descriptionDraft = (task.description as string) ?? '';
+			// Restore comment → attachment mapping from persisted data
+			const map: Record<string, string[]> = {};
+			for (const cm of comments) {
+				if (cm.attachment_ids && cm.attachment_ids.length > 0) {
+					map[cm.id] = cm.attachment_ids;
+				}
+			}
+			commentAttachmentIds = map;
+			// Load attachments separately so failures don't block task loading
+			try {
+				taskAttachments = await api.attachments.list('task', id);
+			} catch {
+				taskAttachments = [];
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load task';
 		} finally {
 			loading = false;
 			scrollCommentsToBottom();
 		}
+	}
+
+	async function handleTaskFileUpload(files: File[]) {
+		if (!task || !auth.user || uploadingFiles) return;
+		uploadingFiles = true;
+		try {
+			// Resolve org_id from project (not included in TASK_SELECT project relation)
+			const project = await api.projects.getById(task.project_id as string);
+			const orgId = (project as Record<string, unknown>)?.organization_id as string;
+			if (!orgId) return;
+			for (const file of files) {
+				const att = await api.attachments.upload(file, 'task', task.id, orgId, auth.user!.id);
+				taskAttachments = [att, ...taskAttachments];
+			}
+		} catch {
+			/* silent */
+		} finally {
+			uploadingFiles = false;
+		}
+	}
+
+	async function handleRemoveAttachment(att: Attachment) {
+		try {
+			await api.attachments.remove(att.id, att.storage_path);
+			taskAttachments = taskAttachments.filter((a) => a.id !== att.id);
+		} catch {
+			/* silent */
+		}
+	}
+
+	function getCommentAttachments(commentId: string): Attachment[] {
+		const ids = commentAttachmentIds[commentId];
+		if (!ids || ids.length === 0) return [];
+		return taskAttachments.filter((a) => ids.includes(a.id));
 	}
 
 	function scrollCommentsToBottom() {
@@ -209,7 +267,34 @@
 		try {
 			const c = (await api.tasks.addComment(task.id, auth.user.id, commentBody.trim())) as Comment;
 			comments = [...comments, c];
+			// Upload pending files to the task, but remember which belong to this comment
+			if (commentPendingFiles.length > 0) {
+				const uploadedIds: string[] = [];
+				try {
+					const project = await api.projects.getById(task.project_id as string);
+					const orgId = (project as Record<string, unknown>)?.organization_id as string;
+					if (orgId) {
+						for (const file of commentPendingFiles) {
+							try {
+								const att = await api.attachments.upload(file, 'task', task.id, orgId, auth.user!.id);
+								taskAttachments = [att, ...taskAttachments];
+								uploadedIds.push(att.id);
+							} catch {
+								/* silent */
+							}
+						}
+					}
+				} catch {
+					/* silent */
+				}
+				if (uploadedIds.length > 0) {
+					commentAttachmentIds = { ...commentAttachmentIds, [c.id]: uploadedIds };
+					// Persist to DB
+					api.tasks.updateCommentAttachments(c.id, uploadedIds).catch(() => {});
+				}
+			}
 			commentBody = '';
+			commentPendingFiles = [];
 			scrollCommentsToBottom();
 		} catch {
 			/* keep text */
@@ -730,6 +815,27 @@
 					{/if}
 				</div>
 
+				<!-- Attachments -->
+				<div class="border-b border-surface-border px-4 py-3">
+					<span class="{labelClass} mb-2 block">Attachments ({taskAttachments.length})</span>
+					<AttachmentUploadZone
+						onFilesSelected={handleTaskFileUpload}
+						disabled={uploadingFiles}
+					/>
+					{#if uploadingFiles}
+						<p class="mt-2 text-[11px] text-muted">Uploading...</p>
+					{/if}
+					{#if taskAttachments.length > 0}
+						<div class="mt-2">
+							<AttachmentGrid
+								attachments={taskAttachments}
+								canDelete={true}
+								onRemove={handleRemoveAttachment}
+							/>
+						</div>
+					{/if}
+				</div>
+
 				<!-- Info -->
 				<div class="border-b border-surface-border px-4 py-3">
 					<span class="{labelClass} mb-2 block">Details</span>
@@ -876,6 +982,9 @@
 									<span class="text-[10px] text-muted">{formatDate(c.created_at)}</span>
 								</div>
 								<p class="whitespace-pre-wrap text-xs text-sidebar-text">{c.content}</p>
+								{#if getCommentAttachments(c.id).length > 0}
+									<AttachmentCompact attachments={getCommentAttachments(c.id)} />
+								{/if}
 							</div>
 						{/each}
 					</div>
@@ -884,6 +993,19 @@
 
 			<!-- Comment compose -->
 			<div class="shrink-0 border-t border-surface-border px-4 py-3">
+				{#if commentPendingFiles.length > 0}
+					<div class="mb-2 flex flex-wrap gap-1">
+						{#each commentPendingFiles as file, i (file.name + i)}
+							<span class="flex items-center gap-1 border border-surface-border bg-surface px-2 py-0.5 text-[10px] text-sidebar-text">
+								<Paperclip size={10} />
+								<span class="max-w-[100px] truncate">{file.name}</span>
+								<button class="text-muted hover:text-red-500" onclick={() => { commentPendingFiles = commentPendingFiles.filter((_, idx) => idx !== i); }}>
+									<X size={10} />
+								</button>
+							</span>
+						{/each}
+					</div>
+				{/if}
 				<div class="flex gap-2">
 					<textarea
 						bind:value={commentBody}
@@ -897,14 +1019,20 @@
 							}
 						}}
 					></textarea>
-					<button
-						class="flex shrink-0 items-center justify-center bg-accent px-3 text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
-						disabled={!commentBody.trim() || sendingComment}
-						onclick={sendComment}
-						aria-label="Send comment"
-					>
-						<Send size={14} />
-					</button>
+					<div class="flex shrink-0 flex-col">
+						<AttachmentUploadZone
+							compact
+							onFilesSelected={(files) => { commentPendingFiles = [...commentPendingFiles, ...files]; }}
+						/>
+						<button
+							class="flex flex-1 items-center justify-center bg-accent px-3 text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+							disabled={!commentBody.trim() || sendingComment}
+							onclick={sendComment}
+							aria-label="Send comment"
+						>
+							<Send size={14} />
+						</button>
+					</div>
 				</div>
 			</div>
 		{/if}

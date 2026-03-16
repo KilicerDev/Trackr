@@ -211,6 +211,16 @@ export const tasks = {
     return data;
   },
 
+  async updateCommentAttachments(commentId: string, attachmentIds: string[]) {
+    const supabase = getClient();
+    const { error } = await supabase
+      .from("task_comments")
+      .update({ attachment_ids: attachmentIds })
+      .eq("id", commentId);
+
+    if (error) throw error;
+  },
+
   async getWorkLogs(taskId: string) {
     const supabase = getClient();
     const { data, error } = await supabase

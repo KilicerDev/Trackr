@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { localizeHref } from '$lib/paraglide/runtime';
-	import { Ticket, SquareCheck, MessageCircle, MessageSquare, Search, Loader2 } from '@lucide/svelte';
+	import { Ticket, SquareCheck, MessageCircle, MessageSquare, Search, Loader2, Paperclip } from '@lucide/svelte';
 
-	type SourceType = 'ticket' | 'task' | 'ticket_message' | 'task_comment';
+	type SourceType = 'ticket' | 'task' | 'ticket_message' | 'task_comment' | 'attachment';
 
 	type SearchResult = {
 		source_type: SourceType;
@@ -22,7 +22,8 @@
 		{ label: 'Tickets', value: 'ticket' },
 		{ label: 'Tasks', value: 'task' },
 		{ label: 'Messages', value: 'ticket_message' },
-		{ label: 'Comments', value: 'task_comment' }
+		{ label: 'Comments', value: 'task_comment' },
+		{ label: 'Files', value: 'attachment' }
 	];
 
 	let open = $state(false);
@@ -49,7 +50,7 @@
 	const flatResults = $derived(
 		(() => {
 			const g = groupedResults();
-			const order: SourceType[] = ['ticket', 'task', 'ticket_message', 'task_comment'];
+			const order: SourceType[] = ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'];
 			const flat: SearchResult[] = [];
 			for (const type of order) {
 				if (g[type]) flat.push(...g[type]);
@@ -163,6 +164,19 @@
 			goto(localizeHref(`/projects/${projectId}?task=${result.parent_id}`));
 			break;
 		}
+		case 'attachment': {
+			const entityType = meta.entity_type as string;
+			const entityId = meta.entity_id as string;
+			if (entityType === 'task' || entityType === 'task_comment') {
+				const pid = meta.project_id as string;
+				goto(localizeHref(`/projects/${pid}?task=${entityId}`));
+			} else if (entityType === 'support_ticket' || entityType === 'ticket_message') {
+				goto(localizeHref(`/tickets?id=${entityId}`));
+			} else if (entityType === 'project') {
+				goto(localizeHref(`/projects/${entityId}`));
+			}
+			break;
+		}
 		}
 	}
 
@@ -172,6 +186,7 @@
 			case 'task': return 'Tasks';
 			case 'ticket_message': return 'Messages';
 			case 'task_comment': return 'Comments';
+			case 'attachment': return 'Files';
 			default: return type;
 		}
 	}
@@ -182,6 +197,7 @@
 			case 'task': return SquareCheck;
 			case 'ticket_message': return MessageCircle;
 			case 'task_comment': return MessageSquare;
+			case 'attachment': return Paperclip;
 			default: return Search;
 		}
 	}
@@ -264,7 +280,7 @@
 					</div>
 				{:else}
 					{@const groups = groupedResults()}
-					{#each ['ticket', 'task', 'ticket_message', 'task_comment'] as type (type)}
+					{#each ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'] as type (type)}
 						{#if groups[type]?.length}
 							<div class="px-4 pt-3 pb-1">
 								<span class="text-[10px] font-semibold uppercase tracking-wider text-sidebar-icon/50">
