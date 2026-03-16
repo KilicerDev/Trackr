@@ -241,13 +241,13 @@
 
 <div class="mx-auto w-full max-w-[1200px]">
 	<div class="flex items-center gap-3 border-b border-surface-border px-4 py-3">
-		<a
-			href={localizeHref('/projects' + (project?.organization_id ? `?org=${project.organization_id}` : ''))}
-			class="flex items-center gap-1 text-xs text-muted transition-colors hover:text-sidebar-text"
+		<button
+			onclick={() => history.back()}
+			class="flex cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-sidebar-text"
 		>
 			<ArrowLeft size={14} />
 			Projects
-		</a>
+		</button>
 	</div>
 
 	{#if projectStore.loading && !project}
