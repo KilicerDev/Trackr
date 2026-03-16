@@ -281,8 +281,34 @@
 		const taskParam = to?.url.searchParams.get('task') ?? null;
 		if (taskParam) selectedTaskId = taskParam;
 	});
+
+	$effect(() => {
+		if (!selectedTaskId) return;
+		function handleKeydown(e: KeyboardEvent) {
+			const tag = (e.target as HTMLElement)?.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+			if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+			e.preventDefault();
+			const idx = taskTree.findIndex(({ task }) => task.id === selectedTaskId);
+			if (idx === -1) return;
+			const next = e.key === 'ArrowDown'
+				? Math.min(idx + 1, taskTree.length - 1)
+				: Math.max(idx - 1, 0);
+			if (next !== idx) {
+				selectTask(taskTree[next].task.id);
+				requestAnimationFrame(() => {
+					document.querySelector(`[data-task-id="${taskTree[next].task.id}"]`)
+						?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+				});
+			}
+		}
+		document.addEventListener('keydown', handleKeydown);
+		return () => document.removeEventListener('keydown', handleKeydown);
+	});
 </script>
 
+<div class="flex h-full">
+<div class="min-w-0 flex-1 overflow-y-auto">
 <div class="mx-auto w-full">
 	<div class="flex items-center gap-3 border-b border-surface-border px-4 py-3">
 		<button
@@ -678,7 +704,7 @@
 		{:else}
 			<div>
 				{#each taskTree as { task, depth } (task.id)}
-					<TaskRow {task} {depth} onclick={() => selectTask(task.id)} />
+					<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
 				{/each}
 			</div>
 		{/if}
@@ -692,6 +718,7 @@
 		onCreated={(id) => selectTask(id)}
 	/>
 {/if}
+</div>
 
 {#if selectedTaskId}
 	<TaskDetailPanel
@@ -703,3 +730,4 @@
 		onClose={() => selectTask(null)}
 	/>
 {/if}
+</div>

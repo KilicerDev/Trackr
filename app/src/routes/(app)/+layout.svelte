@@ -26,7 +26,9 @@
 
 <SearchPalette />
 <Sidebar bind:pinned />
-<div class="min-h-screen bg-page-bg transition-[margin-left] duration-200 ease-in-out" style="margin-left: {pinned ? '240px' : '64px'}">
+<div class="flex h-dvh flex-col bg-page-bg transition-[margin-left] duration-200 ease-in-out" style="margin-left: {pinned ? '240px' : '64px'}">
     <Header />
-	{@render children()}
+	<div class="min-h-0 flex-1 overflow-y-auto">
+		{@render children()}
+	</div>
 </div>

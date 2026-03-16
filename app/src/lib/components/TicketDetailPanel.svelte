@@ -436,21 +436,7 @@
 	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 </script>
 
-<!-- Backdrop -->
-<div class="fixed inset-0 z-[60]" role="presentation">
-	<button
-		class="absolute inset-0 bg-black/30 transition-opacity"
-		onclick={onClose}
-		tabindex="-1"
-		aria-label="Close panel"
-	></button>
-
-	<!-- Panel -->
-	<div
-		class="absolute top-0 right-0 bottom-0 flex w-[480px] flex-col border-l border-surface-border bg-surface shadow-xl"
-		role="dialog"
-		aria-modal="true"
-	>
+<div class="flex h-full w-[480px] shrink-0 flex-col border-l border-surface-border bg-surface">
 		{#if loading}
 			<div class="flex flex-1 items-center justify-center">
 				<p class="text-sm text-muted">Loading...</p>
@@ -1041,5 +1027,4 @@
 				{/if}
 			</div>
 		{/if}
-	</div>
 </div>

@@ -5,10 +5,11 @@
 	type Props = {
 		task: Task;
 		depth?: number;
+		selected?: boolean;
 		onclick?: () => void;
 	};
 
-	let { task, depth = 0, onclick }: Props = $props();
+	let { task, depth = 0, selected = false, onclick }: Props = $props();
 
 	const priorityColors: Record<string, string> = {
 		urgent:
@@ -72,7 +73,8 @@
 </script>
 
 <button
-	class="group flex w-full items-center gap-3 border-b border-surface-border py-2.5 text-left text-sm transition-colors hover:bg-surface-hover"
+	data-task-id={task.id}
+	class="group flex w-full items-center gap-3 border-b border-surface-border py-2.5 text-left text-sm transition-colors {selected ? 'bg-accent/10' : 'hover:bg-surface-hover'}"
 	style="padding-left: {16 + depth * 24}px; padding-right: 16px;"
 	{onclick}
 >

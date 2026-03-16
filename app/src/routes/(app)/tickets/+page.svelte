@@ -209,8 +209,35 @@
 		const ticketIdParam = to?.url.searchParams.get('id') ?? null;
 		if (ticketIdParam) selectedTicketId = ticketIdParam;
 	});
+
+	$effect(() => {
+		if (!selectedTicketId) return;
+		function handleKeydown(e: KeyboardEvent) {
+			const tag = (e.target as HTMLElement)?.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+			if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+			e.preventDefault();
+			const items = ticketStore.items;
+			const idx = items.findIndex((t) => t.id === selectedTicketId);
+			if (idx === -1) return;
+			const next = e.key === 'ArrowDown'
+				? Math.min(idx + 1, items.length - 1)
+				: Math.max(idx - 1, 0);
+			if (next !== idx) {
+				selectTicket(items[next].id);
+				requestAnimationFrame(() => {
+					document.querySelector(`[data-task-id="${items[next].id}"]`)
+						?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+				});
+			}
+		}
+		document.addEventListener('keydown', handleKeydown);
+		return () => document.removeEventListener('keydown', handleKeydown);
+	});
 </script>
 
+<div class="flex h-full">
+<div class="min-w-0 flex-1 overflow-y-auto">
 <div
 	class="mx-auto w-full"
 	use:clickOutside={{
@@ -834,6 +861,7 @@
 					start_at: ticket.created_at,
 					end_at: ticket.resolved_at
 				}}
+				selected={ticket.id === selectedTicketId}
 				onclick={() => selectTicket(ticket.id)}
 			/>
 			{/each}
@@ -841,6 +869,7 @@
 
 		<p class="px-4 py-3 text-xs text-muted">{ticketStore.count} tickets total</p>
 	{/if}
+</div>
 </div>
 
 {#if selectedTicketId}
@@ -851,3 +880,4 @@
 		onUpdate={() => applyFilters()}
 	/>
 {/if}
+</div>
