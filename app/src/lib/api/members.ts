@@ -6,8 +6,14 @@ export const members = {
     const supabase = getClient();
     const { data, error } = await supabase
       .from("organization_members")
-      .select(MEMBER_SELECT)
+      .select(`
+        *,
+        user:users!inner(id, full_name, username, email, avatar_url, last_seen_at, is_active, deleted_at),
+        role:roles(id, name, slug)
+      `)
       .eq("organization_id", orgId)
+      .eq("user.is_active", true)
+      .is("user.deleted_at", null)
       .order("created_at");
 
     if (error) throw error;

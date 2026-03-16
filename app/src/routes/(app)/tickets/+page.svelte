@@ -28,7 +28,7 @@
 
 	type Member = {
 		user_id: string;
-		user: { id: string; full_name: string; avatar_url: string | null };
+		user: { id: string; full_name: string; avatar_url: string | null; is_active: boolean; deleted_at: string | null };
 		role: { id: string; name: string; slug: string } | null;
 	};
 	type CustomerOption = { id: string; full_name: string; email: string; avatar_url: string | null };

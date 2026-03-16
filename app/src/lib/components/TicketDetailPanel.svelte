@@ -22,7 +22,7 @@
 
 	type Member = {
 		user_id: string;
-		user: { id: string; full_name: string; avatar_url: string | null };
+		user: { id: string; full_name: string; avatar_url: string | null; is_active: boolean; deleted_at: string | null };
 		role: { id: string; name: string; slug: string } | null;
 	};
 
@@ -77,7 +77,7 @@
 
 	const ASSIGNABLE_ROLES = ['owner', 'admin', 'manager', 'agent'];
 	const assignableMembers = $derived(
-		members.filter((m) => m.role && ASSIGNABLE_ROLES.includes(m.role.slug))
+		members.filter((m) => m.user.is_active && !m.user.deleted_at && m.role && ASSIGNABLE_ROLES.includes(m.role.slug))
 	);
 
 	let ticket = $state<TicketDetail | null>(null);

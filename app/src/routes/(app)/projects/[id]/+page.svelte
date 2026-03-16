@@ -41,7 +41,7 @@
 
 	type OrgMember = {
 		user_id: string;
-		user: { id: string; full_name: string; email: string; avatar_url: string | null };
+		user: { id: string; full_name: string; email: string; avatar_url: string | null; is_active: boolean; deleted_at: string | null };
 		role: { id: string; name: string; slug: string } | null;
 	};
 
@@ -725,7 +725,7 @@
 		taskId={selectedTaskId}
 		members={(project?.members ?? []).map((m) => ({
 			user_id: m.user_id,
-			user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url }
+			user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url, is_active: m.user.is_active, deleted_at: m.user.deleted_at }
 		}))}
 		onClose={() => selectTask(null)}
 	/>

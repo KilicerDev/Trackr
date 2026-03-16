@@ -17,7 +17,7 @@
 
 	type Member = {
 		user_id: string;
-		user: { id: string; full_name: string; avatar_url: string | null };
+		user: { id: string; full_name: string; avatar_url: string | null; is_active: boolean; deleted_at: string | null };
 	};
 
 	type Comment = {
@@ -695,7 +695,7 @@
 									<div
 										class="absolute right-0 z-30 mt-1 max-h-48 w-[200px] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl"
 									>
-										{#each members.filter((m) => !task?.assignments?.some((a) => a.user_id === m.user_id)) as m (m.user_id)}
+										{#each members.filter((m) => m.user.is_active && !m.user.deleted_at && !task?.assignments?.some((a) => a.user_id === m.user_id)) as m (m.user_id)}
 											<button
 												class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
 												onmousedown={async (e) => {

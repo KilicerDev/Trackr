@@ -21,7 +21,7 @@ export const PROJECT_SELECT = `
   members:project_members(
     user_id,
     role:roles(id, name, slug),
-    user:users(id, full_name, username, avatar_url)
+    user:users(id, full_name, username, avatar_url, is_active, deleted_at)
   )
 ` as const;
 

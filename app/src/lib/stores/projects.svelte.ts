@@ -9,6 +9,8 @@ export type ProjectMember = {
     full_name: string;
     username: string;
     avatar_url: string | null;
+    is_active: boolean;
+    deleted_at: string | null;
   };
 };
 
