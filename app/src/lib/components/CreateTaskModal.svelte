@@ -45,7 +45,7 @@
 	const parentOptions = $derived(
 		taskStore.items.map((t) => ({
 			id: t.id,
-			label: `${t.project?.identifier ? t.project.identifier + '-' : ''}${t.short_id}  ${t.title}`
+			label: `${t.short_id}  ${t.title}`
 		}))
 	);
 	const selectedParentLabel = $derived(
