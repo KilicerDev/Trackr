@@ -11,8 +11,17 @@
 				const mode = localStorage.getItem('mode');
 				if (mode === 'dark') document.documentElement.classList.add('dark');
 				else if (mode === 'light') document.documentElement.classList.remove('dark');
+
+				if (localStorage.getItem('sidebar-pinned') === 'false')
+					document.documentElement.dataset.sidebarPinned = 'false';
 			})();
 		</script>
+		<style>
+			html[data-sidebar-pinned='false'] aside { width: 64px !important; }
+			html[data-sidebar-pinned='false'] aside .whitespace-nowrap,
+			html[data-sidebar-pinned='false'] aside .truncate { display: none !important; }
+			html[data-sidebar-pinned='false'] div[style*="margin-left: 240px"] { margin-left: 64px !important; }
+		</style>
 
 		%sveltekit.head%
 	</head>

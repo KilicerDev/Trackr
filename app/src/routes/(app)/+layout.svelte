@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import Sidebar from '$lib/assets/components/Sidebar.svelte';
 	import Header from '$lib/assets/components/Header.svelte';
 	import SearchPalette from '$lib/components/SearchPalette.svelte';
@@ -8,7 +9,18 @@
 	import { updateChecker } from '$lib/stores/updateChecker.svelte';
 
 	let { children } = $props();
-	let pinned = $state(true);
+	let pinned = $state(
+		browser ? document.documentElement.dataset.sidebarPinned !== 'false' : true
+	);
+
+	$effect(() => {
+		if (browser) {
+			localStorage.setItem('sidebar-pinned', String(pinned));
+			// Remove the data attribute after hydration so the CSS overrides in app.html
+			// stop interfering — Svelte's own {#if expanded} handles visibility from here.
+			delete document.documentElement.dataset.sidebarPinned;
+		}
+	});
 
 	$effect(() => {
 		const userId = auth.user?.id;
