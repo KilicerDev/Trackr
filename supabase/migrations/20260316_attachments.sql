@@ -48,7 +48,26 @@ CREATE POLICY attachments_delete ON public.attachments
     OR public.authorize('tasks', 'delete', org_id)
   );
 
--- 5. Storage bucket is created via supabase/config.toml [storage.buckets.attachments]
+-- 5. Create the storage bucket (config.toml only works with supabase CLI, not Docker)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'attachments',
+  'attachments',
+  false,
+  52428800,
+  ARRAY[
+    'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain', 'text/csv'
+  ]
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- 6. Add attachment_ids column to comments and messages
 ALTER TABLE public.task_comments ADD COLUMN attachment_ids uuid[] NOT NULL DEFAULT '{}';
