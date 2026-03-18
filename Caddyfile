@@ -23,7 +23,7 @@ api.example.com {
 			header_down -Access-Control-Expose-Headers
 			header_down -Access-Control-Max-Age
 		}
-		header Access-Control-Allow-Origin "https://trackr.dev"
+		header Access-Control-Allow-Origin "https://example.com"
 		header Access-Control-Allow-Credentials "true"
 		header Access-Control-Expose-Headers "Content-Range, X-Supabase-Api-Version"
 	}
