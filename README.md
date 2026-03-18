@@ -2,64 +2,40 @@
 
 Project management and support ticket platform built with SvelteKit and Supabase.
 
-## Self-Hosted (Docker)
+## Getting Started
 
-### Quick Start
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) (v20.10+) and [Docker Compose](https://docs.docker.com/compose/) (v2+)
+- [Git](https://git-scm.com/)
+
+### Setup
 
 ```bash
-git clone <repo-url> && cd Trackr
+git clone https://github.com/KilicerDev/Trackr.git && cd Trackr
 cp .env.example .env
-# Edit .env — change passwords, JWT secrets, and keys for production
-docker compose up --build -d
 ```
 
-Once all services are healthy, open **http://localhost:3000**. On first launch you will be redirected to `/setup` where you create the platform owner account and root organization.
+Edit `.env` and adjust the values to match your setup.
 
-### Updating
+### Start
 
 ```bash
-git pull
-docker compose up --build -d
+docker compose up -d
 ```
 
-New database migrations are applied automatically by the `db-migrations` service.
+The initial startup may take several minutes while images are pulled and built.
 
-### Services
+### Access
 
-| Service | Port | Description |
-|---------|------|-------------|
-| App | 3000 | SvelteKit frontend |
-| Kong | 8000 | Supabase API gateway |
-| Studio | 8000 (via Kong) | Supabase dashboard (basic auth) |
-| Inbucket | 9000 | Email testing UI |
-| Postgres | 5432 | Database (via Supavisor) |
-| Ollama | — | Embedding model (internal only) |
-| Embed | — | Go vector search service (internal only) |
+Once all containers are running, open **[http://localhost](http://localhost)** in your browser. On first launch you'll be redirected to `/setup` where you create the platform owner account and root organization.
 
-### Semantic Search Setup
+### Next Steps
 
-After the first `docker compose up`, pull the embedding model:
+- Create your first project from the Dashboard
+- Invite team members via **Settings > Team**
+- See the [full documentation](https://trackr.dev/docs) for production deployment, semantic search, and advanced configuration
 
-```bash
-docker exec -it trackr-ollama ollama pull nomic-embed-text
-```
-
-To index all existing data, run:
-
-```bash
-docker exec -it trackr-embed wget -qO- \
-  --header="Authorization: Bearer <your-EMBED_SERVICE_TOKEN>" \
-  --post-data='' http://localhost:8080/reindex
-```
-
-Use **Cmd+K** (Mac) or **Ctrl+K** (Windows/Linux) in the app to open the universal search palette.
-
-### Stopping
-
-```bash
-docker compose down        # stop containers, keep data
-docker compose down -v     # stop and delete all data
-```
 
 ## Local Development
 
@@ -75,7 +51,7 @@ npm install
 npm run dev
 ```
 
-The dev server runs at **http://localhost:5173**. Supabase Studio is at **http://localhost:54323**.
+The dev server runs at **[http://localhost:5173](http://localhost:5173)**. Supabase Studio is at **[http://localhost:54323](http://localhost:54323)**.
 
 ### Environment Variables
 
@@ -99,3 +75,7 @@ supabase db reset
 # Pull remote schema changes
 PGSSLMODE=disable supabase db pull --db-url postgresql://postgres:...@host:5432/postgres
 ```
+
+## License
+
+[AGPL-3.0](LICENSE)
