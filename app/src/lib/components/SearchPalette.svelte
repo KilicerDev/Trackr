@@ -49,6 +49,10 @@
 
 	const flatResults = $derived(
 		(() => {
+			if (!activeTab) {
+				// "All" tab: sort by similarity descending
+				return [...filteredResults].sort((a, b) => b.similarity - a.similarity);
+			}
 			const g = groupedResults();
 			const order: SourceType[] = ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'];
 			const flat: SearchResult[] = [];
@@ -278,7 +282,42 @@
 					<div class="px-4 py-8 text-center text-xs text-sidebar-icon/60">
 						Type to search across all content...
 					</div>
+				{:else if !activeTab}
+					<!-- All tab: flat list sorted by similarity -->
+					{#each flatResults as result, idx (result.source_id)}
+						{@const Icon = groupIcon(result.source_type)}
+						{@const status = String(result.metadata?.status ?? '')}
+						<button
+							data-search-index={idx}
+							class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors {idx === selectedIndex ? 'bg-accent/10' : 'hover:bg-surface-hover'}"
+							onclick={() => navigateTo(result)}
+							onmouseenter={() => { selectedIndex = idx; }}
+						>
+							<div class="mt-0.5 shrink-0">
+								<Icon size={14} class="text-sidebar-icon" />
+							</div>
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center gap-2">
+									<span class="truncate text-xs font-medium text-sidebar-text">{result.title}</span>
+									{#if status && status !== 'undefined'}
+										<span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {statusColor(status)}">
+											{status.replace('_', ' ')}
+										</span>
+									{/if}
+									<span class="ml-auto shrink-0 text-[10px] text-sidebar-icon/40">
+										{Math.round(result.similarity * 100)}%
+									</span>
+								</div>
+								{#if result.preview}
+									<p class="mt-0.5 truncate text-[11px] leading-relaxed text-sidebar-text/50">
+										{result.preview}
+									</p>
+								{/if}
+							</div>
+						</button>
+					{/each}
 				{:else}
+					<!-- Specific tab: grouped by type -->
 					{@const groups = groupedResults()}
 					{#each ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'] as type (type)}
 						{#if groups[type]?.length}
