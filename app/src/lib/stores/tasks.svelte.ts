@@ -70,6 +70,26 @@ class TaskStore {
     }
   }
 
+  async loadAll(filters?: TaskFilters, page = 1, perPage = 50) {
+    this.loading = true;
+    this.error = null;
+
+    try {
+      const f = filters ?? {};
+      if (!("parent_id" in f)) f.parent_id = null;
+      const { data, count } = await api.tasks.getAll(f, page, perPage);
+      this.items = data as Task[];
+      this.count = count;
+      this.filters = f;
+      this.page = page;
+    } catch (e) {
+      console.error("[TaskStore.loadAll]", e);
+      this.error = extractErrorMessage(e, "Failed to load tasks");
+    } finally {
+      this.loading = false;
+    }
+  }
+
   async loadById(id: string) {
     this.loading = true;
     try {

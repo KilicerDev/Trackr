@@ -3,6 +3,7 @@ import {
 	LayoutDashboard,
 	Ticket,
 	Files,
+	SquareCheckBig,
 	MessageCircle,
 	BookOpen,
 	Library,
@@ -33,6 +34,7 @@ export const sidebarSections: SidebarSection[] = [
 			{ label: 'Dashboard', icon: LayoutDashboard, href: '/' },
 			{ label: 'Support Tickets', icon: Ticket, href: '/tickets', requiredPermission: { resource: 'support_tickets', action: 'read' } },
 			{ label: 'Projects', icon: Files, href: '/projects' },
+			{ label: 'Tasks', icon: SquareCheckBig, href: '/tasks' },
 			{ label: '(Chats)', icon: MessageCircle, href: '/chats' }
 		]
 	},
