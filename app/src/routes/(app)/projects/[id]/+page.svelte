@@ -7,10 +7,15 @@
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
+	import { dndzone } from 'svelte-dnd-action';
+	import type { TaskFilters, FilterOp } from '$lib/api/tasks';
+	import type { Task } from '$lib/stores/tasks.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { ArrowLeft, Users, User, Check, X, Plus } from '@lucide/svelte';
+	import { ArrowLeft, Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
+	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
+	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { SvelteMap } from 'svelte/reactivity';
 	import type { Attachment } from '$lib/api/attachments';
@@ -38,6 +43,133 @@
 		completed: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
 		archived: 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'
 	};
+
+	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
+	const TASK_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'] as const;
+	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
+	const TASK_GROUP_OPTIONS = ['none', 'status'] as const;
+
+	type TaskViewMode = 'list' | 'board';
+	type TaskGroupBy = (typeof TASK_GROUP_OPTIONS)[number];
+
+	const priorityColors: Record<string, string> = {
+		urgent: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300',
+		high: 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
+		medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300',
+		low: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
+		none: 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'
+	};
+
+	const taskStatusColors: Record<string, string> = {
+		backlog: 'bg-gray-100 text-gray-600 dark:bg-surface-hover dark:text-sidebar-text',
+		todo: 'bg-gray-100 text-gray-700 dark:bg-surface-hover dark:text-sidebar-text',
+		in_progress: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300',
+		in_review: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
+		done: 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300',
+		cancelled: 'bg-gray-100 text-gray-400 dark:bg-surface-hover dark:text-muted'
+	};
+
+	// Task filter & view state
+	let taskViewMode = $state<TaskViewMode>(localStorage.getItem('project-tasks-view') as TaskViewMode ?? 'list');
+	let taskGroupBy = $state<TaskGroupBy>(localStorage.getItem('project-tasks-group') as TaskGroupBy ?? 'none');
+	let taskStatusOp = $state<'is' | 'is_not'>('is_not');
+	let taskStatusSelected = $state<string[]>(['done', 'cancelled']);
+	let taskPriorityOp = $state<'is' | 'is_not'>('is');
+	let taskPrioritySelected = $state<string[]>([]);
+	let taskTypeOp = $state<'is' | 'is_not'>('is');
+	let taskTypeSelected = $state<string[]>([]);
+	let taskFiltersVisible = $state(false);
+
+	function formatTaskStatus(s: string): string {
+		return s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+	}
+
+	function formatPriority(p: string): string {
+		return p.charAt(0).toUpperCase() + p.slice(1);
+	}
+
+	function toFilterOp(op: 'is' | 'is_not', values: string[]): FilterOp | undefined {
+		if (values.length === 0) return undefined;
+		return { values, not: op === 'is_not' };
+	}
+
+	function getTaskFilters(): TaskFilters {
+		const id = $page.params.id!;
+		const f: TaskFilters = { project_id: id };
+		const skipStatus = taskViewMode === 'board' && taskGroupBy === 'status';
+		if (!skipStatus) f.status = toFilterOp(taskStatusOp, taskStatusSelected);
+		f.priority = toFilterOp(taskPriorityOp, taskPrioritySelected);
+		f.type = toFilterOp(taskTypeOp, taskTypeSelected);
+		return f;
+	}
+
+	async function applyTaskFilters() {
+		await taskStore.load(getTaskFilters());
+		if (taskViewMode === 'board') rebuildTaskBoard();
+	}
+
+	function clearTaskFilters() {
+		taskStatusOp = 'is'; taskStatusSelected = [];
+		taskPriorityOp = 'is'; taskPrioritySelected = [];
+		taskTypeOp = 'is'; taskTypeSelected = [];
+		applyTaskFilters();
+	}
+
+	function setTaskView(v: TaskViewMode) {
+		taskViewMode = v;
+		localStorage.setItem('project-tasks-view', v);
+		if (v === 'board' && taskGroupBy === 'none') {
+			taskGroupBy = 'status';
+			localStorage.setItem('project-tasks-group', 'status');
+		}
+		applyTaskFilters();
+	}
+
+	function setTaskGroupBy(g: TaskGroupBy) {
+		taskGroupBy = g;
+		localStorage.setItem('project-tasks-group', g);
+		applyTaskFilters();
+	}
+
+	const taskFilterCount = $derived(
+		[taskStatusSelected.length, taskPrioritySelected.length, taskTypeSelected.length].filter(Boolean).length
+	);
+
+	// Kanban board for project tasks
+	type BoardColumn = { key: string; label: string; items: (Task & { id: string })[] };
+	let taskBoardColumns = $state<BoardColumn[]>([]);
+
+	function rebuildTaskBoard() {
+		taskBoardColumns = TASK_STATUSES.map((s) => ({
+			key: s,
+			label: formatTaskStatus(s),
+			items: taskStore.items.filter((t) => t.status === s).map((t) => ({ ...t, id: t.id }))
+		}));
+	}
+
+	function handleTaskConsider(colIndex: number, e: CustomEvent<{ items: (Task & { id: string })[] }>) {
+		taskBoardColumns[colIndex].items = e.detail.items;
+	}
+
+	async function handleTaskFinalize(colIndex: number, colKey: string, e: CustomEvent<{ items: (Task & { id: string })[] }>) {
+		taskBoardColumns[colIndex].items = e.detail.items;
+		const moved: { id: string; status: string }[] = [];
+		for (const item of e.detail.items) {
+			if (item.status !== colKey) {
+				item.status = colKey;
+				moved.push({ id: item.id, status: colKey });
+			}
+		}
+		for (const m of moved) {
+			try {
+				await api.tasks.update(m.id, { status: m.status });
+			} catch {
+				await taskStore.load(getTaskFilters());
+				rebuildTaskBoard();
+				return;
+			}
+		}
+	}
 
 	type OrgMember = {
 		user_id: string;
@@ -239,10 +371,11 @@
 	onMount(async () => {
 		const id = $page.params.id!;
 		await Promise.all([
-			taskStore.load({ project_id: id }),
+			taskStore.load(getTaskFilters()),
 			projectStore.loadById(id),
 			api.attachments.list('project', id).then((att) => { projectAttachments = att; }).catch(() => {})
 		]);
+		if (taskViewMode === 'board') rebuildTaskBoard();
 
 		const orgId = projectStore.activeProject?.organization_id;
 		if (orgId) {
@@ -308,9 +441,9 @@
 </script>
 
 <div class="flex h-full">
-<div class="min-w-0 flex-1 overflow-y-auto">
-<div class="mx-auto w-full">
-	<div class="flex items-center gap-3 border-b border-surface-border px-4 py-3">
+<div class="min-w-0 flex-1 flex flex-col overflow-hidden">
+<div class="mx-auto w-full flex flex-col flex-1 min-h-0">
+	<div class="flex shrink-0 items-center gap-3 border-b border-surface-border px-4 py-3">
 		<button
 			onclick={() => history.back()}
 			class="flex cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-sidebar-text"
@@ -325,6 +458,8 @@
 	{:else if projectStore.error}
 		<p class="px-4 py-12 text-center text-sm text-red-500">{projectStore.error}</p>
 	{:else if project}
+		<!-- Project details — scrollable, shrinks when board needs space -->
+		<div class="shrink overflow-y-auto min-h-0">
 		<div class="border-b border-surface-border px-4 py-6">
 			<div class="flex items-start justify-between gap-4">
 				<div class="min-w-0 flex-1">
@@ -676,15 +811,66 @@
 				</div>
 			{/if}
 		</div>
+	</div>
 
-		<!-- Tasks -->
-		<div class="flex items-center justify-between px-4 pt-4 pb-2">
-			<h2 class="text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">
-				Tasks
-				{#if taskStore.count > 0}
-					<span class="ml-1 text-muted">({taskStore.count})</span>
+		<!-- Tasks section — fills remaining height -->
+		<div class="flex flex-1 min-h-0 flex-col">
+		<!-- Tasks header -->
+		<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 pt-4 pb-2">
+			<div class="flex items-center gap-2">
+				<h2 class="text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">
+					Tasks
+					{#if taskStore.count > 0}
+						<span class="ml-1 text-muted">({taskStore.count})</span>
+					{/if}
+				</h2>
+
+				<!-- View toggle -->
+				<div class="flex items-center border border-surface-border">
+					<button
+						class="flex h-[28px] items-center gap-1 px-2 text-[11px] transition-colors {taskViewMode === 'list' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+						onclick={() => setTaskView('list')}
+					>
+						<LayoutList size={12} /> List
+					</button>
+					<button
+						class="flex h-[28px] items-center gap-1 px-2 text-[11px] transition-colors {taskViewMode === 'board' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+						onclick={() => setTaskView('board')}
+					>
+						<Columns3 size={12} /> Board
+					</button>
+				</div>
+
+				<!-- Group-by (list only) -->
+				{#if taskViewMode === 'list'}
+					<div class="flex items-center border border-surface-border">
+						{#each TASK_GROUP_OPTIONS as g (g)}
+							<button
+								class="flex h-[28px] items-center px-2 text-[11px] transition-colors {taskGroupBy === g ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+								onclick={() => setTaskGroupBy(g)}
+							>
+								{formatTaskStatus(g)}
+							</button>
+						{/each}
+					</div>
 				{/if}
-			</h2>
+
+				<!-- Filter toggle -->
+				<div class="relative shrink-0">
+					<button
+						class="flex h-[28px] w-[28px] items-center justify-center border border-surface-border bg-surface transition-colors hover:bg-surface-hover {taskFiltersVisible ? 'text-accent' : 'text-sidebar-icon'}"
+						onclick={() => (taskFiltersVisible = !taskFiltersVisible)}
+					>
+						<ListFilter size={13} />
+					</button>
+					{#if taskFilterCount > 0}
+						<span class="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center bg-accent px-0.5 text-[9px] leading-none font-medium text-white">
+							{taskFilterCount}
+						</span>
+					{/if}
+				</div>
+			</div>
+
 			{#if canCreateTask}
 				<button
 					class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
@@ -695,19 +881,113 @@
 			{/if}
 		</div>
 
+		<!-- Task filters -->
+		{#if taskFiltersVisible}
+			<div class="shrink-0 border-b border-surface-border bg-surface/40 px-4 py-3">
+				<div class="flex flex-wrap items-end gap-3">
+					{#if !(taskViewMode === 'board')}
+						<FilterDropdown
+							label="Status"
+							options={TASK_STATUSES.map((s) => ({ value: s, label: formatTaskStatus(s) }))}
+							operator={taskStatusOp}
+							selected={taskStatusSelected}
+							onchange={(op, sel) => { taskStatusOp = op; taskStatusSelected = sel; applyTaskFilters(); }}
+						/>
+					{/if}
+					<FilterDropdown
+						label="Priority"
+						options={TASK_PRIORITIES.map((p) => ({ value: p, label: formatPriority(p) }))}
+						operator={taskPriorityOp}
+						selected={taskPrioritySelected}
+						onchange={(op, sel) => { taskPriorityOp = op; taskPrioritySelected = sel; applyTaskFilters(); }}
+					/>
+					<FilterDropdown
+						label="Type"
+						options={TASK_TYPES.map((t) => ({ value: t, label: formatTaskStatus(t) }))}
+						operator={taskTypeOp}
+						selected={taskTypeSelected}
+						onchange={(op, sel) => { taskTypeOp = op; taskTypeSelected = sel; applyTaskFilters(); }}
+					/>
+					{#if taskFilterCount > 0}
+						<button
+							class="pb-0.5 text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+							onclick={clearTaskFilters}
+						>
+							Clear all
+						</button>
+					{/if}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Task content -->
 		{#if taskStore.loading}
 			<p class="px-4 py-8 text-center text-sm text-muted">Loading tasks...</p>
 		{:else if taskStore.error}
 			<p class="px-4 py-8 text-center text-sm text-red-500">{taskStore.error}</p>
+		{:else if taskViewMode === 'board'}
+			<!-- Kanban -->
+			<div class="flex flex-1 min-h-0 gap-0 overflow-x-auto">
+				{#each taskBoardColumns as col, colIndex (col.key)}
+					<div class="flex w-56 min-w-[14rem] shrink-0 flex-col border-r border-surface-border last:border-r-0 max-h-full">
+						<div class="flex items-center gap-2 px-3 py-2 border-b border-surface-border">
+							<span class="text-[10px] font-semibold uppercase tracking-wider text-muted truncate">{col.label}</span>
+							<span class="ml-auto shrink-0 text-[10px] text-muted">{col.items.length}</span>
+						</div>
+						<div
+							class="flex-1 overflow-y-auto p-1.5 min-h-[40px] scrollbar-none"
+							style="-ms-overflow-style: none; scrollbar-width: none;"
+							use:dndzone={{ items: col.items, flipDurationMs: 200, dropTargetStyle: { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' } }}
+							onconsider={(e) => handleTaskConsider(colIndex, e)}
+							onfinalize={(e) => handleTaskFinalize(colIndex, col.key, e)}
+						>
+							{#each col.items as task (task.id)}
+								{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
+								<button
+									class="mb-1.5 w-full cursor-pointer border border-surface-border px-2.5 py-2 text-left transition-colors hover:bg-surface-hover last:mb-0 {selectedTaskId === task.id ? 'bg-accent/8' : ''}"
+									onclick={() => selectTask(task.id)}
+								>
+									<div class="mb-1 flex items-center gap-1.5">
+										<span class="text-muted"><TypeIcon size={11} /></span>
+										<span class="text-[10px] font-medium text-accent">{task.short_id || '—'}</span>
+									</div>
+									<p class="mb-1.5 line-clamp-2 text-[11px] leading-snug text-sidebar-text">{task.title}</p>
+									<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[9px] font-medium {priorityColors[task.priority] ?? priorityColors.none}">
+										{formatPriority(task.priority)}
+									</span>
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</div>
 		{:else if taskTree.length === 0}
-			<p class="px-4 py-8 text-center text-sm text-muted">No tasks in this project yet.</p>
+			<p class="px-4 py-8 text-center text-sm text-muted">
+				{taskFilterCount > 0 ? 'No tasks match your filters.' : 'No tasks in this project yet.'}
+			</p>
+		{:else if taskGroupBy === 'status'}
+			<!-- Grouped by status list -->
+			{@const groups = TASK_STATUSES.map((s) => ({ key: s, label: formatTaskStatus(s), tasks: taskTree.filter(({ task }) => task.status === s) })).filter((g) => g.tasks.length > 0)}
+			<div>
+				{#each groups as group (group.key)}
+					<div class="flex items-center gap-2 border-b border-surface-border bg-surface-hover/50 px-4 py-1.5">
+						<span class="text-[10px] font-semibold uppercase tracking-wider text-muted">{group.label}</span>
+						<span class="text-[10px] text-muted/60">({group.tasks.length})</span>
+					</div>
+					{#each group.tasks as { task, depth } (task.id)}
+						<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
+					{/each}
+				{/each}
+			</div>
 		{:else}
+			<!-- Flat list -->
 			<div>
 				{#each taskTree as { task, depth } (task.id)}
 					<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
 				{/each}
 			</div>
 		{/if}
+	</div>
 	{/if}
 </div>
 

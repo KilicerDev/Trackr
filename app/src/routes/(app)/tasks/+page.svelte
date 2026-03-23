@@ -71,7 +71,8 @@
 		return (op === 'is_not' ? 'not:' : 'is:') + values.join(',');
 	}
 
-	const initStatusF = parseFilterParam(page.url.searchParams.get('status'));
+	const rawStatus = page.url.searchParams.get('status');
+	const initStatusF = rawStatus ? parseFilterParam(rawStatus) : { op: 'is_not' as const, values: ['done', 'cancelled'] };
 	const initPriorityF = parseFilterParam(page.url.searchParams.get('priority'));
 	const initTypeF = parseFilterParam(page.url.searchParams.get('type'));
 	const initProjectF = parseFilterParam(page.url.searchParams.get('project'));
