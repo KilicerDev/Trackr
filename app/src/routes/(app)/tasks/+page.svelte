@@ -143,7 +143,10 @@
 			}
 		}
 
-		return (groupBy === 'status' ? order : order).map((k) => map.get(k)!).filter((g) => g.tasks.length > 0);
+		const sorted = groupBy === 'status'
+			? order
+			: order.sort((a, b) => (map.get(a)!.label).localeCompare(map.get(b)!.label));
+		return sorted.map((k) => map.get(k)!).filter((g) => g.tasks.length > 0);
 	});
 
 	// Kanban columns – mutable state so dnd can update them during drag
@@ -178,7 +181,9 @@
 			map.get(pid)!.items.push({ ...t, id: t.id });
 		}
 
-		return order.map((k) => map.get(k)!);
+		return order
+			.sort((a, b) => (map.get(a)!.label).localeCompare(map.get(b)!.label))
+			.map((k) => map.get(k)!);
 	}
 
 	function rebuildBoard() {
@@ -331,6 +336,14 @@
 			});
 		}
 	}
+
+	// ---------- sync board with store ----------
+
+	// Rebuild board columns whenever taskStore.items changes (e.g. panel edits)
+	$effect(() => {
+		const _ = taskStore.items;   // track dependency
+		if (viewMode === 'board' && !initialLoading) rebuildBoard();
+	});
 
 	// ---------- keyboard nav ----------
 
