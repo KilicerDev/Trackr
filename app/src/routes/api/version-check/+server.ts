@@ -1,8 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-const VERSION_URL =
-  "https://gist.githubusercontent.com/KilicerDev/a0b8c050b67775ede6a63620389596f9/raw/version.json";
+const VERSION_URL = "https://trackr.dev/api/version";
 
 export const GET: RequestHandler = async ({ locals }) => {
   if (!locals.session) return json(null, { status: 401 });
