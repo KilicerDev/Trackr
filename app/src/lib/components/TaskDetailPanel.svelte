@@ -107,6 +107,7 @@
 	$effect(() => {
 		function handleKeydown(e: KeyboardEvent) {
 			if (e.key === 'Escape') {
+				if (document.querySelector('[data-attachment-preview]')) return;
 				if (openDropdown) {
 					openDropdown = null;
 				} else {
