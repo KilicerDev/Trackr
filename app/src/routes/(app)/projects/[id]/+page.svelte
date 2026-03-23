@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { replaceState, afterNavigate } from '$app/navigation';
 	import { projectStore } from '$lib/stores/projects.svelte';
@@ -70,8 +71,8 @@
 	};
 
 	// Task filter & view state
-	let taskViewMode = $state<TaskViewMode>(localStorage.getItem('project-tasks-view') as TaskViewMode ?? 'list');
-	let taskGroupBy = $state<TaskGroupBy>(localStorage.getItem('project-tasks-group') as TaskGroupBy ?? 'none');
+	let taskViewMode = $state<TaskViewMode>((browser ? localStorage.getItem('project-tasks-view') : null) as TaskViewMode ?? 'list');
+	let taskGroupBy = $state<TaskGroupBy>((browser ? localStorage.getItem('project-tasks-group') : null) as TaskGroupBy ?? 'none');
 	let taskStatusOp = $state<'is' | 'is_not'>('is_not');
 	let taskStatusSelected = $state<string[]>(['done', 'cancelled']);
 	let taskPriorityOp = $state<'is' | 'is_not'>('is');

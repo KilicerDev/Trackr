@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 	import { dndzone } from 'svelte-dnd-action';
@@ -54,8 +55,8 @@
 
 	// ---------- state ----------
 
-	const initView = (page.url.searchParams.get('view') as ViewMode) ?? localStorage.getItem('tasks-view') ?? 'list';
-	const initGroup = (page.url.searchParams.get('group') as GroupBy) ?? localStorage.getItem('tasks-group') ?? 'status';
+	const initView = (page.url.searchParams.get('view') as ViewMode) ?? (browser ? localStorage.getItem('tasks-view') : null) ?? 'list';
+	const initGroup = (page.url.searchParams.get('group') as GroupBy) ?? (browser ? localStorage.getItem('tasks-group') : null) ?? 'status';
 
 	let viewMode = $state<ViewMode>(initView === 'board' ? 'board' : 'list');
 	let groupBy = $state<GroupBy>(GROUP_OPTIONS.includes(initGroup as GroupBy) ? (initGroup as GroupBy) : 'status');
