@@ -508,9 +508,9 @@
 
 						<!-- Status dropdown -->
 						{#if canUpdateProject}
-							<div class="relative" data-dropdown>
+							<div class="relative flex items-center" data-dropdown>
 								<button
-									class="cursor-pointer px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80 {statusColors[
+									class="inline-flex cursor-pointer items-center px-2 py-1 text-[10px] font-medium leading-none transition-colors hover:opacity-80 {statusColors[
 										project.status
 									] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
 									onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
@@ -540,7 +540,7 @@
 							</div>
 						{:else}
 							<span
-								class="px-2 py-0.5 text-[10px] font-medium {statusColors[project.status] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
+								class="inline-flex items-center px-2 py-1 text-[10px] font-medium leading-none {statusColors[project.status] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
 							>
 								{formatStatus(project.status)}
 							</span>
