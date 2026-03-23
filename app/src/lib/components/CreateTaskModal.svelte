@@ -22,16 +22,17 @@
 		prefillTitle?: string;
 		prefillDescription?: string;
 		prefillPriority?: string;
+		prefillStatus?: string;
 	}
 
-	let { projectId, onClose, onCreated, supportTicketId, prefillTitle, prefillDescription, prefillPriority }: Props = $props();
+	let { projectId, onClose, onCreated, supportTicketId, prefillTitle, prefillDescription, prefillPriority, prefillStatus }: Props = $props();
 
 	let selectedProjectId = $state(projectId ?? '');
 	let title = $state(prefillTitle ?? '');
 	let description = $state(prefillDescription ?? '');
 	let priority = $state<string>(prefillPriority ?? 'medium');
 	let type = $state<string>('task');
-	let status = $state<string>('todo');
+	let status = $state<string>(prefillStatus ?? 'todo');
 
 	const needsProjectSelector = $derived(!projectId);
 	const projects = $derived(projectStore.items);
@@ -49,10 +50,12 @@
 	let pendingFiles = $state<File[]>([]);
 
 	const parentOptions = $derived(
-		taskStore.items.map((t) => ({
-			id: t.id,
-			label: `${t.short_id}  ${t.title}`
-		}))
+		taskStore.items
+			.filter((t) => !resolvedProjectId || t.project_id === resolvedProjectId)
+			.map((t) => ({
+				id: t.id,
+				label: `${t.short_id}  ${t.title}`
+			}))
 	);
 	const selectedParentLabel = $derived(
 		parentOptions.find((p) => p.id === parentId)?.label ?? 'None'

@@ -23,7 +23,8 @@
 		ChevronLeft,
 		ChevronRight,
 		Search,
-		X
+		X,
+		Plus
 	} from '@lucide/svelte';
 
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
@@ -89,6 +90,7 @@
 
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
+	let createPrefill = $state<{ projectId?: string; status?: string }>({});
 	let selectedTaskId = $state<string | null>(page.url.searchParams.get('task') ?? null);
 	let currentPage = $state(1);
 	const perPage = 50;
@@ -454,7 +456,7 @@
 
 		<button
 			class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
-			onclick={() => (createModalOpen = true)}
+			onclick={() => { createPrefill = {}; createModalOpen = true; }}
 		>
 			New Task
 		</button>
@@ -595,6 +597,20 @@
 						<span class="ml-auto shrink-0 text-[10px] text-muted">{col.items.length}</span>
 					</div>
 
+					<!-- Create task shortcut -->
+					<button
+						class="flex w-full items-center justify-center gap-1.5 border-b border-dashed border-surface-border px-3 py-2 text-[11px] text-muted transition-colors hover:text-accent shrink-0"
+						onclick={() => {
+							createPrefill = groupBy === 'status'
+								? { status: col.key }
+								: { projectId: col.key !== '__none__' ? col.key : undefined };
+							createModalOpen = true;
+						}}
+					>
+						<Plus size={12} />
+						Create task
+					</button>
+
 					<!-- Cards container -->
 					<div
 						class="flex-1 overflow-y-auto p-2 min-h-[60px] scrollbar-none"
@@ -676,8 +692,10 @@
 <!-- ===== CREATE MODAL ===== -->
 {#if createModalOpen}
 	<CreateTaskModal
+		projectId={createPrefill.projectId}
+		prefillStatus={createPrefill.status}
 		onClose={() => (createModalOpen = false)}
-		onCreated={() => { createModalOpen = false; taskStore.loadAll(getFilters(), currentPage, perPage); }}
+		onCreated={async () => { createModalOpen = false; await taskStore.loadAll(getFilters(), currentPage, perPage); if (viewMode === 'board') rebuildBoard(); }}
 	/>
 {/if}
 
