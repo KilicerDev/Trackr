@@ -73,11 +73,38 @@
 		return (op === 'is_not' ? 'not:' : 'is:') + values.join(',');
 	}
 
+	function saveFiltersToStorage() {
+		if (!browser) return;
+		localStorage.setItem('tasks-filters', JSON.stringify({
+			statusOp, statusSelected, priorityOp, prioritySelected,
+			typeOp, typeSelected, projectOp, projectSelected, searchQuery
+		}));
+	}
+
+	function loadFiltersFromStorage() {
+		if (!browser) return null;
+		try {
+			const raw = localStorage.getItem('tasks-filters');
+			return raw ? JSON.parse(raw) : null;
+		} catch { return null; }
+	}
+
+	const hasUrlFilters = ['status', 'priority', 'type', 'project', 'q'].some(k => page.url.searchParams.has(k));
+	const storedFilters = !hasUrlFilters && browser ? loadFiltersFromStorage() : null;
+
 	const rawStatus = page.url.searchParams.get('status');
-	const initStatusF = rawStatus ? parseFilterParam(rawStatus) : { op: 'is_not' as const, values: ['done', 'cancelled'] };
-	const initPriorityF = parseFilterParam(page.url.searchParams.get('priority'));
-	const initTypeF = parseFilterParam(page.url.searchParams.get('type'));
-	const initProjectF = parseFilterParam(page.url.searchParams.get('project'));
+	const initStatusF = storedFilters
+		? { op: storedFilters.statusOp, values: storedFilters.statusSelected }
+		: rawStatus ? parseFilterParam(rawStatus) : { op: 'is_not' as const, values: ['done', 'cancelled'] };
+	const initPriorityF = storedFilters
+		? { op: storedFilters.priorityOp, values: storedFilters.prioritySelected }
+		: parseFilterParam(page.url.searchParams.get('priority'));
+	const initTypeF = storedFilters
+		? { op: storedFilters.typeOp, values: storedFilters.typeSelected }
+		: parseFilterParam(page.url.searchParams.get('type'));
+	const initProjectF = storedFilters
+		? { op: storedFilters.projectOp, values: storedFilters.projectSelected }
+		: parseFilterParam(page.url.searchParams.get('project'));
 
 	let statusOp = $state<'is' | 'is_not'>(initStatusF.op);
 	let statusSelected = $state<string[]>(initStatusF.values);
@@ -87,7 +114,7 @@
 	let typeSelected = $state<string[]>(initTypeF.values);
 	let projectOp = $state<'is' | 'is_not'>(initProjectF.op);
 	let projectSelected = $state<string[]>(initProjectF.values);
-	let searchQuery = $state(page.url.searchParams.get('q') ?? '');
+	let searchQuery = $state(storedFilters ? storedFilters.searchQuery : (page.url.searchParams.get('q') ?? ''));
 
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
@@ -233,6 +260,7 @@
 		if (selectedTaskId) url.searchParams.set('task', selectedTaskId);
 		else url.searchParams.delete('task');
 		replaceState(localizeHref(url.pathname + url.search), {});
+		saveFiltersToStorage();
 	}
 
 	async function applyFilters() {
