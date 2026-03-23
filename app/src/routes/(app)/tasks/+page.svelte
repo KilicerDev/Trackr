@@ -5,15 +5,17 @@
 	import { dndzone } from 'svelte-dnd-action';
 	import { taskStore, type Task } from '$lib/stores/tasks.svelte';
 	import { projectStore } from '$lib/stores/projects.svelte';
+	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { clickOutside } from '$lib/actions/clickOutside';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import { api } from '$lib/api';
 	import type { TaskFilters } from '$lib/api/tasks';
+	import type { FilterOp } from '$lib/api/tasks';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
+	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
 	import {
 		ListFilter,
 		LayoutList,
@@ -27,7 +29,7 @@
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
 	const TASK_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
-	const GROUP_OPTIONS = ['status', 'project'] as const;
+	const GROUP_OPTIONS = ['none', 'status', 'project'] as const;
 
 	type ViewMode = 'list' | 'board';
 	type GroupBy = (typeof GROUP_OPTIONS)[number];
@@ -57,30 +59,88 @@
 	let viewMode = $state<ViewMode>(initView === 'board' ? 'board' : 'list');
 	let groupBy = $state<GroupBy>(GROUP_OPTIONS.includes(initGroup as GroupBy) ? (initGroup as GroupBy) : 'status');
 
-	let statusFilter = $state(page.url.searchParams.get('status') ?? '');
-	let priorityFilter = $state(page.url.searchParams.get('priority') ?? '');
-	let typeFilter = $state(page.url.searchParams.get('type') ?? '');
-	let projectFilter = $state(page.url.searchParams.get('project') ?? '');
+	function parseFilterParam(raw: string | null): { op: 'is' | 'is_not'; values: string[] } {
+		if (!raw) return { op: 'is', values: [] };
+		if (raw.startsWith('not:')) return { op: 'is_not', values: raw.slice(4).split(',').filter(Boolean) };
+		if (raw.startsWith('is:')) return { op: 'is', values: raw.slice(3).split(',').filter(Boolean) };
+		return { op: 'is', values: raw.split(',').filter(Boolean) };
+	}
+
+	function encodeFilterParam(op: 'is' | 'is_not', values: string[]): string {
+		if (values.length === 0) return '';
+		return (op === 'is_not' ? 'not:' : 'is:') + values.join(',');
+	}
+
+	const initStatusF = parseFilterParam(page.url.searchParams.get('status'));
+	const initPriorityF = parseFilterParam(page.url.searchParams.get('priority'));
+	const initTypeF = parseFilterParam(page.url.searchParams.get('type'));
+	const initProjectF = parseFilterParam(page.url.searchParams.get('project'));
+
+	let statusOp = $state<'is' | 'is_not'>(initStatusF.op);
+	let statusSelected = $state<string[]>(initStatusF.values);
+	let priorityOp = $state<'is' | 'is_not'>(initPriorityF.op);
+	let prioritySelected = $state<string[]>(initPriorityF.values);
+	let typeOp = $state<'is' | 'is_not'>(initTypeF.op);
+	let typeSelected = $state<string[]>(initTypeF.values);
+	let projectOp = $state<'is' | 'is_not'>(initProjectF.op);
+	let projectSelected = $state<string[]>(initProjectF.values);
 	let searchQuery = $state(page.url.searchParams.get('q') ?? '');
 
 	let filtersVisible = $state(false);
-	let filterDropdownOpen = $state<string | null>(null);
 	let createModalOpen = $state(false);
 	let selectedTaskId = $state<string | null>(page.url.searchParams.get('task') ?? null);
 	let currentPage = $state(1);
 	const perPage = 50;
+	let initialLoading = $state(true);
 
 	// ---------- derived ----------
 
 	const projects = $derived(projectStore.items);
+	const orgNameMap = $derived(Object.fromEntries(orgStore.all.map((o) => [o.id, o.name])));
 
 	const hasActiveFilters = $derived(
-		!!(statusFilter || priorityFilter || typeFilter || projectFilter || searchQuery)
+		!!(statusSelected.length || prioritySelected.length || typeSelected.length || projectSelected.length || searchQuery)
 	);
 
 	const activeFiltersCount = $derived(
-		[statusFilter, priorityFilter, typeFilter, projectFilter, searchQuery].filter(Boolean).length
+		[statusSelected.length, prioritySelected.length, typeSelected.length, projectSelected.length, searchQuery].filter(Boolean).length
 	);
+
+	// List view grouping
+	type ListGroup = { key: string; label: string; color?: string; tasks: Task[] };
+
+	const listGroups = $derived.by((): ListGroup[] | null => {
+		if (groupBy === 'none') return null;
+		const items = taskStore.items;
+		const map = new Map<string, ListGroup>();
+		const order: string[] = [];
+
+		if (groupBy === 'status') {
+			for (const s of TASK_STATUSES) {
+				map.set(s, { key: s, label: formatStatus(s), tasks: [] });
+				order.push(s);
+			}
+			for (const t of items) {
+				map.get(t.status)?.tasks.push(t);
+			}
+		} else {
+			for (const t of items) {
+				const pid = t.project_id ?? '__none__';
+				if (!map.has(pid)) {
+					map.set(pid, {
+						key: pid,
+						label: t.project?.name ?? 'No Project',
+						color: t.project?.color ?? undefined,
+						tasks: []
+					});
+					order.push(pid);
+				}
+				map.get(pid)!.tasks.push(t);
+			}
+		}
+
+		return (groupBy === 'status' ? order : order).map((k) => map.get(k)!).filter((g) => g.tasks.length > 0);
+	});
 
 	// Kanban columns – mutable state so dnd can update them during drag
 	type BoardColumn = { key: string; label: string; color: string; items: (Task & { id: string })[] };
@@ -114,13 +174,6 @@
 			map.get(pid)!.items.push({ ...t, id: t.id });
 		}
 
-		for (const p of projects) {
-			if (!map.has(p.id)) {
-				map.set(p.id, { key: p.id, label: p.name, color: p.color ?? 'var(--color-muted)', items: [] });
-				order.push(p.id);
-			}
-		}
-
 		return order.map((k) => map.get(k)!);
 	}
 
@@ -141,16 +194,19 @@
 		return p.charAt(0).toUpperCase() + p.slice(1);
 	}
 
+	function toFilterOp(op: 'is' | 'is_not', values: string[]): FilterOp | undefined {
+		if (values.length === 0) return undefined;
+		return { values, not: op === 'is_not' };
+	}
+
 	function getFilters(): TaskFilters {
 		const f: TaskFilters = { parent_id: null };
-		// In board mode, skip the filter that matches the grouping dimension —
-		// columns already represent that axis, so filtering would hide moved items.
 		const skipStatus = viewMode === 'board' && groupBy === 'status';
 		const skipProject = viewMode === 'board' && groupBy === 'project';
-		if (statusFilter && !skipStatus) f.status = statusFilter;
-		if (priorityFilter) f.priority = priorityFilter;
-		if (typeFilter) f.type = typeFilter;
-		if (projectFilter && !skipProject) f.project_id = projectFilter;
+		if (!skipStatus) f.status = toFilterOp(statusOp, statusSelected);
+		f.priority = toFilterOp(priorityOp, prioritySelected);
+		f.type = toFilterOp(typeOp, typeSelected);
+		if (!skipProject) f.project_id = toFilterOp(projectOp, projectSelected);
 		if (searchQuery) f.search = searchQuery;
 		return f;
 	}
@@ -160,10 +216,10 @@
 		const set = (k: string, v: string) => (v ? url.searchParams.set(k, v) : url.searchParams.delete(k));
 		set('view', viewMode);
 		set('group', groupBy);
-		set('status', statusFilter);
-		set('priority', priorityFilter);
-		set('type', typeFilter);
-		set('project', projectFilter);
+		set('status', encodeFilterParam(statusOp, statusSelected));
+		set('priority', encodeFilterParam(priorityOp, prioritySelected));
+		set('type', encodeFilterParam(typeOp, typeSelected));
+		set('project', encodeFilterParam(projectOp, projectSelected));
 		set('q', searchQuery);
 		if (selectedTaskId) url.searchParams.set('task', selectedTaskId);
 		else url.searchParams.delete('task');
@@ -178,19 +234,22 @@
 	}
 
 	function clearFilters() {
-		statusFilter = '';
-		priorityFilter = '';
-		typeFilter = '';
-		projectFilter = '';
+		statusOp = 'is'; statusSelected = [];
+		priorityOp = 'is'; prioritySelected = [];
+		typeOp = 'is'; typeSelected = [];
+		projectOp = 'is'; projectSelected = [];
 		searchQuery = '';
-		filterDropdownOpen = null;
 		applyFilters();
 	}
 
 	async function setView(v: ViewMode) {
 		viewMode = v;
 		localStorage.setItem('tasks-view', v);
-		// Filters change based on view mode, so reload
+		// Board doesn't support "none" grouping — fall back to "status"
+		if (v === 'board' && groupBy === 'none') {
+			groupBy = 'status';
+			localStorage.setItem('tasks-group', 'status');
+		}
 		await taskStore.loadAll(getFilters(), currentPage, perPage);
 		if (v === 'board') rebuildBoard();
 		syncUrl();
@@ -199,17 +258,13 @@
 	async function setGroupBy(g: GroupBy) {
 		groupBy = g;
 		localStorage.setItem('tasks-group', g);
-		// Filters change based on groupBy, so reload
 		await taskStore.loadAll(getFilters(), currentPage, perPage);
-		rebuildBoard();
+		if (viewMode === 'board') rebuildBoard();
 		syncUrl();
 	}
 
 	function selectTask(id: string | null) {
 		selectedTaskId = id;
-		if (id) {
-			taskStore.loadById(id);
-		}
 		syncUrl();
 	}
 
@@ -218,10 +273,6 @@
 		currentPage = p;
 		await taskStore.loadAll(getFilters(), p, perPage);
 		if (viewMode === 'board') rebuildBoard();
-	}
-
-	function openFilterDropdown(key: string) {
-		filterDropdownOpen = filterDropdownOpen === key ? null : key;
 	}
 
 	// ---------- Kanban DnD ----------
@@ -301,14 +352,6 @@
 		return () => document.removeEventListener('keydown', handleKeydown);
 	});
 
-	// ---------- shared css ----------
-
-	const filterLabelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
-	const dropdownBtnClass =
-		'flex min-w-[6.5rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
-	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1.5 max-h-56 min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
-
 	// ---------- lifecycle ----------
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
@@ -321,8 +364,10 @@
 	}
 
 	onMount(async () => {
+		orgStore.loadIfNeeded();
 		projectStore.loadAll();
 		await taskStore.loadAll(getFilters(), 1, perPage);
+		initialLoading = false;
 		if (viewMode === 'board') rebuildBoard();
 
 		const taskParam = page.url.searchParams.get('task');
@@ -331,26 +376,21 @@
 </script>
 
 <div class="flex h-full">
-<div class="flex min-w-0 flex-1 flex-col {viewMode === 'board' ? 'overflow-hidden' : 'overflow-y-auto'}"
-	use:clickOutside={{
-		onClickOutside: () => { filterDropdownOpen = null; },
-		enabled: filterDropdownOpen !== null
-	}}
->
+<div class="flex min-w-0 flex-1 flex-col {viewMode === 'board' ? 'overflow-hidden' : 'overflow-y-auto'}">
 	<!-- ===== HEADER ===== -->
 	<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
 		<div class="flex items-center gap-2">
 			<!-- View toggle -->
 			<div class="flex items-center border border-surface-border">
 				<button
-					class="flex items-center gap-1.5 px-2.5 py-2 text-xs transition-colors {viewMode === 'list' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+					class="flex h-[34px] items-center gap-1.5 px-2.5 text-xs transition-colors {viewMode === 'list' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
 					onclick={() => setView('list')}
 				>
 					<LayoutList size={14} />
 					List
 				</button>
 				<button
-					class="flex items-center gap-1.5 px-2.5 py-2 text-xs transition-colors {viewMode === 'board' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+					class="flex h-[34px] items-center gap-1.5 px-2.5 text-xs transition-colors {viewMode === 'board' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
 					onclick={() => setView('board')}
 				>
 					<Columns3 size={14} />
@@ -358,19 +398,19 @@
 				</button>
 			</div>
 
-			<!-- Group-by (only visible in board mode) -->
-			{#if viewMode === 'board'}
-				<div class="flex items-center border border-surface-border">
-					{#each GROUP_OPTIONS as g (g)}
+			<!-- Group-by -->
+			<div class="flex items-center border border-surface-border">
+				{#each GROUP_OPTIONS as g (g)}
+					{#if !(viewMode === 'board' && g === 'none')}
 						<button
-							class="px-2.5 py-2 text-xs transition-colors {groupBy === g ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+							class="flex h-[34px] items-center px-2.5 text-xs transition-colors {groupBy === g ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
 							onclick={() => setGroupBy(g)}
 						>
 							{formatStatus(g)}
 						</button>
-					{/each}
-				</div>
-			{/if}
+					{/if}
+				{/each}
+			</div>
 
 			<!-- Search -->
 			<div class="relative flex items-center">
@@ -380,7 +420,7 @@
 					placeholder="Search tasks..."
 					value={searchQuery}
 					oninput={onSearchInput}
-					class="border border-surface-border bg-surface py-2 pl-8 pr-7 text-xs text-sidebar-text shadow-sm transition-colors placeholder:text-muted hover:border-sidebar-icon/30 focus:border-accent focus:outline-none w-48"
+					class="h-[34px] border border-surface-border bg-surface pl-8 pr-7 text-xs text-sidebar-text transition-colors placeholder:text-muted hover:border-sidebar-icon/30 focus:border-accent focus:outline-none w-48"
 				/>
 				{#if searchQuery}
 					<button
@@ -395,7 +435,7 @@
 			<!-- Filter toggle -->
 			<div class="relative shrink-0">
 				<button
-					class="flex items-center justify-center border border-surface-border bg-surface p-2 shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {filtersVisible ? 'text-accent' : 'text-sidebar-icon'}"
+					class="flex h-[34px] w-[34px] items-center justify-center border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {filtersVisible ? 'text-accent' : 'text-sidebar-icon'}"
 					onclick={() => (filtersVisible = !filtersVisible)}
 					title={filtersVisible ? 'Hide filters' : 'Show filters'}
 				>
@@ -423,7 +463,7 @@
 	{#if filtersVisible}
 		<div class="shrink-0 border-b border-surface-border bg-surface/40 px-4 py-4">
 			<div class="mb-3 flex items-center justify-between">
-				<span class={filterLabelClass}>Filters</span>
+				<span class="text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">Filters</span>
 				{#if hasActiveFilters}
 					<button
 						class="text-xs font-medium text-sidebar-icon transition-colors hover:text-accent"
@@ -434,98 +474,45 @@
 				{/if}
 			</div>
 			<div class="flex flex-wrap items-end gap-4">
-				<!-- Status -->
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Status</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('status')}>
-							<span class="truncate">{statusFilter ? formatStatus(statusFilter) : 'All'}</span>
-							<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'status' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-						</button>
-						{#if filterDropdownOpen === 'status'}
-							<div class={dropdownPanelClass}>
-								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!statusFilter ? 'font-medium text-accent' : 'text-sidebar-text'}"
-									onmousedown={(e) => { e.preventDefault(); statusFilter = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
-								{#each TASK_STATUSES as s (s)}
-									<button class="flex w-full items-center px-4 py-2.5 text-left text-xs whitespace-nowrap transition-colors hover:bg-surface-hover {statusFilter === s ? 'font-medium text-accent' : 'text-sidebar-text'}"
-										onmousedown={(e) => { e.preventDefault(); statusFilter = s; filterDropdownOpen = null; applyFilters(); }}>{formatStatus(s)}</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Priority -->
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Priority</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('priority')}>
-							<span class="truncate">{priorityFilter ? formatPriority(priorityFilter) : 'All'}</span>
-							<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'priority' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-						</button>
-						{#if filterDropdownOpen === 'priority'}
-							<div class={dropdownPanelClass}>
-								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!priorityFilter ? 'font-medium text-accent' : 'text-sidebar-text'}"
-									onmousedown={(e) => { e.preventDefault(); priorityFilter = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
-								{#each TASK_PRIORITIES as p (p)}
-									<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {priorityFilter === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
-										onmousedown={(e) => { e.preventDefault(); priorityFilter = p; filterDropdownOpen = null; applyFilters(); }}>{formatPriority(p)}</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Type -->
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Type</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('type')}>
-							<span class="truncate">{typeFilter ? formatStatus(typeFilter) : 'All'}</span>
-							<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'type' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-						</button>
-						{#if filterDropdownOpen === 'type'}
-							<div class={dropdownPanelClass}>
-								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!typeFilter ? 'font-medium text-accent' : 'text-sidebar-text'}"
-									onmousedown={(e) => { e.preventDefault(); typeFilter = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
-								{#each TASK_TYPES as t (t)}
-									<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {typeFilter === t ? 'font-medium text-accent' : 'text-sidebar-text'}"
-										onmousedown={(e) => { e.preventDefault(); typeFilter = t; filterDropdownOpen = null; applyFilters(); }}>{formatStatus(t)}</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Project -->
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Project</span>
-					<div class="relative">
-						<button class="{dropdownBtnClass} min-w-[8rem]" onclick={() => openFilterDropdown('project')}>
-							<span class="truncate">{projectFilter ? (projects.find((p) => p.id === projectFilter)?.name ?? '—') : 'All'}</span>
-							<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen === 'project' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-						</button>
-						{#if filterDropdownOpen === 'project'}
-							<div class="{dropdownPanelClass} min-w-[14rem]">
-								<button class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!projectFilter ? 'font-medium text-accent' : 'text-sidebar-text'}"
-									onmousedown={(e) => { e.preventDefault(); projectFilter = ''; filterDropdownOpen = null; applyFilters(); }}>All</button>
-								{#each projects as p (p.id)}
-									<button class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {projectFilter === p.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-										onmousedown={(e) => { e.preventDefault(); projectFilter = p.id; filterDropdownOpen = null; applyFilters(); }}>
-										<span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {p.color ?? 'var(--color-accent)'}"></span>
-										{p.name}
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
+				{#if !(viewMode === 'board' && groupBy === 'status')}
+					<FilterDropdown
+						label="Status"
+						options={TASK_STATUSES.map((s) => ({ value: s, label: formatStatus(s) }))}
+						operator={statusOp}
+						selected={statusSelected}
+						onchange={(op, sel) => { statusOp = op; statusSelected = sel; applyFilters(); }}
+					/>
+				{/if}
+				<FilterDropdown
+					label="Priority"
+					options={TASK_PRIORITIES.map((p) => ({ value: p, label: formatPriority(p) }))}
+					operator={priorityOp}
+					selected={prioritySelected}
+					onchange={(op, sel) => { priorityOp = op; prioritySelected = sel; applyFilters(); }}
+				/>
+				<FilterDropdown
+					label="Type"
+					options={TASK_TYPES.map((t) => ({ value: t, label: formatStatus(t) }))}
+					operator={typeOp}
+					selected={typeSelected}
+					onchange={(op, sel) => { typeOp = op; typeSelected = sel; applyFilters(); }}
+				/>
+				{#if !(viewMode === 'board' && groupBy === 'project')}
+				<FilterDropdown
+					label="Project"
+					searchable
+					options={projects.map((p) => ({ value: p.id, label: p.name, color: p.color ?? 'var(--color-accent)', subtitle: orgNameMap[p.organization_id] }))}
+					operator={projectOp}
+					selected={projectSelected}
+					onchange={(op, sel) => { projectOp = op; projectSelected = sel; applyFilters(); }}
+				/>
+				{/if}
 			</div>
 		</div>
 	{/if}
 
 	<!-- ===== CONTENT ===== -->
-	{#if taskStore.loading}
+	{#if initialLoading}
 		<p class="px-4 py-12 text-center text-sm text-muted">Loading...</p>
 	{:else if taskStore.error}
 		<p class="px-4 py-12 text-center text-sm text-red-500">{taskStore.error}</p>
@@ -535,7 +522,28 @@
 			<p class="px-4 py-12 text-center text-sm text-muted">
 				{hasActiveFilters ? 'No tasks match your filters.' : 'No tasks yet.'}
 			</p>
+		{:else if listGroups}
+			<!-- Grouped list -->
+			<div>
+				{#each listGroups as group (group.key)}
+					<div class="flex items-center gap-2 border-b border-surface-border bg-surface-hover/50 px-4 py-2">
+						{#if group.color}
+							<span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {group.color}"></span>
+						{/if}
+						<span class="text-[11px] font-semibold uppercase tracking-wider text-muted">{group.label}</span>
+						<span class="text-[10px] text-muted/60">({group.tasks.length})</span>
+					</div>
+					{#each group.tasks as task (task.id)}
+						<TaskRow
+							{task}
+							selected={task.id === selectedTaskId}
+							onclick={() => selectTask(task.id)}
+						/>
+					{/each}
+				{/each}
+			</div>
 		{:else}
+			<!-- Flat list -->
 			<div>
 				{#each taskStore.items as task (task.id)}
 					<TaskRow
@@ -576,7 +584,7 @@
 		<!-- BOARD VIEW -->
 		<div class="flex min-h-0 flex-1 gap-0 overflow-x-auto">
 			{#each boardColumns as col, colIndex (col.key)}
-				<div class="flex w-60 min-w-[15rem] shrink-0 flex-col border-r border-surface-border max-h-full last:border-r-0">
+				<div class="flex w-72 min-w-[18rem] shrink-0 flex-col border-r border-surface-border max-h-full last:border-r-0">
 					<!-- Column header -->
 					<div class="flex items-center gap-2 px-3 py-2.5 border-b border-surface-border">
 						{#if groupBy === 'project' && col.key !== '__none__'}
@@ -588,7 +596,8 @@
 
 					<!-- Cards container -->
 					<div
-						class="flex-1 overflow-y-auto px-2 py-2 min-h-[60px]"
+						class="flex-1 overflow-y-auto p-2 min-h-[60px] scrollbar-none"
+						style="-ms-overflow-style: none; scrollbar-width: none;"
 						use:dndzone={{ items: col.items, flipDurationMs: 200, dropTargetStyle: { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' } }}
 						onconsider={(e) => handleConsider(colIndex, e)}
 						onfinalize={(e) => handleFinalize(colIndex, col.key, e)}
@@ -596,11 +605,11 @@
 						{#each col.items as task (task.id)}
 							{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
 							<button
-								class="mb-1.5 w-full cursor-pointer rounded-sm px-3 py-2.5 text-left transition-colors hover:bg-surface-hover {selectedTaskId === task.id ? 'bg-accent/8' : ''}"
+								class="mb-2 w-full cursor-pointer border border-surface-border px-3.5 py-3 text-left transition-colors hover:bg-surface-hover last:mb-0 {selectedTaskId === task.id ? 'bg-accent/8' : ''}"
 								onclick={() => selectTask(task.id)}
 							>
 								<!-- Card top row: type icon + short_id -->
-								<div class="mb-1 flex items-center gap-2">
+								<div class="mb-2 flex items-center gap-2">
 									<span class="text-muted"><TypeIcon size={12} /></span>
 									<span class="text-[10px] font-medium text-accent">{task.short_id || '—'}</span>
 
@@ -626,7 +635,7 @@
 								</div>
 
 								<!-- Title -->
-								<p class="mb-1.5 line-clamp-2 text-xs leading-snug text-sidebar-text">{task.title}</p>
+								<p class="mb-2.5 line-clamp-2 text-xs leading-snug text-sidebar-text">{task.title}</p>
 
 								<!-- Bottom: priority + project/status -->
 								<div class="flex items-center gap-2">
@@ -670,3 +679,9 @@
 		onCreated={() => { createModalOpen = false; taskStore.loadAll(getFilters(), currentPage, perPage); }}
 	/>
 {/if}
+
+<style>
+	.scrollbar-none::-webkit-scrollbar {
+		display: none;
+	}
+</style>

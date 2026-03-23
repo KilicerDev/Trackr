@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import { projectStore, type Project } from '$lib/stores/projects.svelte';
+	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
 	import { X, Paperclip } from '@lucide/svelte';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
@@ -34,6 +35,7 @@
 
 	const needsProjectSelector = $derived(!projectId);
 	const projects = $derived(projectStore.items);
+	const orgNameMap = $derived(Object.fromEntries(orgStore.all.map((o) => [o.id, o.name])));
 
 	$effect(() => {
 		if (needsProjectSelector && projects.length === 0) {
@@ -191,7 +193,12 @@
 											class="{dropdownItemBase} {selectedProjectId === p.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
 											onmousedown={(e) => { e.preventDefault(); selectedProjectId = p.id; openDropdown = null; }}
 										>
-											{p.name}
+											<span class="flex flex-col items-start">
+												<span>{p.name}</span>
+												{#if orgNameMap[p.organization_id]}
+													<span class="text-[10px] text-accent/50">{orgNameMap[p.organization_id]}</span>
+												{/if}
+											</span>
 										</button>
 									{/each}
 								</div>

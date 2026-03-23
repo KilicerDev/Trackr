@@ -8,10 +8,12 @@
 	import { api } from '$lib/api';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import type { TicketFilters } from '$lib/api/tickets';
+	import type { FilterOp } from '$lib/api/tasks';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import CreateTicketModal from '$lib/components/CreateTicketModal.svelte';
 	import TicketDetailPanel from '$lib/components/TicketDetailPanel.svelte';
+	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
 	import { ListFilter } from '@lucide/svelte';
 
 	const TICKET_STATUSES = [
@@ -37,10 +39,14 @@
 	let selectedOrgId = $state<string | null>(ticketStore.lastLoadedOrgId ?? null);
 	let orgDropdownOpen = $state(false);
 
-	let status = $state<string>('');
-	let priority = $state<string>('');
-	let category = $state<string>('');
-	let channel = $state<string>('');
+	let statusOp = $state<'is' | 'is_not'>('is');
+	let statusSelected = $state<string[]>([]);
+	let priorityOp = $state<'is' | 'is_not'>('is');
+	let prioritySelected = $state<string[]>([]);
+	let categoryOp = $state<'is' | 'is_not'>('is');
+	let categorySelected = $state<string[]>([]);
+	let channelOp = $state<'is' | 'is_not'>('is');
+	let channelSelected = $state<string[]>([]);
 	let assignedAgentId = $state<string>('');
 	let customerId = $state<string>('');
 	let createdFrom = $state<string>('');
@@ -71,12 +77,17 @@
 	const ticketOrgs = $derived(organizations.filter((o) => o.support_tier_id !== null));
 	const selectedOrg = $derived(organizations.find((o) => o.id === selectedOrgId) ?? null);
 
+	function toFilterOp(op: 'is' | 'is_not', values: string[]): FilterOp | undefined {
+		if (values.length === 0) return undefined;
+		return { values, not: op === 'is_not' };
+	}
+
 	function getFilters(): TicketFilters {
 		const f: TicketFilters = {};
-		if (status) f.status = status;
-		if (priority) f.priority = priority;
-		if (category) f.category = category;
-		if (channel) f.channel = channel;
+		f.status = toFilterOp(statusOp, statusSelected);
+		f.priority = toFilterOp(priorityOp, prioritySelected);
+		f.category = toFilterOp(categoryOp, categorySelected);
+		f.channel = toFilterOp(channelOp, channelSelected);
 		if (assignedAgentId === 'none') f.assigned_agent_id = 'none';
 		else if (assignedAgentId) f.assigned_agent_id = assignedAgentId;
 		if (customerId) f.customer_id = customerId;
@@ -125,10 +136,10 @@
 	}
 
 	function clearFilters() {
-		status = '';
-		priority = '';
-		category = '';
-		channel = '';
+		statusOp = 'is'; statusSelected = [];
+		priorityOp = 'is'; prioritySelected = [];
+		categoryOp = 'is'; categorySelected = [];
+		channelOp = 'is'; channelSelected = [];
 		assignedAgentId = '';
 		customerId = '';
 		createdFrom = '';
@@ -143,10 +154,10 @@
 
 	const hasActiveFilters = $derived(
 		!!(
-			status ||
-			priority ||
-			category ||
-			channel ||
+			statusSelected.length ||
+			prioritySelected.length ||
+			categorySelected.length ||
+			channelSelected.length ||
 			assignedAgentId ||
 			customerId ||
 			createdFrom ||
@@ -160,10 +171,10 @@
 
 	const activeFiltersCount = $derived(
 		[
-			status,
-			priority,
-			category,
-			channel,
+			statusSelected.length,
+			prioritySelected.length,
+			categorySelected.length,
+			channelSelected.length,
 			assignedAgentId,
 			customerId,
 			createdFrom,
@@ -175,11 +186,7 @@
 		].filter(Boolean).length
 	);
 
-	const filterLabelClass = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
-	const dropdownBtnClass =
-		'flex min-w-[6.5rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
-	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1.5 max-h-56 min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+	import { filterLabelClass, dropdownBtnClass, dropdownPanelClass } from '$lib/config/filter-styles';
 
 	onMount(async () => {
 		await orgStore.loadIfNeeded();
@@ -350,7 +357,7 @@
 	{#if filtersVisible}
 		<div class="border-b border-surface-border bg-surface/40 px-4 py-4">
 			<div class="mb-3 flex items-center justify-between">
-				<span class={filterLabelClass}>Filters</span>
+				<span class="text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">Filters</span>
 				{#if hasActiveFilters}
 					<button
 						class="text-xs font-medium text-sidebar-icon transition-colors hover:text-accent"
@@ -361,214 +368,34 @@
 				{/if}
 			</div>
 			<div class="flex flex-wrap items-end gap-4">
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Status</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('status')}>
-							<span class="truncate">{status ? status.replace(/_/g, ' ') : 'All'}</span>
-							<svg
-								class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen ===
-								'status'
-									? 'rotate-180'
-									: ''}"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/></svg
-							>
-						</button>
-						{#if filterDropdownOpen === 'status'}
-							<div class={dropdownPanelClass}>
-								<button
-									class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!status
-										? 'font-medium text-accent'
-										: 'text-sidebar-text'}"
-									onmousedown={(e) => {
-										e.preventDefault();
-										status = '';
-										filterDropdownOpen = null;
-										applyFilters();
-									}}>All</button
-								>
-								{#each TICKET_STATUSES as s (s)}
-									<button
-										class="flex w-full items-center px-4 py-2.5 text-left text-xs whitespace-nowrap transition-colors hover:bg-surface-hover {status ===
-										s
-											? 'font-medium text-accent'
-											: 'text-sidebar-text'}"
-										onmousedown={(e) => {
-											e.preventDefault();
-											status = s;
-											filterDropdownOpen = null;
-											applyFilters();
-										}}>{s.replace(/_/g, ' ')}</button
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Priority</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('priority')}>
-							<span class="truncate">{priority || 'All'}</span>
-							<svg
-								class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen ===
-								'priority'
-									? 'rotate-180'
-									: ''}"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/></svg
-							>
-						</button>
-						{#if filterDropdownOpen === 'priority'}
-							<div class={dropdownPanelClass}>
-								<button
-									class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!priority
-										? 'font-medium text-accent'
-										: 'text-sidebar-text'}"
-									onmousedown={(e) => {
-										e.preventDefault();
-										priority = '';
-										filterDropdownOpen = null;
-										applyFilters();
-									}}>All</button
-								>
-								{#each TICKET_PRIORITIES as p (p)}
-									<button
-										class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {priority ===
-										p
-											? 'font-medium text-accent'
-											: 'text-sidebar-text'}"
-										onmousedown={(e) => {
-											e.preventDefault();
-											priority = p;
-											filterDropdownOpen = null;
-											applyFilters();
-										}}>{p}</button
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Category</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('category')}>
-							<span class="truncate">{category ? category.replace(/_/g, ' ') : 'All'}</span>
-							<svg
-								class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen ===
-								'category'
-									? 'rotate-180'
-									: ''}"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/></svg
-							>
-						</button>
-						{#if filterDropdownOpen === 'category'}
-							<div class={dropdownPanelClass}>
-								<button
-									class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!category
-										? 'font-medium text-accent'
-										: 'text-sidebar-text'}"
-									onmousedown={(e) => {
-										e.preventDefault();
-										category = '';
-										filterDropdownOpen = null;
-										applyFilters();
-									}}>All</button
-								>
-								{#each TICKET_CATEGORIES as c (c)}
-									<button
-										class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {category ===
-										c
-											? 'font-medium text-accent'
-											: 'text-sidebar-text'}"
-										onmousedown={(e) => {
-											e.preventDefault();
-											category = c;
-											filterDropdownOpen = null;
-											applyFilters();
-										}}>{c.replace(/_/g, ' ')}</button
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-				<div class="flex flex-col gap-1.5">
-					<span class={filterLabelClass}>Channel</span>
-					<div class="relative">
-						<button class={dropdownBtnClass} onclick={() => openFilterDropdown('channel')}>
-							<span class="truncate">{channel ? channel.replace(/_/g, ' ') : 'All'}</span>
-							<svg
-								class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {filterDropdownOpen ===
-								'channel'
-									? 'rotate-180'
-									: ''}"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-								><path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/></svg
-							>
-						</button>
-						{#if filterDropdownOpen === 'channel'}
-							<div class={dropdownPanelClass}>
-								<button
-									class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!channel
-										? 'font-medium text-accent'
-										: 'text-sidebar-text'}"
-									onmousedown={(e) => {
-										e.preventDefault();
-										channel = '';
-										filterDropdownOpen = null;
-										applyFilters();
-									}}>All</button
-								>
-								{#each TICKET_CHANNELS as ch (ch)}
-									<button
-										class="flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {channel ===
-										ch
-											? 'font-medium text-accent'
-											: 'text-sidebar-text'}"
-										onmousedown={(e) => {
-											e.preventDefault();
-											channel = ch;
-											filterDropdownOpen = null;
-											applyFilters();
-										}}>{ch.replace(/_/g, ' ')}</button
-									>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
+				<FilterDropdown
+					label="Status"
+					options={TICKET_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, ' ') }))}
+					operator={statusOp}
+					selected={statusSelected}
+					onchange={(op, sel) => { statusOp = op; statusSelected = sel; applyFilters(); }}
+				/>
+				<FilterDropdown
+					label="Priority"
+					options={TICKET_PRIORITIES.map((p) => ({ value: p, label: p }))}
+					operator={priorityOp}
+					selected={prioritySelected}
+					onchange={(op, sel) => { priorityOp = op; prioritySelected = sel; applyFilters(); }}
+				/>
+				<FilterDropdown
+					label="Category"
+					options={TICKET_CATEGORIES.map((c) => ({ value: c, label: c.replace(/_/g, ' ') }))}
+					operator={categoryOp}
+					selected={categorySelected}
+					onchange={(op, sel) => { categoryOp = op; categorySelected = sel; applyFilters(); }}
+				/>
+				<FilterDropdown
+					label="Channel"
+					options={TICKET_CHANNELS.map((ch) => ({ value: ch, label: ch.replace(/_/g, ' ') }))}
+					operator={channelOp}
+					selected={channelSelected}
+					onchange={(op, sel) => { channelOp = op; channelSelected = sel; applyFilters(); }}
+				/>
 				{#if selectedOrgId}
 					<div class="flex flex-col gap-1.5">
 						<span class={filterLabelClass}>Assigned</span>

@@ -2,11 +2,13 @@ import { getClient } from "./client";
 import { TASK_SELECT, TASK_MINIMAL_SELECT } from "./queries";
 import { indexDocument, deleteDocument } from "./search-index";
 
+export type FilterOp = { values: string[]; not?: boolean };
+
 export type TaskFilters = {
-  project_id?: string;
-  status?: string;
-  priority?: string;
-  type?: string;
+  project_id?: string | FilterOp;
+  status?: string | FilterOp;
+  priority?: string | FilterOp;
+  type?: string | FilterOp;
   created_by?: string;
   parent_id?: string | null;
   support_ticket_id?: string;
@@ -38,10 +40,19 @@ export const tasks = {
       .select(TASK_SELECT, { count: "exact" })
       .is("deleted_at", null);
 
-    if (filters?.project_id) q = q.eq("project_id", filters.project_id);
-    if (filters?.status) q = q.eq("status", filters.status);
-    if (filters?.priority) q = q.eq("priority", filters.priority);
-    if (filters?.type) q = q.eq("type", filters.type);
+    function applyFilter(field: string, val: string | FilterOp | undefined) {
+      if (!val) return;
+      if (typeof val === "string") { q = q.eq(field, val); return; }
+      if (val.values.length === 0) return;
+      if (val.not) { q = q.not(field, "in", `(${val.values.join(",")})`); }
+      else if (val.values.length === 1) { q = q.eq(field, val.values[0]); }
+      else { q = q.in(field, val.values); }
+    }
+
+    applyFilter("project_id", filters?.project_id);
+    applyFilter("status", filters?.status);
+    applyFilter("priority", filters?.priority);
+    applyFilter("type", filters?.type);
     if (filters?.created_by) q = q.eq("created_by", filters.created_by);
     if (filters?.parent_id === null) q = q.is("parent_id", null);
     if (filters?.parent_id) q = q.eq("parent_id", filters.parent_id);

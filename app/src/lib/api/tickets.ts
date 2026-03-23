@@ -3,13 +3,14 @@
 import { getClient } from "./client";
 import { TICKET_SELECT } from "./queries";
 import { indexDocument } from "./search-index";
+import type { FilterOp } from "./tasks";
 
 /** Use "none" for assigned_agent_id to filter for unassigned tickets */
 export type TicketFilters = {
-  status?: string;
-  priority?: string;
-  category?: string;
-  channel?: string;
+  status?: string | FilterOp;
+  priority?: string | FilterOp;
+  category?: string | FilterOp;
+  channel?: string | FilterOp;
   customer_id?: string;
   assigned_agent_id?: string | null;
   created_at_from?: string;
@@ -48,10 +49,19 @@ export const tickets = {
 
     if (orgId) q = q.eq("organization_id", orgId);
 
-    if (filters?.status) q = q.eq("status", filters.status);
-    if (filters?.priority) q = q.eq("priority", filters.priority);
-    if (filters?.category) q = q.eq("category", filters.category);
-    if (filters?.channel) q = q.eq("channel", filters.channel);
+    function applyFilter(field: string, val: string | FilterOp | undefined) {
+      if (!val) return;
+      if (typeof val === "string") { q = q.eq(field, val); return; }
+      if (val.values.length === 0) return;
+      if (val.not) { q = q.not(field, "in", `(${val.values.join(",")})`); }
+      else if (val.values.length === 1) { q = q.eq(field, val.values[0]); }
+      else { q = q.in(field, val.values); }
+    }
+
+    applyFilter("status", filters?.status);
+    applyFilter("priority", filters?.priority);
+    applyFilter("category", filters?.category);
+    applyFilter("channel", filters?.channel);
     if (filters?.customer_id)
       q = q.eq("customer_id", filters.customer_id);
     if (filters?.assigned_agent_id !== undefined) {
