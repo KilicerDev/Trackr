@@ -8,6 +8,7 @@ import { roles } from "./roles";
 import { users } from "./users";
 import { notificationsApi } from "./notifications";
 import { attachments } from "./attachments";
+import { views } from "./views";
 
 export const api = {
   tasks,
@@ -20,4 +21,5 @@ export const api = {
   users,
   notifications: notificationsApi,
   attachments,
+  views,
 };

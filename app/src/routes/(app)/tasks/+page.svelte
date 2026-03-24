@@ -13,10 +13,12 @@
 	import { api } from '$lib/api';
 	import type { TaskFilters } from '$lib/api/tasks';
 	import type { FilterOp } from '$lib/api/tasks';
+	import type { SavedView } from '$lib/api/views';
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 	import {
 		ListFilter,
 		LayoutList,
@@ -25,7 +27,12 @@
 		ChevronRight,
 		Search,
 		X,
-		Plus
+		Plus,
+		Bookmark,
+		Pencil,
+		Trash2,
+		Check,
+		EllipsisVertical
 	} from '@lucide/svelte';
 
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
@@ -75,17 +82,28 @@
 
 	function saveFiltersToStorage() {
 		if (!browser) return;
-		localStorage.setItem('tasks-filters', JSON.stringify({
-			statusOp, statusSelected, priorityOp, prioritySelected,
-			typeOp, typeSelected, projectOp, projectSelected, searchQuery
-		}));
+		const empty = !statusSelected.length && !prioritySelected.length
+			&& !typeSelected.length && !projectSelected.length && !searchQuery;
+		if (empty) {
+			localStorage.removeItem('tasks-filters');
+		} else {
+			localStorage.setItem('tasks-filters', JSON.stringify({
+				statusOp, statusSelected, priorityOp, prioritySelected,
+				typeOp, typeSelected, projectOp, projectSelected, searchQuery
+			}));
+		}
 	}
 
 	function loadFiltersFromStorage() {
 		if (!browser) return null;
 		try {
 			const raw = localStorage.getItem('tasks-filters');
-			return raw ? JSON.parse(raw) : null;
+			if (!raw) return null;
+			const parsed = JSON.parse(raw);
+			// Treat all-empty stored filters as "no stored filters" so defaults apply
+			const hasValues = parsed.statusSelected?.length || parsed.prioritySelected?.length
+				|| parsed.typeSelected?.length || parsed.projectSelected?.length || parsed.searchQuery;
+			return hasValues ? parsed : null;
 		} catch { return null; }
 	}
 
@@ -119,6 +137,17 @@
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
 	let createPrefill = $state<{ projectId?: string; status?: string }>({});
+
+	// ---------- saved views ----------
+	let savedViews = $state<SavedView[]>([]);
+	let activeViewId = $state<string | null>(null);
+	let viewsDropdownOpen = $state(false);
+	let saveModalOpen = $state(false);
+	let saveViewName = $state('');
+	let savingView = $state(false);
+	let editingViewId = $state<string | null>(null);
+	let editingViewName = $state('');
+	let viewSubMenuId = $state<string | null>(null);
 	let selectedTaskId = $state<string | null>(page.url.searchParams.get('task') ?? null);
 	let currentPage = $state(1);
 	const perPage = 50;
@@ -263,7 +292,8 @@
 		saveFiltersToStorage();
 	}
 
-	async function applyFilters() {
+	async function applyFilters(keepView = false) {
+		if (!keepView) activeViewId = null;
 		currentPage = 1;
 		await taskStore.loadAll(getFilters(), 1, perPage);
 		if (viewMode === 'board') rebuildBoard();
@@ -276,7 +306,104 @@
 		typeOp = 'is'; typeSelected = [];
 		projectOp = 'is'; projectSelected = [];
 		searchQuery = '';
+		activeViewId = null;
 		applyFilters();
+	}
+
+	// ---------- saved views logic ----------
+
+	async function loadSavedViews() {
+		try { savedViews = await api.views.getAll(); } catch { /* ignore */ }
+	}
+
+	function getCurrentViewState() {
+		return {
+			statusOp, statusSelected,
+			priorityOp, prioritySelected,
+			typeOp, typeSelected,
+			projectOp, projectSelected,
+			searchQuery
+		};
+	}
+
+	async function saveCurrentView() {
+		const name = saveViewName.trim();
+		if (!name) return;
+		savingView = true;
+		try {
+			const view = await api.views.create({
+				name,
+				filters: getCurrentViewState(),
+				view_mode: viewMode,
+				group_by: groupBy
+			});
+			savedViews = [...savedViews, view];
+			activeViewId = view.id;
+			saveViewName = '';
+			saveModalOpen = false;
+		} catch (e) {
+			console.error('Failed to save view:', e);
+		} finally {
+			savingView = false;
+		}
+	}
+
+	async function applySavedView(view: SavedView) {
+		const f = view.filters as Record<string, unknown>;
+		statusOp = (f.statusOp as 'is' | 'is_not') ?? 'is';
+		statusSelected = (f.statusSelected as string[]) ?? [];
+		priorityOp = (f.priorityOp as 'is' | 'is_not') ?? 'is';
+		prioritySelected = (f.prioritySelected as string[]) ?? [];
+		typeOp = (f.typeOp as 'is' | 'is_not') ?? 'is';
+		typeSelected = (f.typeSelected as string[]) ?? [];
+		projectOp = (f.projectOp as 'is' | 'is_not') ?? 'is';
+		projectSelected = (f.projectSelected as string[]) ?? [];
+		searchQuery = (f.searchQuery as string) ?? '';
+
+		if (view.view_mode === 'board' || view.view_mode === 'list') viewMode = view.view_mode as ViewMode;
+		if (['none', 'status', 'project'].includes(view.group_by)) groupBy = view.group_by as GroupBy;
+
+		activeViewId = view.id;
+		viewsDropdownOpen = false;
+		viewSubMenuId = null;
+		await applyFilters(true);
+	}
+
+	async function renameView(id: string) {
+		const name = editingViewName.trim();
+		if (!name) return;
+		try {
+			const updated = await api.views.update(id, { name });
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to rename view:', e);
+		}
+		editingViewId = null;
+	}
+
+	async function deleteView(id: string) {
+		try {
+			await api.views.delete(id);
+			savedViews = savedViews.filter((v) => v.id !== id);
+			if (activeViewId === id) activeViewId = null;
+		} catch (e) {
+			console.error('Failed to delete view:', e);
+		}
+		viewSubMenuId = null;
+	}
+
+	async function updateViewFilters(id: string) {
+		try {
+			const updated = await api.views.update(id, {
+				filters: getCurrentViewState(),
+				view_mode: viewMode,
+				group_by: groupBy
+			});
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to update view:', e);
+		}
+		viewSubMenuId = null;
 	}
 
 	async function setView(v: ViewMode) {
@@ -399,6 +526,21 @@
 
 	// ---------- lifecycle ----------
 
+	// Close views dropdown on outside click
+	$effect(() => {
+		if (!viewsDropdownOpen) return;
+		function onMouseDown(e: MouseEvent) {
+			const target = e.target as HTMLElement;
+			if (!target.closest('[data-views-dropdown]')) {
+				viewsDropdownOpen = false;
+				viewSubMenuId = null;
+				editingViewId = null;
+			}
+		}
+		document.addEventListener('mousedown', onMouseDown);
+		return () => document.removeEventListener('mousedown', onMouseDown);
+	});
+
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
 	function onSearchInput(e: Event) {
@@ -411,6 +553,7 @@
 	onMount(async () => {
 		orgStore.loadIfNeeded();
 		projectStore.loadAll();
+		loadSavedViews();
 		await taskStore.loadAll(getFilters(), 1, perPage);
 		initialLoading = false;
 		if (viewMode === 'board') rebuildBoard();
@@ -457,6 +600,114 @@
 				{/each}
 			</div>
 
+			<!-- Filter toggle -->
+			<div class="relative shrink-0">
+				<button
+					class="flex h-[34px] w-[34px] items-center justify-center border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {filtersVisible ? 'text-accent' : 'text-sidebar-icon'}"
+					onclick={() => (filtersVisible = !filtersVisible)}
+					title={filtersVisible ? 'Hide filters' : 'Show filters'}
+				>
+					<ListFilter size={16} />
+				</button>
+				{#if activeFiltersCount > 0}
+					<span
+						class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center bg-accent px-1 text-[10px] leading-none font-medium text-white"
+					>
+						{activeFiltersCount > 9 ? '9+' : activeFiltersCount}
+					</span>
+				{/if}
+			</div>
+
+			<!-- Views dropdown -->
+			<div class="relative shrink-0" data-views-dropdown>
+				<button
+					class="flex h-[34px] items-center gap-1.5 border border-surface-border bg-surface px-2.5 text-xs transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {viewsDropdownOpen || activeViewId ? 'text-accent' : 'text-sidebar-icon'}"
+					onclick={() => { viewsDropdownOpen = !viewsDropdownOpen; viewSubMenuId = null; editingViewId = null; }}
+					title="Saved views"
+				>
+					<Bookmark size={14} />
+					{#if activeViewId}
+						<span class="max-w-24 truncate">{savedViews.find((v) => v.id === activeViewId)?.name ?? 'View'}</span>
+					{/if}
+				</button>
+				{#if viewsDropdownOpen}
+					<div class="absolute left-0 top-full z-40 mt-1 w-56 border border-surface-border bg-surface py-1 shadow-xl">
+						<!-- Save current view -->
+						<button
+							class="flex w-full items-center gap-2 border-b border-surface-border px-3 py-2 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+							onclick={() => { saveModalOpen = true; saveViewName = ''; viewsDropdownOpen = false; }}
+						>
+							<Plus size={12} class="text-sidebar-icon" />
+							Save current view
+						</button>
+
+						{#if savedViews.length === 0}
+							<p class="px-3 py-3 text-center text-[11px] text-muted">No saved views yet.</p>
+						{:else}
+							{#each savedViews as view (view.id)}
+								<div class="group flex items-center justify-between transition-colors hover:bg-surface-hover">
+									{#if editingViewId === view.id}
+										<form class="flex min-w-0 flex-1 items-center gap-1 px-3 py-1.5" onsubmit={(e) => { e.preventDefault(); renameView(view.id); }}>
+											<input
+												type="text"
+												bind:value={editingViewName}
+												class="h-6 min-w-0 flex-1 border border-accent bg-surface px-2 text-xs text-sidebar-text outline-none"
+												onkeydown={(e) => { if (e.key === 'Escape') editingViewId = null; }}
+											/>
+											<button type="submit" class="shrink-0 text-accent hover:text-accent/80"><Check size={12} /></button>
+											<button type="button" class="shrink-0 text-sidebar-icon hover:text-sidebar-text" onclick={() => (editingViewId = null)}><X size={12} /></button>
+										</form>
+									{:else}
+										<button
+											class="flex flex-1 items-center gap-2 px-3 py-2 text-left text-xs transition-colors
+												{activeViewId === view.id ? 'text-accent font-medium' : 'text-sidebar-text'}"
+											onclick={() => applySavedView(view)}
+										>
+											{#if activeViewId === view.id}<Check size={11} class="shrink-0" />{/if}
+											<span class="truncate">{view.name}</span>
+										</button>
+										<!-- Three dots -->
+										<div class="relative">
+											<button
+												class="shrink-0 px-2 py-2 text-sidebar-icon opacity-0 transition-opacity hover:text-sidebar-text group-hover:opacity-100
+													{viewSubMenuId === view.id ? '!opacity-100' : ''}"
+												onclick={(e) => { e.stopPropagation(); viewSubMenuId = viewSubMenuId === view.id ? null : view.id; }}
+											>
+												<EllipsisVertical size={13} />
+											</button>
+											{#if viewSubMenuId === view.id}
+												<div class="absolute right-0 top-full z-50 mt-0.5 w-40 border border-surface-border bg-surface py-1 shadow-xl">
+													<button
+														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+														onclick={() => { editingViewId = view.id; editingViewName = view.name; viewSubMenuId = null; }}
+													>
+														<Pencil size={11} /> Rename
+													</button>
+													<button
+														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+														onclick={() => updateViewFilters(view.id)}
+													>
+														<Bookmark size={11} /> Update filters
+													</button>
+													<button
+														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-500 transition-colors hover:bg-surface-hover"
+														onclick={() => deleteView(view.id)}
+													>
+														<Trash2 size={11} /> Delete
+													</button>
+												</div>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{/each}
+						{/if}
+					</div>
+				{/if}
+			</div>
+		</div>
+
+		<div class="flex items-center gap-2">
 			<!-- Search -->
 			<div class="relative flex items-center">
 				<Search size={14} class="absolute left-2.5 text-sidebar-icon pointer-events-none" />
@@ -477,31 +728,13 @@
 				{/if}
 			</div>
 
-			<!-- Filter toggle -->
-			<div class="relative shrink-0">
-				<button
-					class="flex h-[34px] w-[34px] items-center justify-center border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {filtersVisible ? 'text-accent' : 'text-sidebar-icon'}"
-					onclick={() => (filtersVisible = !filtersVisible)}
-					title={filtersVisible ? 'Hide filters' : 'Show filters'}
-				>
-					<ListFilter size={16} />
-				</button>
-				{#if activeFiltersCount > 0}
-					<span
-						class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center bg-accent px-1 text-[10px] leading-none font-medium text-white"
-					>
-						{activeFiltersCount > 9 ? '9+' : activeFiltersCount}
-					</span>
-				{/if}
-			</div>
+			<button
+				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
+				onclick={() => { createPrefill = {}; createModalOpen = true; }}
+			>
+				New Task
+			</button>
 		</div>
-
-		<button
-			class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
-			onclick={() => { createPrefill = {}; createModalOpen = true; }}
-		>
-			New Task
-		</button>
 	</div>
 
 	<!-- ===== FILTERS ===== -->
@@ -740,6 +973,40 @@
 		onCreated={async () => { createModalOpen = false; await taskStore.loadAll(getFilters(), currentPage, perPage); if (viewMode === 'board') rebuildBoard(); }}
 	/>
 {/if}
+
+<!-- ===== SAVE VIEW MODAL ===== -->
+<Modal open={saveModalOpen} onClose={() => (saveModalOpen = false)} maxWidth="max-w-sm">
+	<div class="px-4 py-3 border-b border-surface-border">
+		<h2 class="text-sm font-semibold text-sidebar-text">Save View</h2>
+	</div>
+	<form onsubmit={(e) => { e.preventDefault(); saveCurrentView(); }} class="p-4">
+		<label for="view-name" class="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">Name</label>
+		<input
+			id="view-name"
+			type="text"
+			bind:value={saveViewName}
+			placeholder="e.g. My active bugs"
+			class="w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30"
+		/>
+		<p class="mt-2 text-[11px] text-muted">Saves the current filters, view mode, and grouping.</p>
+		<div class="mt-4 flex justify-end gap-2">
+			<button
+				type="button"
+				class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+				onclick={() => (saveModalOpen = false)}
+			>
+				Cancel
+			</button>
+			<button
+				type="submit"
+				disabled={savingView || !saveViewName.trim()}
+				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
+			>
+				{savingView ? 'Saving...' : 'Save view'}
+			</button>
+		</div>
+	</form>
+</Modal>
 
 <style>
 	.scrollbar-none::-webkit-scrollbar {
