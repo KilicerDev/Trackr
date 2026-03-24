@@ -83,13 +83,14 @@
 	function saveFiltersToStorage() {
 		if (!browser) return;
 		const empty = !statusSelected.length && !prioritySelected.length
-			&& !typeSelected.length && !projectSelected.length && !searchQuery;
+			&& !typeSelected.length && !projectSelected.length && !tagSelected.length && !searchQuery;
 		if (empty) {
 			localStorage.removeItem('tasks-filters');
 		} else {
 			localStorage.setItem('tasks-filters', JSON.stringify({
 				statusOp, statusSelected, priorityOp, prioritySelected,
-				typeOp, typeSelected, projectOp, projectSelected, searchQuery
+				typeOp, typeSelected, projectOp, projectSelected,
+				tagOp, tagSelected, searchQuery
 			}));
 		}
 	}
@@ -100,9 +101,9 @@
 			const raw = localStorage.getItem('tasks-filters');
 			if (!raw) return null;
 			const parsed = JSON.parse(raw);
-			// Treat all-empty stored filters as "no stored filters" so defaults apply
 			const hasValues = parsed.statusSelected?.length || parsed.prioritySelected?.length
-				|| parsed.typeSelected?.length || parsed.projectSelected?.length || parsed.searchQuery;
+				|| parsed.typeSelected?.length || parsed.projectSelected?.length
+				|| parsed.tagSelected?.length || parsed.searchQuery;
 			return hasValues ? parsed : null;
 		} catch { return null; }
 	}
@@ -134,6 +135,10 @@
 	let projectSelected = $state<string[]>(initProjectF.values);
 	let searchQuery = $state(storedFilters ? storedFilters.searchQuery : (page.url.searchParams.get('q') ?? ''));
 
+	// Tag filter (client-side only since tags are in a junction table)
+	let tagOp = $state<'is' | 'is_not'>(storedFilters?.tagOp ?? 'is');
+	let tagSelected = $state<string[]>(storedFilters?.tagSelected ?? []);
+
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
 	let createPrefill = $state<{ projectId?: string; status?: string }>({});
@@ -159,19 +164,43 @@
 	const orgNameMap = $derived(Object.fromEntries(orgStore.all.map((o) => [o.id, o.name])));
 
 	const hasActiveFilters = $derived(
-		!!(statusSelected.length || prioritySelected.length || typeSelected.length || projectSelected.length || searchQuery)
+		!!(statusSelected.length || prioritySelected.length || typeSelected.length || projectSelected.length || tagSelected.length || searchQuery)
 	);
 
 	const activeFiltersCount = $derived(
-		[statusSelected.length, prioritySelected.length, typeSelected.length, projectSelected.length, searchQuery].filter(Boolean).length
+		[statusSelected.length, prioritySelected.length, typeSelected.length, projectSelected.length, tagSelected.length, searchQuery].filter(Boolean).length
 	);
+
+	// Tag options derived from loaded tasks
+	const tagOptions = $derived.by(() => {
+		const seen = new Map<string, { value: string; label: string; color: string }>();
+		for (const t of taskStore.items) {
+			const tags = (t as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined;
+			if (!tags) continue;
+			for (const tt of tags) {
+				if (tt.tag && !seen.has(tt.tag.id)) {
+					seen.set(tt.tag.id, { value: tt.tag.id, label: tt.tag.name, color: tt.tag.color });
+				}
+			}
+		}
+		return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
+	});
+
+	// Client-side tag filter helper
+	function passesTagFilter(task: Task): boolean {
+		if (tagSelected.length === 0) return true;
+		const tags = ((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined) ?? [];
+		const taskTagIds = tags.map((tt) => tt.tag?.id).filter(Boolean);
+		if (tagOp === 'is') return tagSelected.some((id) => taskTagIds.includes(id));
+		return !tagSelected.some((id) => taskTagIds.includes(id));
+	}
 
 	// List view grouping
 	type ListGroup = { key: string; label: string; color?: string; tasks: Task[] };
 
 	const listGroups = $derived.by((): ListGroup[] | null => {
 		if (groupBy === 'none') return null;
-		const items = taskStore.items;
+		const items = tagSelected.length > 0 ? taskStore.items.filter(passesTagFilter) : taskStore.items;
 		const map = new Map<string, ListGroup>();
 		const order: string[] = [];
 
@@ -243,7 +272,7 @@
 	}
 
 	function rebuildBoard() {
-		const tasks = taskStore.items;
+		const tasks = tagSelected.length > 0 ? taskStore.items.filter(passesTagFilter) : taskStore.items;
 		boardColumns = groupBy === 'status' ? buildStatusColumns(tasks) : buildProjectColumns(tasks);
 	}
 
@@ -305,6 +334,7 @@
 		priorityOp = 'is'; prioritySelected = [];
 		typeOp = 'is'; typeSelected = [];
 		projectOp = 'is'; projectSelected = [];
+		tagOp = 'is'; tagSelected = [];
 		searchQuery = '';
 		activeViewId = null;
 		applyFilters();
@@ -322,6 +352,7 @@
 			priorityOp, prioritySelected,
 			typeOp, typeSelected,
 			projectOp, projectSelected,
+			tagOp, tagSelected,
 			searchQuery
 		};
 	}
@@ -358,6 +389,8 @@
 		typeSelected = (f.typeSelected as string[]) ?? [];
 		projectOp = (f.projectOp as 'is' | 'is_not') ?? 'is';
 		projectSelected = (f.projectSelected as string[]) ?? [];
+		tagOp = (f.tagOp as 'is' | 'is_not') ?? 'is';
+		tagSelected = (f.tagSelected as string[]) ?? [];
 		searchQuery = (f.searchQuery as string) ?? '';
 
 		if (view.view_mode === 'board' || view.view_mode === 'list') viewMode = view.view_mode as ViewMode;
@@ -785,6 +818,16 @@
 					onchange={(op, sel) => { projectOp = op; projectSelected = sel; applyFilters(); }}
 				/>
 				{/if}
+				{#if tagOptions.length > 0}
+				<FilterDropdown
+					label="Tags"
+					searchable
+					options={tagOptions}
+					operator={tagOp}
+					selected={tagSelected}
+					onchange={(op, sel) => { tagOp = op; tagSelected = sel; if (viewMode === 'board') rebuildBoard(); syncUrl(); }}
+				/>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -823,7 +866,7 @@
 		{:else}
 			<!-- Flat list -->
 			<div>
-				{#each taskStore.items as task (task.id)}
+				{#each (tagSelected.length > 0 ? taskStore.items.filter(passesTagFilter) : taskStore.items) as task (task.id)}
 					<TaskRow
 						{task}
 						selected={task.id === selectedTaskId}
@@ -896,18 +939,58 @@
 					>
 						{#each col.items as task (task.id)}
 							{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
+							{@const cardTags = ((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined)?.map((tt) => tt.tag).filter(Boolean) ?? []}
 							<button
 								class="mb-2 w-full cursor-pointer border border-surface-border px-3.5 py-3 text-left transition-colors hover:bg-surface-hover last:mb-0 {selectedTaskId === task.id ? 'bg-accent/8' : ''}"
 								onclick={() => selectTask(task.id)}
 							>
-								<!-- Card top row: type icon + short_id -->
+								<!-- Card top row: type icon + short_id + priority/status -->
 								<div class="mb-2 flex items-center gap-2">
 									<span class="text-muted"><TypeIcon size={12} /></span>
 									<span class="text-[10px] font-medium text-accent">{task.short_id || '—'}</span>
 
-									<!-- Assignee avatars -->
+									<div class="ml-auto flex items-center gap-1.5">
+										<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-medium {priorityColors[task.priority] ?? priorityColors.none}">
+											{formatPriority(task.priority)}
+										</span>
+										{#if groupBy === 'status' && task.project}
+											<span class="flex items-center gap-1 text-[10px] text-muted truncate">
+												<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {task.project.color ?? 'var(--color-accent)'}"></span>
+												{task.project.identifier}
+											</span>
+										{:else if groupBy === 'project'}
+											<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-medium {statusColors[task.status] ?? statusColors.backlog}">
+												{formatStatus(task.status)}
+											</span>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Title -->
+								<p class="mb-2.5 line-clamp-2 text-xs leading-snug text-sidebar-text">{task.title}</p>
+
+								<!-- Bottom: tags + assignees -->
+								<div class="flex items-center gap-2">
+									{#if cardTags.length > 0}
+										<div class="flex flex-1 flex-wrap items-center gap-1 min-w-0">
+											{#each cardTags.slice(0, 3) as tag (tag.id)}
+												<span
+													class="inline-flex items-center px-1.5 py-0 text-[10px] font-medium truncate"
+													style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
+												>
+													{tag.name}
+												</span>
+											{/each}
+											{#if cardTags.length > 3}
+												<span class="text-[10px] text-muted">+{cardTags.length - 3}</span>
+											{/if}
+										</div>
+									{:else}
+										<div class="flex-1"></div>
+									{/if}
+
 									{#if task.assignments?.length}
-										<div class="ml-auto flex -space-x-1.5">
+										<div class="flex shrink-0 -space-x-1.5">
 											{#each task.assignments.slice(0, 3) as a (a.user_id)}
 												{#if a.user.avatar_url}
 													<img src={a.user.avatar_url} alt={a.user.full_name} class="h-4 w-4 rounded-full object-cover" />
@@ -923,27 +1006,6 @@
 												</span>
 											{/if}
 										</div>
-									{/if}
-								</div>
-
-								<!-- Title -->
-								<p class="mb-2.5 line-clamp-2 text-xs leading-snug text-sidebar-text">{task.title}</p>
-
-								<!-- Bottom: priority + project/status -->
-								<div class="flex items-center gap-2">
-									<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-medium {priorityColors[task.priority] ?? priorityColors.none}">
-										{formatPriority(task.priority)}
-									</span>
-
-									{#if groupBy === 'status' && task.project}
-										<span class="flex items-center gap-1 text-[10px] text-muted truncate">
-											<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {task.project.color ?? 'var(--color-accent)'}"></span>
-											{task.project.identifier}
-										</span>
-									{:else if groupBy === 'project'}
-										<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-medium {statusColors[task.status] ?? statusColors.backlog}">
-											{formatStatus(task.status)}
-										</span>
 									{/if}
 								</div>
 							</button>
