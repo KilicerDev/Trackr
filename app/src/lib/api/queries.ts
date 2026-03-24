@@ -8,7 +8,11 @@ export const TASK_SELECT = `
   ),
   created_by_user:users!created_by(id, full_name, avatar_url),
   parent:tasks!parent_id(id, title, short_id),
-  support_ticket:support_tickets!support_ticket_id(id, subject)
+  support_ticket:support_tickets!support_ticket_id(id, subject),
+  tags:task_tags(
+    id,
+    tag:tags(id, name, color)
+  )
 ` as const;
 
 export const TASK_MINIMAL_SELECT = `
