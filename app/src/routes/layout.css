@@ -3,8 +3,15 @@
 @variant dark (&:where(.dark, .dark *));
 
 @font-face {
-	font-family: 'JetBrains Mono';
-	src: url('/fonts/jetbrains-mono/JetBrainsMono[wght].ttf') format('truetype');
+	font-family: 'Geist';
+	src: url('/fonts/geist/Geist[wght].ttf') format('truetype');
+	font-weight: 100 900;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'GeistMono';
+	src: url('/fonts/geist-mono/GeistMono[wght].ttf') format('truetype');
 	font-weight: 100 900;
 	font-display: swap;
 }
@@ -22,7 +29,11 @@
 	--color-surface-border: #e4e4e4;
 	--color-surface-hover: #f5f5f5;
 	--color-muted: #71717a;
-	--font-sans: 'JetBrains Mono', monospace;
+	--font-sans: 'Geist', sans-serif;
+}
+
+body {
+	letter-spacing: 0.02em;
 }
 
 @layer theme {

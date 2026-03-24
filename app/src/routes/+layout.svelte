@@ -7,6 +7,7 @@
 	import type { LayoutData } from './$types';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { theme } from '$lib/stores/theme.svelte';
+	import { fontStore } from '$lib/stores/font.svelte';
 	import { getClient } from '$lib/api/client';
 	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
@@ -33,6 +34,7 @@
 	$effect(() => {
 		if (typeof document === 'undefined') return;
 		theme.init();
+		fontStore.init();
 		document.documentElement.classList.toggle('dark', theme.mode === 'dark');
 	});
 </script>

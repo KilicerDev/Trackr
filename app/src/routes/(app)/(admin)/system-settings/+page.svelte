@@ -4,6 +4,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import type { Tier, CreateTierInput } from '$lib/api/config';
+	import { fontStore, type FontFamily } from '$lib/stores/font.svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -495,6 +496,25 @@
 			<!-- Defaults -->
 			{#if activeTab === 'defaults'}
 				<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-8">
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Font</h2>
+						<div class="flex gap-3">
+							{#each [{ key: 'geist' as FontFamily, label: 'Geist', sample: 'The quick brown fox' }, { key: 'geist-mono' as FontFamily, label: 'Geist Mono', sample: 'The quick brown fox' }] as opt (opt.key)}
+								<button
+									type="button"
+									class="flex flex-1 flex-col gap-2 border px-4 py-3 text-left transition-colors
+										{fontStore.current === opt.key
+											? 'border-accent bg-accent/5'
+											: 'border-surface-border bg-surface hover:border-sidebar-icon/30'}"
+									onclick={() => fontStore.set(opt.key)}
+								>
+									<span class="text-xs font-medium text-sidebar-text">{opt.label}</span>
+									<span class="text-xs text-muted" style="font-family: {opt.key === 'geist' ? "'Geist', sans-serif" : "'GeistMono', monospace"}">{opt.sample}</span>
+								</button>
+							{/each}
+						</div>
+					</section>
+
 					<section>
 						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Defaults for New Organizations</h2>
 						<div class="grid max-w-lg grid-cols-3 gap-4">

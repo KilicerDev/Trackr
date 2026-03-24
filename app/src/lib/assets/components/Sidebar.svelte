@@ -38,7 +38,8 @@
 		<img src={logo} alt="Trackr" class="h-7 w-7 shrink-0" />
 		{#if expanded}
 			<span
-				class="whitespace-nowrap text-lg font-bold tracking-widest text-sidebar-text transition-opacity duration-200"
+				style="font-family: 'GeistMono', monospace"
+			class="whitespace-nowrap text-lg font-bold tracking-widest text-sidebar-text transition-opacity duration-200"
 			>
 				TRACKR
 			</span>

@@ -13,6 +13,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+.env.backup*
 !.env.example
 
 # Docker persistent data

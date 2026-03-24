@@ -63,7 +63,7 @@
 	<!-- Logo -->
 	<div class="flex h-14 items-center gap-2 px-4">
 		<img src={logo} alt="Trackr" class="h-7 w-7 shrink-0" />
-		<span class="text-lg font-bold tracking-widest text-sidebar-text">TRACKR</span>
+		<span style="font-family: 'GeistMono', monospace" class="text-lg font-bold tracking-widest text-sidebar-text">TRACKR</span>
 	</div>
 
 	<!-- Org dropdown -->

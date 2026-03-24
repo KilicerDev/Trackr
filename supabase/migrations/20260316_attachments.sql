@@ -48,26 +48,37 @@ CREATE POLICY attachments_delete ON public.attachments
     OR public.authorize('tasks', 'delete', org_id)
   );
 
--- 5. Create the storage bucket (config.toml only works with supabase CLI, not Docker)
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'attachments',
-  'attachments',
-  false,
-  52428800,
-  ARRAY[
-    'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain', 'text/csv'
-  ]
-)
+-- 5. Create the storage bucket
+-- Uses only (id, name) for base insert, then conditionally sets
+-- public/file_size_limit/allowed_mime_types if the columns exist
+-- (they were added in newer Supabase Storage versions).
+INSERT INTO storage.buckets (id, name)
+VALUES ('attachments', 'attachments')
 ON CONFLICT (id) DO NOTHING;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'storage' AND table_name = 'buckets' AND column_name = 'public'
+  ) THEN
+    UPDATE storage.buckets
+    SET public = false,
+        file_size_limit = 52428800,
+        allowed_mime_types = ARRAY[
+          'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml',
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'text/plain', 'text/csv'
+        ]
+    WHERE id = 'attachments';
+  END IF;
+END $$;
 
 -- 6. Add attachment_ids column to comments and messages
 ALTER TABLE public.task_comments ADD COLUMN attachment_ids uuid[] NOT NULL DEFAULT '{}';
