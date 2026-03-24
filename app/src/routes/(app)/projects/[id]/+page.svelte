@@ -520,7 +520,7 @@
 								</button>
 								{#if openDropdown === 'status'}
 									<div
-										class="absolute left-0 z-20 mt-1.5 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl"
+										class="absolute top-full left-0 z-20 mt-1.5 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl"
 									>
 										{#each PROJECT_STATUSES as s (s)}
 											<button
