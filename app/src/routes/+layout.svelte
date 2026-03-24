@@ -35,7 +35,6 @@
 		if (typeof document === 'undefined') return;
 		theme.init();
 		fontStore.init();
-		document.documentElement.classList.toggle('dark', theme.mode === 'dark');
 	});
 </script>
 

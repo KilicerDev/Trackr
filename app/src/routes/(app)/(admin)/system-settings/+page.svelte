@@ -5,6 +5,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import type { Tier, CreateTierInput } from '$lib/api/config';
 	import { fontStore, type FontFamily } from '$lib/stores/font.svelte';
+	import { theme, COLOR_SCHEMES, type ColorScheme } from '$lib/stores/theme.svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -65,6 +66,9 @@
 		{ key: 'branding', label: 'Branding' },
 		{ key: 'defaults', label: 'Defaults' }
 	];
+
+	// Accent color input
+	let accentInput = $state(theme.accentColor);
 
 	// Dropdown state
 	let openDropdown = $state<string | null>(null);
@@ -496,6 +500,69 @@
 			<!-- Defaults -->
 			{#if activeTab === 'defaults'}
 				<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-8">
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Color Scheme</h2>
+						<div class="flex gap-3">
+							{#each COLOR_SCHEMES as scheme (scheme.key)}
+								<button
+									type="button"
+									class="flex flex-1 flex-col gap-1 border px-4 py-3 text-left transition-colors
+										{theme.mode === scheme.key
+											? 'border-accent bg-accent/5'
+											: 'border-surface-border bg-surface hover:border-sidebar-icon/30'}"
+									onclick={() => theme.setScheme(scheme.key)}
+								>
+									<span class="text-xs font-medium text-sidebar-text">{scheme.label}</span>
+									<span class="text-[11px] text-muted">{scheme.description}</span>
+									<div class="mt-2 flex gap-1.5">
+										{#each scheme.swatches as color}
+											<span class="h-4 w-4 border border-surface-border" style="background:{color}"></span>
+										{/each}
+									</div>
+								</button>
+							{/each}
+						</div>
+					</section>
+
+					<section>
+						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Accent Color</h2>
+						<div class="flex max-w-lg items-center gap-3">
+							<input
+								type="color"
+								value={theme.accentColor}
+								oninput={(e) => {
+									const v = (e.target as HTMLInputElement).value;
+									accentInput = v;
+									theme.setAccentColor(v);
+								}}
+								class="h-9 w-9 shrink-0 cursor-pointer border border-surface-border bg-transparent p-0.5"
+							/>
+							<input
+								type="text"
+								value={accentInput}
+								maxlength="7"
+								placeholder="#ff4867"
+								class="{inputClass} font-mono !w-28"
+								oninput={(e) => {
+									let v = (e.target as HTMLInputElement).value;
+									if (v && !v.startsWith('#')) v = '#' + v;
+									accentInput = v;
+									if (/^#[0-9a-fA-F]{6}$/.test(v)) theme.setAccentColor(v);
+								}}
+							/>
+							{#if theme.accentColor !== theme.defaultAccent}
+								<button
+									type="button"
+									class="text-[11px] text-sidebar-icon transition-colors hover:text-sidebar-text"
+									onclick={() => { theme.resetAccent(); accentInput = theme.defaultAccent; }}
+								>
+									Reset
+								</button>
+							{/if}
+						</div>
+						<p class="mt-2 text-[11px] text-muted">Used for buttons, active states, and highlights across the app.</p>
+					</section>
+
 					<section>
 						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Font</h2>
 						<div class="flex gap-3">

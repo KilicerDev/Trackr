@@ -8,16 +8,21 @@
 
 		<script>
 			(function () {
-				const mode = localStorage.getItem('mode');
-				if (mode === 'dark') document.documentElement.classList.add('dark');
-				else if (mode === 'light') document.documentElement.classList.remove('dark');
+				var el = document.documentElement;
+				var mode = localStorage.getItem('mode');
+				if (mode && mode !== 'light') el.classList.add('dark');
+				if (mode === 'midnight' || mode === 'catppuccin') el.classList.add(mode);
+
+				var accent = localStorage.getItem('accent-color');
+				if (accent && /^#[0-9a-fA-F]{6}$/.test(accent))
+					el.style.setProperty('--color-accent', accent);
 
 				if (localStorage.getItem('sidebar-pinned') === 'false')
-					document.documentElement.dataset.sidebarPinned = 'false';
+					el.dataset.sidebarPinned = 'false';
 
 				var font = localStorage.getItem('font');
 				if (font === 'geist-mono')
-					document.documentElement.style.setProperty('--font-sans', "'GeistMono', monospace");
+					el.style.setProperty('--font-sans', "'GeistMono', monospace");
 			})();
 		</script>
 		<style>
