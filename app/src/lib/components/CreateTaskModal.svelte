@@ -7,7 +7,8 @@
 	import { projectStore, type Project } from '$lib/stores/projects.svelte';
 	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
-	import { X, Paperclip } from '@lucide/svelte';
+	import type { Tag } from '$lib/api/tags';
+	import { X, Paperclip, Plus } from '@lucide/svelte';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
 
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
@@ -49,6 +50,43 @@
 	let submitting = $state(false);
 	let pendingFiles = $state<File[]>([]);
 
+	// Tags
+	const TAG_COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+	let selectedTags = $state<{ id: string; name: string; color: string }[]>([]);
+	let projectTagsList = $state<Tag[]>([]);
+	let tagSearch = $state('');
+	let tagDropdownOpen = $state(false);
+
+	const filteredTags = $derived(
+		projectTagsList
+			.filter((t) => !selectedTags.some((s) => s.id === t.id))
+			.filter((t) => !tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+	);
+	const tagExactMatch = $derived(
+		projectTagsList.some((t) => t.name.toLowerCase() === tagSearch.trim().toLowerCase())
+	);
+
+	$effect(() => {
+		const pid = resolvedProjectId;
+		selectedTags = [];
+		projectTagsList = [];
+		if (pid) {
+			api.tags.getByProject(pid).then((t) => { projectTagsList = t; }).catch(() => {});
+		}
+	});
+
+	async function createTag() {
+		const name = tagSearch.trim();
+		if (!name || !resolvedProjectId) return;
+		const color = TAG_COLORS[projectTagsList.length % TAG_COLORS.length];
+		try {
+			const tag = await api.tags.create({ project_id: resolvedProjectId, name, color });
+			projectTagsList = [...projectTagsList, tag];
+			selectedTags = [...selectedTags, { id: tag.id, name: tag.name, color: tag.color }];
+			tagSearch = '';
+		} catch { /* ignore */ }
+	}
+
 	const parentOptions = $derived(
 		taskStore.items
 			.filter((t) => !resolvedProjectId || t.project_id === resolvedProjectId)
@@ -72,11 +110,13 @@
 	}
 
 	$effect(() => {
-		if (openDropdown === null) return;
+		if (openDropdown === null && !tagDropdownOpen) return;
 		function onMouseDown(e: MouseEvent) {
 			const target = e.target as HTMLElement;
 			if (!target.closest('[data-dropdown]')) {
 				openDropdown = null;
+				tagDropdownOpen = false;
+				tagSearch = '';
 			}
 		}
 		document.addEventListener('mousedown', onMouseDown);
@@ -114,6 +154,12 @@
 							/* silent - task was created, attachment upload is best-effort */
 						}
 					}
+				}
+			}
+			// Assign tags
+			if (task && selectedTags.length > 0) {
+				for (const tag of selectedTags) {
+					try { await api.tags.addToTask(task.id, tag.id); } catch { /* silent */ }
 				}
 			}
 			n.success('Task created');
@@ -358,6 +404,80 @@
 						/>
 					</div>
 				</div>
+
+				<!-- Tags -->
+				{#if resolvedProjectId}
+					<div>
+						<span class={labelClass}>Tags</span>
+						{#if selectedTags.length > 0}
+							<div class="mb-2 flex flex-wrap gap-1.5">
+								{#each selectedTags as tag (tag.id)}
+									<span
+										class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium"
+										style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
+									>
+										{tag.name}
+										<button
+											type="button"
+											class="hover:brightness-75"
+											onclick={() => { selectedTags = selectedTags.filter((t) => t.id !== tag.id); }}
+										>
+											<X size={10} />
+										</button>
+									</span>
+								{/each}
+							</div>
+						{/if}
+						<div class="relative" data-dropdown>
+							<input
+								type="text"
+								bind:value={tagSearch}
+								placeholder="Search or create tag..."
+								class={inputClass}
+								onfocus={() => { tagDropdownOpen = true; }}
+								onkeydown={(e) => {
+									if (e.key === 'Escape') { tagDropdownOpen = false; tagSearch = ''; }
+									if (e.key === 'Enter' && tagSearch.trim() && !tagExactMatch) { e.preventDefault(); createTag(); }
+								}}
+							/>
+							{#if tagDropdownOpen}
+								<div class="absolute left-0 z-20 mt-1 max-h-40 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl">
+									{#each filteredTags as tag (tag.id)}
+										<button
+											type="button"
+											class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+											onmousedown={(e) => {
+												e.preventDefault();
+												selectedTags = [...selectedTags, { id: tag.id, name: tag.name, color: tag.color }];
+												tagSearch = '';
+											}}
+										>
+											<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {tag.color}"></span>
+											{tag.name}
+										</button>
+									{:else}
+										{#if !tagSearch.trim()}
+											<p class="px-3 py-2 text-xs text-muted">No tags yet</p>
+										{/if}
+									{/each}
+									{#if tagSearch.trim() && !tagExactMatch}
+										<button
+											type="button"
+											class="flex w-full items-center gap-2 border-t border-surface-border px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-hover"
+											onmousedown={(e) => {
+												e.preventDefault();
+												createTag();
+											}}
+										>
+											<Plus size={12} />
+											Create "{tagSearch.trim()}"
+										</button>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					</div>
+				{/if}
 
 				<div>
 					<span class={labelClass}>Attachments</span>

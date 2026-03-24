@@ -70,6 +70,11 @@
 	);
 
 	const TypeIcon = $derived(typeIcons[task.type] ?? defaultTypeIcon);
+
+	const tags = $derived(
+		((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined)
+			?.map((tt) => tt.tag).filter(Boolean) ?? []
+	);
 </script>
 
 <button
@@ -89,6 +94,22 @@
 	<span class="min-w-0 flex-1 truncate text-sidebar-text">
 		{task.title}
 	</span>
+
+	{#if tags.length > 0}
+		<div class="flex shrink-0 items-center gap-1">
+			{#each tags.slice(0, 3) as tag (tag.id)}
+				<span
+					class="inline-flex items-center px-1.5 py-0 text-[10px] font-medium"
+					style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
+				>
+					{tag.name}
+				</span>
+			{/each}
+			{#if tags.length > 3}
+				<span class="text-[10px] text-muted">+{tags.length - 3}</span>
+			{/if}
+		</div>
+	{/if}
 
 	<div class="flex shrink-0 items-center gap-3">
 		<span

@@ -7,6 +7,7 @@
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import type { Attachment } from '$lib/api/attachments';
+	import type { Tag } from '$lib/api/tags';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
 	import AttachmentGrid from './AttachmentGrid.svelte';
 	import AttachmentCompact from './AttachmentCompact.svelte';
@@ -82,6 +83,84 @@
 	let parentCandidates = $state<Task[]>([]);
 	let loadingParents = $state(false);
 
+	// Tags
+	const TAG_COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
+	let taskTags = $state<{ id: string; name: string; color: string }[]>([]);
+	let projectTags = $state<Tag[]>([]);
+	let tagDropdownOpen = $state(false);
+	let tagSearch = $state('');
+	let loadingProjectTags = $state(false);
+
+	const filteredProjectTags = $derived(
+		projectTags
+			.filter((t) => !taskTags.some((tt) => tt.id === t.id))
+			.filter((t) => !tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+	);
+
+	const tagSearchExactMatch = $derived(
+		projectTags.some((t) => t.name.toLowerCase() === tagSearch.trim().toLowerCase())
+	);
+
+	async function loadProjectTags() {
+		if (!task) return;
+		loadingProjectTags = true;
+		try {
+			projectTags = await api.tags.getByProject(task.project_id);
+		} catch {
+			projectTags = [];
+		} finally {
+			loadingProjectTags = false;
+		}
+	}
+
+	function syncTagsToStore() {
+		if (!task) return;
+		const tagsPayload = taskTags.map((t) => ({ id: crypto.randomUUID(), tag: { id: t.id, name: t.name, color: t.color } }));
+		taskStore.items = taskStore.items.map((item) =>
+			item.id === task!.id ? { ...item, tags: tagsPayload } : item
+		);
+	}
+
+	async function addTagToTask(tag: { id: string; name: string; color: string }) {
+		if (!task) return;
+		taskTags = [...taskTags, tag];
+		tagSearch = '';
+		syncTagsToStore();
+		try {
+			await api.tags.addToTask(task.id, tag.id);
+		} catch {
+			taskTags = taskTags.filter((t) => t.id !== tag.id);
+			syncTagsToStore();
+		}
+	}
+
+	async function removeTagFromTask(tagId: string) {
+		if (!task) return;
+		const prev = taskTags;
+		taskTags = taskTags.filter((t) => t.id !== tagId);
+		syncTagsToStore();
+		try {
+			await api.tags.removeFromTask(task.id, tagId);
+		} catch {
+			taskTags = prev;
+			syncTagsToStore();
+		}
+	}
+
+	async function createAndAddTag() {
+		if (!task) return;
+		const name = tagSearch.trim();
+		if (!name) return;
+		const color = TAG_COLORS[projectTags.length % TAG_COLORS.length];
+		try {
+			const tag = await api.tags.create({ project_id: task.project_id, name, color });
+			projectTags = [...projectTags, tag];
+			await addTagToTask({ id: tag.id, name: tag.name, color: tag.color });
+		} catch {
+			/* ignore - likely duplicate */
+		}
+	}
+
 	async function loadParentCandidates() {
 		if (parentCandidates.length > 0) return;
 		if (!task) return;
@@ -138,11 +217,13 @@
 	});
 
 	$effect(() => {
-		if (!openDropdown) return;
+		if (!openDropdown && !tagDropdownOpen) return;
 		function handleClick(e: MouseEvent) {
 			const target = e.target as HTMLElement;
 			if (!target.closest('[data-dropdown]')) {
 				openDropdown = null;
+				tagDropdownOpen = false;
+				tagSearch = '';
 			}
 		}
 		document.addEventListener('mousedown', handleClick);
@@ -157,6 +238,7 @@
 		editingDescription = false;
 		commentBody = '';
 		parentCandidates = [];
+		projectTags = [];
 		try {
 			const [t, c, wl] = await Promise.all([
 				api.tasks.getById(id),
@@ -168,6 +250,9 @@
 			workLogs = wl as WorkLog[];
 			titleDraft = task.title;
 			descriptionDraft = (task.description as string) ?? '';
+			// Extract tags from task data (loaded via TASK_SELECT join)
+			const rawTags = (task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined;
+			taskTags = rawTags?.map((tt) => tt.tag).filter(Boolean) ?? [];
 			// Load parent task data if it has a parent
 			const pid = task.parent_id as string | null | undefined;
 			if (pid) {
@@ -711,6 +796,91 @@
 							{/if}
 						</div>
 					</div>
+				</div>
+
+				<!-- Tags -->
+				<div class="border-b border-surface-border px-4 py-3">
+					<div class="mb-2 flex items-center justify-between">
+						<span class={labelClass}>Tags</span>
+						<button
+							class="text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+							onclick={() => {
+								tagDropdownOpen = !tagDropdownOpen;
+								tagSearch = '';
+								if (tagDropdownOpen) loadProjectTags();
+							}}
+						>
+							+ Add
+						</button>
+					</div>
+					{#if taskTags.length > 0}
+						<div class="mb-2 flex flex-wrap gap-1.5">
+							{#each taskTags as tag (tag.id)}
+								<span
+									class="group inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium"
+									style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
+								>
+									{tag.name}
+									<button
+										class="opacity-0 transition-opacity group-hover:opacity-100 hover:brightness-75"
+										onclick={() => removeTagFromTask(tag.id)}
+										aria-label="Remove tag {tag.name}"
+									>
+										<X size={10} />
+									</button>
+								</span>
+							{/each}
+						</div>
+					{:else if !tagDropdownOpen}
+						<p class="text-xs text-muted">No tags</p>
+					{/if}
+					{#if tagDropdownOpen}
+						<div class="relative" data-dropdown>
+							<input
+								type="text"
+								bind:value={tagSearch}
+								placeholder="Search or create tag..."
+								class="w-full border border-surface-border bg-surface px-3 py-1.5 text-xs text-sidebar-text outline-none transition-colors placeholder:text-muted focus:border-sidebar-icon/30"
+								onkeydown={(e) => {
+									if (e.key === 'Escape') { tagDropdownOpen = false; tagSearch = ''; }
+									if (e.key === 'Enter' && tagSearch.trim() && !tagSearchExactMatch) { createAndAddTag(); }
+								}}
+							/>
+							<div class="absolute left-0 right-0 z-30 mt-1 max-h-40 overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl">
+								{#if loadingProjectTags}
+									<p class="px-3 py-2 text-xs text-muted">Loading...</p>
+								{/if}
+								{#each filteredProjectTags as tag (tag.id)}
+									<button
+										class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+										onmousedown={(e) => {
+											e.preventDefault();
+											addTagToTask({ id: tag.id, name: tag.name, color: tag.color });
+										}}
+									>
+										<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {tag.color}"></span>
+										{tag.name}
+									</button>
+								{:else}
+									{#if !loadingProjectTags && !tagSearch.trim()}
+										<p class="px-3 py-2 text-xs text-muted">No tags yet</p>
+									{/if}
+								{/each}
+								{#if tagSearch.trim() && !tagSearchExactMatch}
+									<button
+										class="flex w-full items-center gap-2 border-t border-surface-border px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-hover"
+										onmousedown={(e) => {
+											e.preventDefault();
+											createAndAddTag();
+										}}
+									>
+										<Plus size={12} />
+										Create "{tagSearch.trim()}"
+									</button>
+								{/if}
+							</div>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Assignees -->
