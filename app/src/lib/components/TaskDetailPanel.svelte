@@ -78,6 +78,24 @@
 	let wlDate = $state(new Date().toISOString().slice(0, 10));
 	let addingWorkLog = $state(false);
 
+	let parentTaskData = $state<{ id: string; title: string; short_id: string } | null>(null);
+	let parentCandidates = $state<Task[]>([]);
+	let loadingParents = $state(false);
+
+	async function loadParentCandidates() {
+		if (parentCandidates.length > 0) return;
+		if (!task) return;
+		loadingParents = true;
+		try {
+			const { data } = await api.tasks.getAll({ project_id: task.project_id }, 1, 500);
+			parentCandidates = data as Task[];
+		} catch {
+			parentCandidates = [];
+		} finally {
+			loadingParents = false;
+		}
+	}
+
 	let totalMinutes = $derived(workLogs.reduce((sum, wl) => sum + Number(wl.minutes), 0));
 
 	function formatMinutes(m: number): string {
@@ -138,6 +156,7 @@
 		editingTitle = false;
 		editingDescription = false;
 		commentBody = '';
+		parentCandidates = [];
 		try {
 			const [t, c, wl] = await Promise.all([
 				api.tasks.getById(id),
@@ -149,6 +168,18 @@
 			workLogs = wl as WorkLog[];
 			titleDraft = task.title;
 			descriptionDraft = (task.description as string) ?? '';
+			// Load parent task data if it has a parent
+			const pid = task.parent_id as string | null | undefined;
+			if (pid) {
+				try {
+					const p = await api.tasks.getById(pid);
+					parentTaskData = p ? { id: p.id, title: p.title, short_id: p.short_id } : null;
+				} catch {
+					parentTaskData = null;
+				}
+			} else {
+				parentTaskData = null;
+			}
 			// Restore comment → attachment mapping from persisted data
 			const map: Record<string, string[]> = {};
 			for (const cm of comments) {
@@ -395,19 +426,14 @@
 
 	const CurrentTypeIcon = $derived(typeIcons[task?.type ?? ''] ?? defaultTypeIcon);
 
-	const parentTask = $derived.by(() => {
-		const pid = task?.parent_id as string | null | undefined;
-		if (!pid) return null;
-		const found = taskStore.items.find((t) => t.id === pid);
-		if (found) return { id: found.id, title: found.title, short_id: found.short_id };
-		return null;
-	});
+	const parentTask = $derived(task?.parent_id ? parentTaskData : null);
 
 	const descendantIds = $derived.by(() => {
 		if (!task) return new Set<string>();
 		const ids = new Set<string>();
+		const source = parentCandidates.length > 0 ? parentCandidates : taskStore.items;
 		function collect(parentId: string) {
-			for (const t of taskStore.items) {
+			for (const t of source) {
 				const pid = (t.parent_id as string | null) ?? null;
 				if (pid === parentId && !ids.has(t.id)) {
 					ids.add(t.id);
@@ -651,14 +677,21 @@
 								<div class="relative" data-dropdown>
 									<button
 										class={propBtnClass}
-										onclick={() => (openDropdown = openDropdown === 'parent' ? null : 'parent')}
+										onclick={() => {
+											const next = openDropdown === 'parent' ? null : 'parent';
+											openDropdown = next;
+											if (next) loadParentCandidates();
+										}}
 									>
 										<span class="truncate text-muted">None</span>
 										{@html chevronSvg}
 									</button>
 									{#if openDropdown === 'parent'}
 										<div class={dropdownPanelClass}>
-											{#each taskStore.items.filter((t) => t.id !== task?.id && !descendantIds.has(t.id)) as t (t.id)}
+											{#if loadingParents}
+												<p class="px-3 py-2 text-xs text-muted">Loading...</p>
+											{/if}
+											{#each parentCandidates.filter((t) => t.id !== task?.id && !descendantIds.has(t.id)) as t (t.id)}
 												<button
 													class="{dropdownItemBase} text-sidebar-text"
 													onmousedown={(e) => {
