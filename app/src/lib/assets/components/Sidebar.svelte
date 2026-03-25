@@ -29,6 +29,7 @@
 </script>
 
 <aside
+	data-admin-sidebar
 	class="fixed top-0 left-0 z-50 flex h-screen flex-col border-r border-sidebar-border bg-sidebar-bg transition-[width] duration-200 ease-out"
 	style="width: {expanded ? '220px' : '56px'}"
 	onmouseenter={() => { if (!pinned) hovered = true; }}
