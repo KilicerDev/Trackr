@@ -269,7 +269,7 @@
 	$effect(() => {
 		if (loaded) return;
 		if (!auth.isAuthenticated) return;
-		if (!auth.isOwner) {
+		if (!auth.isOwner && !auth.isAdmin) {
 			loading = false;
 			loaded = true;
 			return;
@@ -320,7 +320,7 @@
 		<h1 class="text-md font-semibold text-sidebar-text">System Settings</h1>
 	</div>
 
-	{#if !auth.isOwner}
+	{#if !auth.isOwner && !auth.isAdmin}
 		<p class="px-3 py-8 text-center text-sm text-muted">
 			Access denied. Only the platform owner can manage system settings.
 		</p>

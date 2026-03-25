@@ -45,7 +45,10 @@
 		onClose: () => void;
 	}
 
-	let { taskId, members = [], onClose }: Props = $props();
+	let { taskId, members: membersProp = [], onClose }: Props = $props();
+
+	let fetchedMembers = $state<Member[]>([]);
+	let members = $derived(membersProp.length > 0 ? membersProp : fetchedMembers);
 
 	let task = $state<Task | null>(null);
 	let comments = $state<Comment[]>([]);
@@ -254,6 +257,18 @@
 			// Extract tags from task data (loaded via TASK_SELECT join)
 			const rawTags = (task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined;
 			taskTags = rawTags?.map((tt) => tt.tag).filter(Boolean) ?? [];
+			// Fetch project members if not provided via prop
+			if (membersProp.length === 0 && task.project_id) {
+				try {
+					const proj = await api.projects.getById(task.project_id);
+					fetchedMembers = (proj?.members ?? []).map((m: any) => ({
+						user_id: m.user_id,
+						user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url, is_active: m.user.is_active, deleted_at: m.user.deleted_at }
+					}));
+				} catch {
+					fetchedMembers = [];
+				}
+			}
 			// Load parent task data if it has a parent
 			const pid = task.parent_id as string | null | undefined;
 			if (pid) {
