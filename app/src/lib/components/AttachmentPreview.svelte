@@ -64,45 +64,45 @@
 >
 	<!-- Controls -->
 	<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
-	<div class="absolute top-4 right-4 z-10 flex items-center gap-2" onclick={(e) => e.stopPropagation()}>
+	<div class="absolute top-4 right-4 z-10 flex items-center gap-1.5" onclick={(e) => e.stopPropagation()}>
 		<button
-			class="rounded-sm bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+			class="flex h-8 w-8 items-center justify-center rounded-sm bg-white/10 text-white transition-all duration-150 hover:bg-white/20"
 			onclick={handleDownload}
 			aria-label="Download"
 		>
-			<Download size={18} />
+			<Download size={16} />
 		</button>
 		<button
-			class="rounded-sm bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+			class="flex h-8 w-8 items-center justify-center rounded-sm bg-white/10 text-white transition-all duration-150 hover:bg-white/20"
 			onclick={onClose}
 			aria-label="Close"
 		>
-			<X size={18} />
+			<X size={16} />
 		</button>
 	</div>
 
 	<!-- File name -->
 	<div class="absolute top-4 left-4 z-10">
-		<span class="text-sm text-white/80">{current?.file_name ?? ''}</span>
+		<span class="text-base text-white/80">{current?.file_name ?? ''}</span>
 	</div>
 
 	<!-- Nav arrows -->
 	{#if hasPrev}
 		<button
-			class="absolute left-4 z-10 rounded-sm bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+			class="absolute left-4 z-10 flex h-8 w-8 items-center justify-center rounded-sm bg-white/10 text-white transition-all duration-150 hover:bg-white/20"
 			onclick={(e) => { e.stopPropagation(); onNavigate(currentIndex - 1); }}
 			aria-label="Previous"
 		>
-			<ChevronLeft size={24} />
+			<ChevronLeft size={20} />
 		</button>
 	{/if}
 	{#if hasNext}
 		<button
-			class="absolute right-4 z-10 rounded-sm bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+			class="absolute right-4 z-10 flex h-8 w-8 items-center justify-center rounded-sm bg-white/10 text-white transition-all duration-150 hover:bg-white/20"
 			onclick={(e) => { e.stopPropagation(); onNavigate(currentIndex + 1); }}
 			aria-label="Next"
 		>
-			<ChevronRight size={24} />
+			<ChevronRight size={20} />
 		</button>
 	{/if}
 
@@ -110,26 +110,26 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
 	<div class="max-h-[85vh] max-w-[85vw]" onclick={(e) => e.stopPropagation()}>
 		{#if loading}
-			<p class="text-sm text-white/60">Loading...</p>
+			<p class="text-base text-white/60">Loading...</p>
 		{:else if !signedUrl}
-			<p class="text-sm text-white/60">Failed to load preview</p>
+			<p class="text-base text-white/60">Failed to load preview</p>
 		{:else if current && isImageType(current.mime_type)}
 			<img
 				src={signedUrl}
 				alt={current.file_name}
-				class="max-h-[85vh] max-w-[85vw] object-contain"
+				class="max-h-[85vh] max-w-[85vw] rounded object-contain"
 			/>
 		{:else if current && isPdfType(current.mime_type)}
 			<iframe
 				src={signedUrl}
 				title={current.file_name}
-				class="h-[85vh] w-[70vw] border-0 bg-white"
+				class="h-[85vh] w-[70vw] rounded border-0 bg-white"
 			></iframe>
 		{:else}
-			<div class="flex flex-col items-center gap-4 rounded bg-surface p-8">
-				<p class="text-sm text-sidebar-text">No preview available for this file type</p>
+			<div class="flex flex-col items-center gap-4 rounded border border-surface-border/40 bg-surface/50 p-8">
+				<p class="text-base text-sidebar-text">No preview available for this file type</p>
 				<button
-					class="bg-accent px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-accent/90"
+					class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
 					onclick={handleDownload}
 				>
 					Download to view

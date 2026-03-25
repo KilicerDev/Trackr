@@ -44,18 +44,18 @@
 </script>
 
 {#if attachments.length > 0}
-	<div class="divide-y divide-surface-border">
+	<div class="divide-y divide-surface-border/30">
 		{#each attachments as att, i (att.id)}
 			{@const Icon = getIcon(att.mime_type)}
 			<div class="group flex items-center gap-3 py-2">
 				<button
-					class="flex min-w-0 flex-1 items-center gap-3 text-left"
+					class="flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left transition-all duration-150 hover:bg-surface-hover/40"
 					onclick={() => (previewIndex = i)}
 				>
-					<Icon size={16} class="shrink-0 text-sidebar-icon" />
+					<Icon size={16} class="shrink-0 text-muted/50" />
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-xs text-sidebar-text">{att.file_name}</p>
-						<p class="text-[10px] text-muted">
+						<p class="truncate text-base text-sidebar-text">{att.file_name}</p>
+						<p class="font-mono text-xs text-muted/50">
 							{formatFileSize(att.file_size)}
 							{#if att.uploader}
 								&middot; {att.uploader.full_name}
@@ -64,9 +64,9 @@
 						</p>
 					</div>
 				</button>
-				<div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+				<div class="flex shrink-0 items-center gap-0.5 opacity-0 transition-all duration-150 group-hover:opacity-100">
 					<button
-						class="p-1 text-sidebar-icon transition-colors hover:text-accent"
+						class="flex h-6 w-6 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-accent"
 						onclick={() => handleDownload(att)}
 						aria-label="Download {att.file_name}"
 					>
@@ -74,7 +74,7 @@
 					</button>
 					{#if canDelete && onRemove}
 						<button
-							class="p-1 text-sidebar-icon transition-colors hover:text-red-500"
+							class="flex h-6 w-6 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-red-400"
 							onclick={() => onRemove?.(att)}
 							aria-label="Delete {att.file_name}"
 						>

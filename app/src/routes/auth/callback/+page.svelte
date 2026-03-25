@@ -46,6 +46,6 @@
 	});
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50">
-	<p class="text-sm text-gray-400">Setting up your account...</p>
+<div class="flex min-h-screen items-center justify-center bg-page-bg">
+	<p class="text-sm text-muted">Setting up your account...</p>
 </div>

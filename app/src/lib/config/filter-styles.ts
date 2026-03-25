@@ -1,8 +1,8 @@
 export const filterLabelClass =
-	'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	'text-sm font-medium text-muted hover:text-sidebar-text transition-all duration-150';
 
 export const dropdownBtnClass =
-	'flex min-w-[6.5rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+	'flex min-w-[6.5rem] cursor-pointer items-center justify-between gap-2 rounded-sm px-2 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none';
 
 export const dropdownPanelClass =
-	'absolute left-0 z-20 mt-1.5 max-h-56 min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+	'absolute left-0 z-20 mt-1.5 max-h-48 min-w-[12rem] origin-top-left animate-dropdown-in overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20';

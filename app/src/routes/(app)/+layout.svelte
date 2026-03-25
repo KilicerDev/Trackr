@@ -38,7 +38,7 @@
 
 <SearchPalette />
 <Sidebar bind:pinned />
-<div class="flex h-dvh flex-col bg-page-bg transition-[margin-left] duration-200 ease-in-out" style="margin-left: {pinned ? '240px' : '64px'}">
+<div class="flex h-dvh flex-col bg-page-bg transition-[margin-left] duration-200 ease-in-out" style="margin-left: {pinned ? '220px' : '56px'}">
     <Header />
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		{@render children()}

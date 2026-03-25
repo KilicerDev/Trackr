@@ -45,7 +45,7 @@
 	const summary = $derived.by(() => {
 		if (selected.length === 0) return 'All';
 		const labels = selected.map((v) => options.find((o) => o.value === v)?.label ?? v);
-		const opLabel = operator === 'is_not' ? 'is not ' : '';
+		const opLabel = operator === 'is_not' ? 'not ' : '';
 		const first = labels[0];
 		if (labels.length === 1) return opLabel + first;
 		return opLabel + first + ` +${labels.length - 1}`;
@@ -54,92 +54,109 @@
 	const hasSelection = $derived(selected.length > 0);
 </script>
 
-<div class="flex flex-col gap-1.5">
-	<span class="text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">{label}</span>
-	<div class="relative" data-filter-dropdown
-		use:clickOutside={{ onClickOutside: () => { open = false; search = ''; }, enabled: open }}
+<div class="relative" data-filter-dropdown
+	use:clickOutside={{ onClickOutside: () => { open = false; search = ''; }, enabled: open }}
+>
+	<button
+		class="flex h-7 items-center gap-1.5 rounded-sm px-2 text-sm transition-all duration-150 {hasSelection ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
+		onclick={() => (open = !open)}
 	>
-		<button
-			class="flex min-w-[6.5rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {hasSelection ? 'border-accent/40' : ''}"
-			onclick={() => (open = !open)}
+		<span class="text-muted/50">{label}</span>
+		<span class="truncate {hasSelection ? 'font-medium' : ''}">{summary}</span>
+		<svg
+			class="h-3 w-3 shrink-0 text-muted/40 transition-transform duration-150 {open ? 'rotate-180' : ''}"
+			fill="none"
+			stroke="currentColor"
+			viewBox="0 0 24 24"
 		>
-			<span class="truncate {hasSelection ? 'text-sidebar-text' : 'text-muted'}">{summary}</span>
-			<svg
-				class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {open ? 'rotate-180' : ''}"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
-			>
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-			</svg>
-		</button>
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+		</svg>
+	</button>
 
-		{#if open}
-			<div class="absolute left-0 z-20 mt-1.5 min-w-[13rem] border border-surface-border bg-surface shadow-xl">
-				<!-- Operator toggle -->
-				<div class="flex items-center gap-1 border-b border-surface-border px-2 py-2">
+	{#if open}
+		<div
+			class="absolute left-0 z-20 mt-1.5 min-w-[12rem] origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20"
+		>
+			<!-- Operator toggle -->
+			<div class="flex items-center gap-0.5 border-b border-surface-border/40 px-1.5 py-1.5">
+				<button
+					class="rounded px-2 py-0.5 text-xs font-medium transition-colors {operator === 'is' ? 'bg-surface-hover text-sidebar-text' : 'text-muted hover:text-sidebar-text'}"
+					onmousedown={(e) => { e.preventDefault(); setOperator('is'); }}
+				>
+					is
+				</button>
+				<button
+					class="rounded px-2 py-0.5 text-xs font-medium transition-colors {operator === 'is_not' ? 'bg-surface-hover text-sidebar-text' : 'text-muted hover:text-sidebar-text'}"
+					onmousedown={(e) => { e.preventDefault(); setOperator('is_not'); }}
+				>
+					is not
+				</button>
+				{#if hasSelection}
 					<button
-						class="px-2.5 py-1 text-[10px] font-medium transition-colors {operator === 'is' ? 'bg-accent text-white' : 'bg-surface-hover text-sidebar-text hover:text-sidebar-text'}"
-						onmousedown={(e) => { e.preventDefault(); setOperator('is'); }}
+						class="ml-auto text-xs text-muted/40 transition-colors hover:text-accent"
+						onmousedown={(e) => { e.preventDefault(); clear(); }}
 					>
-						is
+						Clear
 					</button>
-					<button
-						class="px-2.5 py-1 text-[10px] font-medium transition-colors {operator === 'is_not' ? 'bg-accent text-white' : 'bg-surface-hover text-sidebar-text hover:text-sidebar-text'}"
-						onmousedown={(e) => { e.preventDefault(); setOperator('is_not'); }}
-					>
-						is not
-					</button>
-					{#if hasSelection}
-						<button
-							class="ml-auto text-[10px] text-sidebar-icon transition-colors hover:text-accent"
-							onmousedown={(e) => { e.preventDefault(); clear(); }}
-						>
-							Clear
-						</button>
-					{/if}
-				</div>
-
-				<!-- Search -->
-				{#if searchable}
-					<div class="border-b border-surface-border px-2 py-1.5">
-						<input
-							type="text"
-							placeholder="Search..."
-							bind:value={search}
-							class="w-full bg-transparent px-1 py-1 text-xs text-sidebar-text placeholder:text-muted focus:outline-none"
-						/>
-					</div>
 				{/if}
+			</div>
 
-				<!-- Options list -->
-				<div class="max-h-48 overflow-y-auto py-1">
-					{#each filteredOptions as opt (opt.value)}
-						{@const isSelected = selected.includes(opt.value)}
-						<button
-							class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-surface-hover {isSelected ? 'text-sidebar-text' : 'text-muted'}"
-							onmousedown={(e) => { e.preventDefault(); toggle(opt.value); }}
+			<!-- Search -->
+			{#if searchable}
+				<div class="border-b border-surface-border/40 px-2.5 py-1.5">
+					<input
+						type="text"
+						placeholder="Search..."
+						bind:value={search}
+						class="w-full bg-transparent text-sm text-sidebar-text placeholder:text-muted/30 focus:outline-none"
+					/>
+				</div>
+			{/if}
+
+			<!-- Options list -->
+			<div class="max-h-48 overflow-y-auto py-1">
+				{#each filteredOptions as opt (opt.value)}
+					{@const isSelected = selected.includes(opt.value)}
+					<button
+						class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60 {isSelected ? 'text-sidebar-text' : 'text-muted'}"
+						onmousedown={(e) => { e.preventDefault(); toggle(opt.value); }}
+					>
+						<span
+							class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-colors {isSelected ? 'border-accent bg-accent' : 'border-surface-border/60'}"
 						>
-							<span
-								class="flex h-3.5 w-3.5 shrink-0 items-center justify-center border transition-colors {isSelected ? 'border-accent bg-accent' : 'border-surface-border bg-surface'}"
-							>
-								{#if isSelected}
-									<Check size={10} class="text-white" />
-								{/if}
-							</span>
-							{#if opt.color}
-								<span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {opt.color}"></span>
-							{/if}
-							<span class="min-w-0 flex-1">
-							<span class="block truncate">{opt.label}</span>
-							{#if opt.subtitle}
-								<span class="block truncate text-[10px] text-accent/50">{opt.subtitle}</span>
+							{#if isSelected}
+								<Check size={8} class="text-white" />
 							{/if}
 						</span>
-						</button>
-					{/each}
-				</div>
+						{#if opt.color}
+							<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {opt.color}"></span>
+						{/if}
+						<span class="min-w-0 flex-1">
+							<span class="block truncate">{opt.label}</span>
+							{#if opt.subtitle}
+								<span class="block truncate text-2xs text-muted/40">{opt.subtitle}</span>
+							{/if}
+						</span>
+					</button>
+				{/each}
 			</div>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	@keyframes dropdown-in {
+		from {
+			opacity: 0;
+			transform: scale(0.95) translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1) translateY(0);
+		}
+	}
+
+	:global(.animate-dropdown-in) {
+		animation: dropdown-in 150ms ease-out;
+	}
+</style>

@@ -109,43 +109,43 @@
 		return val.replace(/_/g, ' ');
 	}
 
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
 	const dropdownBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1.5 max-h-56 w-full min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+		'absolute left-0 z-20 mt-1.5 max-h-56 w-full min-w-[10rem] overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20';
 	const dropdownPanelUpClass =
-		'absolute bottom-full left-0 z-20 mb-1.5 max-h-56 w-full min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+		'absolute bottom-full left-0 z-20 mb-1.5 max-h-56 w-full min-w-[10rem] overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20';
 	const dropdownItemBase =
-		'flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover';
+		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
 </script>
 
 <Modal open={true} onClose={onClose}>
 	<div>
-		<div class="border-b border-surface-border px-4 py-3">
-			<h2 class="text-sm font-semibold text-sidebar-text">Create support ticket</h2>
+		<div class="px-3 py-2.5">
+			<h2 class="text-md font-semibold text-sidebar-text">Create support ticket</h2>
 		</div>
-		<div class="p-4">
+		<div class="p-3">
 			{#if organizationId === null}
-				<p class="mb-4 text-xs text-sidebar-icon">
+				<p class="mb-4 text-base text-sidebar-icon">
 					Select an organization first to create a ticket.
 				</p>
 				<button
 					type="button"
-					class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+					class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 					onclick={onClose}
 				>
 					Close
 				</button>
 			{:else if !isSelfService && customers.length === 0}
-				<p class="mb-4 text-xs text-sidebar-icon">
+				<p class="mb-4 text-base text-sidebar-icon">
 					No customers in this organization. Add customers before creating tickets.
 				</p>
 				<button
 					type="button"
-					class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+					class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 					onclick={onClose}
 				>
 					Close
@@ -323,7 +323,7 @@
 						{#if pendingFiles.length > 0}
 							<div class="mt-2 flex flex-wrap gap-1">
 								{#each pendingFiles as file, i (file.name + i)}
-									<span class="flex items-center gap-1 border border-surface-border bg-surface px-2 py-0.5 text-[10px] text-sidebar-text">
+									<span class="flex items-center gap-1 rounded border border-surface-border/40 bg-surface/50 px-2 py-0.5 text-xs text-sidebar-text">
 										<Paperclip size={10} />
 										<span class="max-w-[120px] truncate">{file.name}</span>
 										<button type="button" class="text-muted hover:text-red-500" onclick={() => { pendingFiles = pendingFiles.filter((_, idx) => idx !== i); }}>
@@ -336,13 +336,13 @@
 					</div>
 
 					{#if error}
-						<p class="text-xs text-red-500">{error}</p>
+						<p class="text-base text-red-500">{error}</p>
 					{/if}
 
-					<div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+					<div class="flex justify-end gap-2 pt-4">
 						<button
 							type="button"
-							class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+							class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 							onclick={onClose}
 						>
 							Cancel
@@ -350,7 +350,7 @@
 						<button
 							type="submit"
 							disabled={!canSubmit || submitting}
-							class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
+							class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 						>
 							{submitting ? 'Creating…' : 'Create ticket'}
 						</button>

@@ -8,6 +8,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { theme } from '$lib/stores/theme.svelte';
 	import { fontStore } from '$lib/stores/font.svelte';
+	import { densityStore } from '$lib/stores/density.svelte';
 	import { getClient } from '$lib/api/client';
 	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
@@ -35,6 +36,7 @@
 		if (typeof document === 'undefined') return;
 		theme.init();
 		fontStore.init();
+		densityStore.init();
 	});
 </script>
 

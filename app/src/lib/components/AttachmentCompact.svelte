@@ -20,7 +20,7 @@
 
 {#if attachments.length === 1}
 	<button
-		class="mt-1 flex items-center gap-1 text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+		class="mt-1 flex items-center gap-1 text-sm text-sidebar-icon transition-colors hover:text-accent"
 		onclick={() => openPreview(attachments[0])}
 	>
 		<Paperclip size={11} />
@@ -29,7 +29,7 @@
 {:else if attachments.length > 1}
 	<div class="mt-1">
 		<button
-			class="flex items-center gap-1 text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+			class="flex items-center gap-1 text-sm text-sidebar-icon transition-colors hover:text-accent"
 			onclick={() => (expanded = !expanded)}
 		>
 			<Paperclip size={11} />
@@ -39,7 +39,7 @@
 			<div class="mt-1 space-y-0.5 pl-4">
 				{#each attachments as att (att.id)}
 					<button
-						class="block truncate text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+						class="block truncate text-sm text-sidebar-icon transition-colors hover:text-accent"
 						onclick={() => openPreview(att)}
 					>
 						{att.file_name}

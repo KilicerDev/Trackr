@@ -208,12 +208,12 @@
 
 	function statusColor(status: string | undefined): string {
 		switch (status) {
-			case 'open': return 'bg-blue-500/15 text-blue-400';
-			case 'in_progress': return 'bg-yellow-500/15 text-yellow-400';
-			case 'resolved': case 'done': return 'bg-green-500/15 text-green-400';
-			case 'closed': return 'bg-neutral-500/15 text-neutral-400';
-			case 'todo': case 'backlog': return 'bg-neutral-500/15 text-neutral-400';
-			default: return 'bg-neutral-500/15 text-neutral-400';
+			case 'open': return 'text-blue-400';
+			case 'in_progress': return 'text-amber-400';
+			case 'resolved': case 'done': return 'text-green-400';
+			case 'closed': return 'text-neutral-400';
+			case 'todo': case 'backlog': return 'text-neutral-400';
+			default: return 'text-neutral-400';
 		}
 	}
 
@@ -241,13 +241,13 @@
 		></button>
 
 		<!-- palette -->
-		<div class="relative flex w-full max-w-xl flex-col border border-surface-border bg-surface shadow-2xl">
+		<div class="relative flex w-full max-w-xl flex-col animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20">
 			<!-- search input -->
-			<div class="flex items-center gap-3 border-b border-surface-border px-4 py-3">
+			<div class="flex items-center gap-3 border-b border-surface-border/40 px-4 py-3">
 				{#if loading}
-					<Loader2 size={16} class="shrink-0 animate-spin text-sidebar-icon" />
+					<Loader2 size={16} class="shrink-0 animate-spin text-muted/50" />
 				{:else}
-					<Search size={16} class="shrink-0 text-sidebar-icon" />
+					<Search size={16} class="shrink-0 text-muted/50" />
 				{/if}
 				<input
 					bind:this={inputRef}
@@ -255,16 +255,16 @@
 					oninput={onInput}
 					type="text"
 					placeholder="Search tickets, tasks, messages..."
-					class="w-full bg-transparent text-sm text-sidebar-text placeholder-sidebar-icon/50 outline-none"
+					class="w-full bg-transparent text-base text-sidebar-text placeholder:text-muted/30 outline-none"
 				/>
-				<kbd class="shrink-0 rounded border border-surface-border px-1.5 py-0.5 text-[10px] text-sidebar-icon">ESC</kbd>
+				<kbd class="shrink-0 rounded-sm border border-surface-border/60 px-1.5 py-0.5 text-xs text-muted/50">ESC</kbd>
 			</div>
 
 			<!-- filter tabs -->
-			<div class="flex gap-1 border-b border-surface-border px-4 py-2">
+			<div class="flex gap-1 border-b border-surface-border/40 px-4 py-2">
 				{#each tabs as tab (tab.value)}
 					<button
-						class="rounded-sm px-2.5 py-1 text-[11px] font-medium transition-colors {activeTab === tab.value ? 'bg-accent text-white' : 'text-sidebar-text/60 hover:bg-surface-hover hover:text-sidebar-text'}"
+						class="rounded-sm px-2.5 py-1 text-sm font-medium transition-all duration-150 {activeTab === tab.value ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 						onclick={() => { activeTab = tab.value; selectedIndex = 0; }}
 					>
 						{tab.label}
@@ -275,11 +275,11 @@
 			<!-- results -->
 			<div class="max-h-[50vh] overflow-y-auto">
 				{#if query.trim() && !loading && flatResults.length === 0}
-					<div class="px-4 py-8 text-center text-xs text-sidebar-icon/60">
+					<div class="px-4 py-8 text-center text-sm text-muted/50">
 						No results found
 					</div>
 				{:else if !query.trim() && !loading}
-					<div class="px-4 py-8 text-center text-xs text-sidebar-icon/60">
+					<div class="px-4 py-8 text-center text-sm text-muted/50">
 						Type to search across all content...
 					</div>
 				{:else if !activeTab}
@@ -289,27 +289,27 @@
 						{@const status = String(result.metadata?.status ?? '')}
 						<button
 							data-search-index={idx}
-							class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors {idx === selectedIndex ? 'bg-accent/10' : 'hover:bg-surface-hover'}"
+							class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-all duration-150 {idx === selectedIndex ? 'bg-surface-hover/60' : 'hover:bg-surface-hover/40'}"
 							onclick={() => navigateTo(result)}
 							onmouseenter={() => { selectedIndex = idx; }}
 						>
 							<div class="mt-0.5 shrink-0">
-								<Icon size={14} class="text-sidebar-icon" />
+								<Icon size={14} class="text-muted/50" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2">
-									<span class="truncate text-xs font-medium text-sidebar-text">{result.title}</span>
+									<span class="truncate text-base font-medium text-sidebar-text">{result.title}</span>
 									{#if status && status !== 'undefined'}
-										<span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {statusColor(status)}">
+										<span class="shrink-0 text-xs font-medium {statusColor(status)}">
 											{status.replace('_', ' ')}
 										</span>
 									{/if}
-									<span class="ml-auto shrink-0 text-[10px] text-sidebar-icon/40">
+									<span class="ml-auto shrink-0 font-mono text-xs text-muted/40">
 										{Math.round(result.similarity * 100)}%
 									</span>
 								</div>
 								{#if result.preview}
-									<p class="mt-0.5 truncate text-[11px] leading-relaxed text-sidebar-text/50">
+									<p class="mt-0.5 truncate text-sm leading-relaxed text-muted/50">
 										{result.preview}
 									</p>
 								{/if}
@@ -322,7 +322,7 @@
 					{#each ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'] as type (type)}
 						{#if groups[type]?.length}
 							<div class="px-4 pt-3 pb-1">
-								<span class="text-[10px] font-semibold uppercase tracking-wider text-sidebar-icon/50">
+								<span class="text-xs font-medium uppercase tracking-[0.08em] text-muted/50">
 									{groupLabel(type)}
 								</span>
 							</div>
@@ -332,27 +332,27 @@
 								{@const status = String(result.metadata?.status ?? '')}
 								<button
 									data-search-index={idx}
-									class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors {idx === selectedIndex ? 'bg-accent/10' : 'hover:bg-surface-hover'}"
+									class="flex w-full items-start gap-3 px-4 py-2.5 text-left transition-all duration-150 {idx === selectedIndex ? 'bg-surface-hover/60' : 'hover:bg-surface-hover/40'}"
 									onclick={() => navigateTo(result)}
 									onmouseenter={() => { selectedIndex = idx; }}
 								>
 									<div class="mt-0.5 shrink-0">
-										<Icon size={14} class="text-sidebar-icon" />
+										<Icon size={14} class="text-muted/50" />
 									</div>
 									<div class="min-w-0 flex-1">
 										<div class="flex items-center gap-2">
-											<span class="truncate text-xs font-medium text-sidebar-text">{result.title}</span>
+											<span class="truncate text-base font-medium text-sidebar-text">{result.title}</span>
 											{#if status && status !== 'undefined'}
-												<span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {statusColor(status)}">
+												<span class="shrink-0 text-xs font-medium {statusColor(status)}">
 													{status.replace('_', ' ')}
 												</span>
 											{/if}
-											<span class="ml-auto shrink-0 text-[10px] text-sidebar-icon/40">
+											<span class="ml-auto shrink-0 font-mono text-xs text-muted/40">
 												{Math.round(result.similarity * 100)}%
 											</span>
 										</div>
 										{#if result.preview}
-											<p class="mt-0.5 truncate text-[11px] leading-relaxed text-sidebar-text/50">
+											<p class="mt-0.5 truncate text-sm leading-relaxed text-muted/50">
 												{result.preview}
 											</p>
 										{/if}
@@ -366,12 +366,22 @@
 
 			<!-- footer -->
 			{#if flatResults.length > 0}
-				<div class="flex items-center gap-4 border-t border-surface-border px-4 py-2 text-[10px] text-sidebar-icon/40">
-					<span><kbd class="rounded border border-surface-border px-1 py-0.5">↑</kbd><kbd class="ml-0.5 rounded border border-surface-border px-1 py-0.5">↓</kbd> navigate</span>
-					<span><kbd class="rounded border border-surface-border px-1 py-0.5">↵</kbd> open</span>
-					<span><kbd class="rounded border border-surface-border px-1 py-0.5">esc</kbd> close</span>
+				<div class="flex items-center gap-4 border-t border-surface-border/40 px-4 py-2 text-xs text-muted/40">
+					<span><kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5">↑</kbd><kbd class="ml-0.5 rounded-sm border border-surface-border/60 px-1 py-0.5">↓</kbd> navigate</span>
+					<span><kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5">↵</kbd> open</span>
+					<span><kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5">esc</kbd> close</span>
 				</div>
 			{/if}
 		</div>
 	</div>
 {/if}
+
+<style>
+	@keyframes dropdown-in {
+		from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+		to   { opacity: 1; transform: scale(1) translateY(0); }
+	}
+	:global(.animate-dropdown-in) {
+		animation: dropdown-in 150ms ease-out;
+	}
+</style>

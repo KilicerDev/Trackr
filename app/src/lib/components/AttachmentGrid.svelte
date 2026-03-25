@@ -65,7 +65,7 @@
 		{#each attachments as att, i (att.id)}
 			{@const Icon = getIcon(att.mime_type)}
 			<div
-				class="group relative flex h-[100px] w-[100px] cursor-pointer flex-col items-center justify-center gap-1 border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30"
+				class="group relative flex h-[100px] w-[100px] cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30"
 			>
 				<button
 					class="flex h-full w-full flex-col items-center justify-center gap-1 p-2"
@@ -79,14 +79,14 @@
 						/>
 					{:else}
 						<Icon size={24} class="text-sidebar-icon" />
-						<span class="w-full truncate text-center text-[9px] text-muted">{att.file_name}</span>
+						<span class="w-full truncate text-center text-2xs text-muted">{att.file_name}</span>
 					{/if}
 				</button>
 
 				<!-- Action overlay -->
 				<div class="absolute top-0.5 right-0.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
 					<button
-						class="rounded-sm bg-surface/90 p-0.5 text-sidebar-icon transition-colors hover:text-accent"
+						class="rounded-sm bg-surface/90 p-0.5 text-sidebar-icon transition-colors hover:text-accent focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 						onclick={(e) => { e.stopPropagation(); handleDownload(att); }}
 						aria-label="Download {att.file_name}"
 					>
@@ -94,7 +94,7 @@
 					</button>
 					{#if canDelete && onRemove}
 						<button
-							class="rounded-sm bg-surface/90 p-0.5 text-sidebar-icon transition-colors hover:text-red-500"
+							class="rounded-sm bg-surface/90 p-0.5 text-sidebar-icon transition-colors hover:text-red-500 focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 							onclick={(e) => { e.stopPropagation(); onRemove?.(att); }}
 							aria-label="Delete {att.file_name}"
 						>

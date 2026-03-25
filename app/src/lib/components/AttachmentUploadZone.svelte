@@ -95,7 +95,7 @@
 {#if compact}
 	<button
 		type="button"
-		class="flex flex-1 shrink-0 items-center justify-center border border-surface-border bg-surface px-3 text-sidebar-icon transition-colors hover:border-sidebar-icon/30 hover:text-accent disabled:opacity-50"
+		class="flex flex-1 shrink-0 items-center justify-center rounded-sm border border-surface-border bg-surface px-3 text-sidebar-icon transition-colors hover:border-sidebar-icon/30 hover:text-accent disabled:opacity-50 focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 		{disabled}
 		onclick={openPicker}
 		aria-label="Attach file"
@@ -105,8 +105,8 @@
 {:else}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="flex cursor-pointer items-center justify-center gap-2 border border-dashed px-4 py-4 text-xs transition-colors
-			{dragOver ? 'border-accent bg-accent/5 text-accent' : 'border-surface-border text-sidebar-icon hover:border-sidebar-icon/30 hover:text-sidebar-text'}
+		class="flex h-[100px] w-[100px] cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border border-dashed text-xs transition-colors
+			{dragOver ? 'border-accent bg-accent/5 text-accent' : 'border-surface-border/60 text-muted/40 hover:border-sidebar-icon/30 hover:text-muted'}
 			{disabled ? 'cursor-not-allowed opacity-50' : ''}"
 		ondrop={handleDrop}
 		ondragover={handleDragOver}
@@ -116,11 +116,11 @@
 		role="button"
 		tabindex="0"
 	>
-		<Upload size={16} />
-		<span>Drop files here or click to upload</span>
+		<Upload size={14} />
+		<span>Upload</span>
 	</div>
 {/if}
 
 {#if error}
-	<p class="mt-1 text-[11px] text-red-500">{error}</p>
+	<p class="mt-1 text-sm text-red-500">{error}</p>
 {/if}

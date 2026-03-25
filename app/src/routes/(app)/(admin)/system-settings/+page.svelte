@@ -6,6 +6,7 @@
 	import type { Tier, CreateTierInput } from '$lib/api/config';
 	import { fontStore, type FontFamily } from '$lib/stores/font.svelte';
 	import { theme, COLOR_SCHEMES, type ColorScheme } from '$lib/stores/theme.svelte';
+	import { densityStore, DENSITY_OPTIONS, type Density } from '$lib/stores/density.svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -73,22 +74,22 @@
 	// Dropdown state
 	let openDropdown = $state<string | null>(null);
 
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
 	const btnPrimary =
-		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
+		'flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
 	const btnSecondary =
-		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
 	const dropBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =
-		'absolute left-0 z-30 mt-1 max-h-48 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in';
 	const dropItemBase =
-		'flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover';
+		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-all duration-150 hover:bg-surface-hover/60';
 
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
-	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 
 	function toggleDropdown(key: string) {
 		openDropdown = openDropdown === key ? null : key;
@@ -305,34 +306,34 @@
 
 {#snippet toggle(checked: boolean, onToggle: () => void, label: string, extra?: import('svelte').Snippet)}
 	<button type="button" class="flex items-center gap-3" onclick={onToggle}>
-		<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-			{checked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+		<span class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+			{checked ? 'border-accent bg-accent' : 'border-surface-border/60'}">
 			{#if checked}{@html checkSvg}{/if}
 		</span>
-		<span class="text-xs text-sidebar-text">{label}</span>
+		<span class="text-base text-sidebar-text">{label}</span>
 	</button>
 	{#if extra}{@render extra()}{/if}
 {/snippet}
 
 <div class="mx-auto w-full max-w-[900px]">
-	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
-		<h1 class="text-sm font-semibold text-sidebar-text">System Settings</h1>
+	<div class="flex items-center justify-between px-3 py-1.5">
+		<h1 class="text-md font-semibold text-sidebar-text">System Settings</h1>
 	</div>
 
 	{#if !auth.isOwner}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">
+		<p class="px-3 py-8 text-center text-sm text-muted">
 			Access denied. Only the platform owner can manage system settings.
 		</p>
 	{:else if loading}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
+		<p class="px-3 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else}
 		<!-- Tab Bar -->
-		<div class="flex border-b border-surface-border bg-surface-hover/40 px-6">
+		<div class="flex border-b border-surface-border px-3">
 			{#each tabs as tab (tab.key)}
 				<button
-					class="relative px-4 py-2.5 text-xs font-medium transition-colors {activeTab === tab.key
+					class="relative px-3 py-2 text-sm font-medium transition-all duration-150 {activeTab === tab.key
 						? 'text-accent after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { activeTab = tab.key; error = null; success = null; }}
 				>
 					{tab.label}
@@ -340,22 +341,22 @@
 			{/each}
 		</div>
 
-		<div class="p-6">
+		<div class="p-3">
 			<!-- Support Tiers -->
 			{#if activeTab === 'tiers'}
 				<section>
-					<div class="mb-4 flex items-center justify-between">
-						<h2 class="text-xs font-semibold uppercase tracking-wider text-sidebar-text">Support Tiers</h2>
+					<div class="mb-3 flex items-center justify-between">
+						<h2 class="text-xs font-medium uppercase tracking-[0.08em] text-muted">Support Tiers</h2>
 						<button class={btnPrimary} onclick={openAddTier}>Add tier</button>
 					</div>
 
 					{#if tiers.length === 0}
-						<p class="py-6 text-center text-xs text-sidebar-icon">No tiers configured.</p>
+						<p class="py-6 text-center text-sm text-muted">No tiers configured.</p>
 					{:else}
-						<div class="overflow-x-auto">
-							<table class="w-full text-xs">
+						<div class="overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+							<table class="w-full text-sm">
 								<thead>
-									<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
+									<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
 										<th class="px-3 py-2">Name</th>
 										<th class="px-3 py-2">Response</th>
 										<th class="px-3 py-2">Resolution</th>
@@ -366,34 +367,34 @@
 								</thead>
 								<tbody>
 									{#each tiers as t (t.id)}
-										<tr class="border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50">
-											<td class="px-3 py-2.5">
+										<tr class="border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60">
+											<td class="px-3 py-2">
 												<div>
 													<span class="font-medium text-sidebar-text">{t.name}</span>
-													<span class="ml-1.5 text-[10px] text-sidebar-icon">({t.slug})</span>
+													<span class="ml-1.5 text-xs text-muted/50">({t.slug})</span>
 												</div>
 												{#if t.description}
-													<p class="mt-0.5 text-[10px] text-sidebar-icon">{t.description}</p>
+													<p class="mt-0.5 text-xs text-muted/50">{t.description}</p>
 												{/if}
 											</td>
-											<td class="px-3 py-2.5 text-sidebar-text">{t.response_time_hours}h</td>
-											<td class="px-3 py-2.5 text-sidebar-text">{t.resolution_time_hours}h</td>
-											<td class="px-3 py-2.5 text-sidebar-icon">{t.sort_order}</td>
-											<td class="px-3 py-2.5">
-												<span class="text-[10px] font-medium {t.is_active ? 'text-green-600' : 'text-sidebar-icon'}">
+											<td class="px-3 py-2 font-mono text-sidebar-text">{t.response_time_hours}h</td>
+											<td class="px-3 py-2 font-mono text-sidebar-text">{t.resolution_time_hours}h</td>
+											<td class="px-3 py-2 text-muted">{t.sort_order}</td>
+											<td class="px-3 py-2">
+												<span class="text-xs font-medium {t.is_active ? 'text-green-400' : 'text-muted/50'}">
 													{t.is_active ? 'Active' : 'Inactive'}
 												</span>
 											</td>
-											<td class="px-3 py-2.5">
+											<td class="px-3 py-2">
 												<div class="flex items-center gap-2">
 													<button
-														class="text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+														class="text-sm text-muted/50 transition-all duration-150 hover:text-accent"
 														onclick={() => openEditTier(t)}
 													>
 														Edit
 													</button>
 													<button
-														class="text-[11px] text-sidebar-icon transition-colors hover:text-red-500"
+														class="text-sm text-muted/50 transition-all duration-150 hover:text-red-400"
 														disabled={deletingTierId === t.id}
 														onclick={() => (confirmDeleteTier = t)}
 													>
@@ -413,9 +414,9 @@
 			<!-- Organization -->
 			{#if activeTab === 'organization'}
 				<section>
-					<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Platform Organization</h2>
+					<h2 class="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-muted">Platform Organization</h2>
 					{#if platformOrgId}
-						<p class="mb-4 text-[11px] text-sidebar-icon">
+						<p class="mb-3 text-sm text-muted/50">
 							Your team's organization. Members here have global access across all client organizations.
 						</p>
 						<form onsubmit={(e) => { e.preventDefault(); savePlatformOrg(); }}>
@@ -441,20 +442,20 @@
 							</div>
 
 							{#if platformOrgError}
-								<p class="mt-3 text-xs text-red-500">{platformOrgError}</p>
+								<p class="mt-2 text-sm text-red-400">{platformOrgError}</p>
 							{/if}
 							{#if platformOrgSuccess}
-								<p class="mt-3 text-xs text-green-600">{platformOrgSuccess}</p>
+								<p class="mt-2 text-sm text-green-400">{platformOrgSuccess}</p>
 							{/if}
 
-							<div class="mt-4 flex justify-end">
+							<div class="mt-3 flex justify-end">
 								<button type="submit" disabled={platformOrgSaving || !platformOrgName.trim() || !platformOrgSlug.trim()} class={btnPrimary}>
 									{platformOrgSaving ? 'Saving...' : 'Save organization'}
 								</button>
 							</div>
 						</form>
 					{:else}
-						<p class="text-xs text-sidebar-icon">No platform organization configured.</p>
+						<p class="text-sm text-muted">No platform organization configured.</p>
 					{/if}
 				</section>
 			{/if}
@@ -463,7 +464,7 @@
 			{#if activeTab === 'branding'}
 				<form onsubmit={(e) => { e.preventDefault(); save(); }}>
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Branding</h2>
+						<h2 class="mb-3 text-xs font-medium uppercase tracking-[0.08em] text-muted">Branding</h2>
 						<div class="grid max-w-lg grid-cols-2 gap-4">
 							<div class="col-span-2 sm:col-span-1">
 								<label for="app-name" class={labelClass}>App name</label>
@@ -483,13 +484,13 @@
 					</section>
 
 					{#if error}
-						<p class="mt-4 text-xs text-red-500">{error}</p>
+						<p class="mt-3 text-sm text-red-400">{error}</p>
 					{/if}
 					{#if success}
-						<p class="mt-4 text-xs text-green-600">{success}</p>
+						<p class="mt-3 text-sm text-green-400">{success}</p>
 					{/if}
 
-					<div class="mt-6 flex justify-end border-t border-surface-border pt-4">
+					<div class="mt-4 flex justify-end border-t border-surface-border/40 pt-3">
 						<button type="submit" disabled={saving} class={btnPrimary}>
 							{saving ? 'Saving...' : 'Save settings'}
 						</button>
@@ -501,22 +502,22 @@
 			{#if activeTab === 'defaults'}
 				<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-8">
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Color Scheme</h2>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Color Scheme</h2>
 						<div class="flex gap-3">
 							{#each COLOR_SCHEMES as scheme (scheme.key)}
 								<button
 									type="button"
-									class="flex flex-1 flex-col gap-1 border px-4 py-3 text-left transition-colors
+									class="flex flex-1 flex-col gap-1 rounded border px-3 py-2.5 text-left transition-all duration-150
 										{theme.mode === scheme.key
-											? 'border-accent bg-accent/5'
-											: 'border-surface-border bg-surface hover:border-sidebar-icon/30'}"
+											? 'border-accent/30 bg-accent/5'
+											: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
 									onclick={() => theme.setScheme(scheme.key)}
 								>
-									<span class="text-xs font-medium text-sidebar-text">{scheme.label}</span>
-									<span class="text-[11px] text-muted">{scheme.description}</span>
+									<span class="text-base font-medium text-sidebar-text">{scheme.label}</span>
+									<span class="text-sm text-muted/50">{scheme.description}</span>
 									<div class="mt-2 flex gap-1.5">
 										{#each scheme.swatches as color}
-											<span class="h-4 w-4 border border-surface-border" style="background:{color}"></span>
+											<span class="h-4 w-4 rounded-sm border border-surface-border/40" style="background:{color}"></span>
 										{/each}
 									</div>
 								</button>
@@ -525,7 +526,7 @@
 					</section>
 
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Accent Color</h2>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Accent Color</h2>
 						<div class="flex max-w-lg items-center gap-3">
 							<input
 								type="color"
@@ -535,7 +536,7 @@
 									accentInput = v;
 									theme.setAccentColor(v);
 								}}
-								class="h-9 w-9 shrink-0 cursor-pointer border border-surface-border bg-transparent p-0.5"
+								class="h-7 w-7 shrink-0 cursor-pointer rounded-sm border border-surface-border/40 bg-transparent p-0.5"
 							/>
 							<input
 								type="text"
@@ -553,37 +554,56 @@
 							{#if theme.accentColor !== theme.defaultAccent}
 								<button
 									type="button"
-									class="text-[11px] text-sidebar-icon transition-colors hover:text-sidebar-text"
+									class="text-sm text-muted/50 transition-all duration-150 hover:text-accent"
 									onclick={() => { theme.resetAccent(); accentInput = theme.defaultAccent; }}
 								>
 									Reset
 								</button>
 							{/if}
 						</div>
-						<p class="mt-2 text-[11px] text-muted">Used for buttons, active states, and highlights across the app.</p>
+						<p class="mt-2 text-sm text-muted">Used for buttons, active states, and highlights across the app.</p>
 					</section>
 
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Font</h2>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Font</h2>
 						<div class="flex gap-3">
 							{#each [{ key: 'geist' as FontFamily, label: 'Geist', sample: 'The quick brown fox' }, { key: 'geist-mono' as FontFamily, label: 'Geist Mono', sample: 'The quick brown fox' }] as opt (opt.key)}
 								<button
 									type="button"
-									class="flex flex-1 flex-col gap-2 border px-4 py-3 text-left transition-colors
+									class="flex flex-1 flex-col gap-2 rounded border px-3 py-2.5 text-left transition-all duration-150
 										{fontStore.current === opt.key
-											? 'border-accent bg-accent/5'
-											: 'border-surface-border bg-surface hover:border-sidebar-icon/30'}"
+											? 'border-accent/30 bg-accent/5'
+											: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
 									onclick={() => fontStore.set(opt.key)}
 								>
-									<span class="text-xs font-medium text-sidebar-text">{opt.label}</span>
-									<span class="text-xs text-muted" style="font-family: {opt.key === 'geist' ? "'Geist', sans-serif" : "'GeistMono', monospace"}">{opt.sample}</span>
+									<span class="text-base font-medium text-sidebar-text">{opt.label}</span>
+									<span class="text-base text-muted/50" style="font-family: {opt.key === 'geist' ? "'Geist', sans-serif" : "'GeistMono', monospace"}">{opt.sample}</span>
 								</button>
 							{/each}
 						</div>
 					</section>
 
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Defaults for New Organizations</h2>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Density</h2>
+						<div class="flex gap-3">
+							{#each DENSITY_OPTIONS as opt (opt.key)}
+								<button
+									type="button"
+									class="flex flex-1 flex-col gap-1 rounded border px-3 py-2.5 text-left transition-all duration-150
+										{densityStore.current === opt.key
+											? 'border-accent/30 bg-accent/5'
+											: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
+									onclick={() => densityStore.set(opt.key)}
+								>
+									<span class="text-base font-medium text-sidebar-text">{opt.label}</span>
+									<span class="text-sm text-muted/50">{opt.description}</span>
+								</button>
+							{/each}
+						</div>
+					</section>
+
+					<section>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Defaults for New Organizations</h2>
 						<div class="grid max-w-lg grid-cols-3 gap-4">
 							<div>
 								<span class={labelClass}>Default tier</span>
@@ -595,12 +615,12 @@
 									{#if openDropdown === 'default-tier'}
 										<div class={dropPanelClass}>
 											<button type="button"
-												class="{dropItemBase} {defaultTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
+												class="{dropItemBase} {defaultTierId === null ? 'font-medium text-accent' : 'text-muted'}"
 												onmousedown={(e) => { e.preventDefault(); defaultTierId = null; openDropdown = null; }}
 											>None</button>
 											{#each tiers.filter((t) => t.is_active) as t (t.id)}
 												<button type="button"
-													class="{dropItemBase} {defaultTierId === t.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+													class="{dropItemBase} {defaultTierId === t.id ? 'font-medium text-accent' : 'text-muted'}"
 													onmousedown={(e) => { e.preventDefault(); defaultTierId = t.id; openDropdown = null; }}
 												>{t.name}</button>
 											{/each}
@@ -622,26 +642,26 @@
 					</section>
 
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Feature Flags</h2>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Feature Flags</h2>
 						<div class="space-y-3">
 							{@render toggle(signupsEnabled, () => { signupsEnabled = !signupsEnabled; }, 'Signups enabled')}
 							<div class="flex items-center gap-3">
 								<button type="button" class="flex items-center gap-3" onclick={() => { maintenanceMode = !maintenanceMode; }}>
-								<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-									{maintenanceMode ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+								<span class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+									{maintenanceMode ? 'border-accent bg-accent' : 'border-surface-border/60'}">
 									{#if maintenanceMode}{@html checkSvg}{/if}
 									</span>
-									<span class="text-xs text-sidebar-text">Maintenance mode</span>
+									<span class="text-base text-sidebar-text">Maintenance mode</span>
 								</button>
 								{#if maintenanceMode}
-									<span class="inline-block bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500">ON</span>
+									<span class="text-xs font-medium text-red-400">ON</span>
 								{/if}
 							</div>
 						</div>
 					</section>
 
 					<section>
-						<h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-sidebar-text">Limits</h2>
+						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Limits</h2>
 						<div class="grid max-w-lg grid-cols-3 gap-4">
 							<div>
 								<label for="max-orgs" class={labelClass}>Max orgs / user</label>
@@ -659,13 +679,13 @@
 					</section>
 
 					{#if error}
-						<p class="text-xs text-red-500">{error}</p>
+						<p class="text-sm text-red-400">{error}</p>
 					{/if}
 					{#if success}
-						<p class="text-xs text-green-600">{success}</p>
+						<p class="text-sm text-green-400">{success}</p>
 					{/if}
 
-					<div class="flex justify-end border-t border-surface-border pt-4">
+					<div class="flex justify-end border-t border-surface-border/40 pt-3">
 						<button type="submit" disabled={saving} class={btnPrimary}>
 							{saving ? 'Saving...' : 'Save settings'}
 						</button>
@@ -680,12 +700,12 @@
 {#if tierModalOpen}
 	<Modal open={true} onClose={() => (tierModalOpen = false)}>
 		<div>
-			<div class="border-b border-surface-border px-4 py-3">
-				<h2 class="text-sm font-semibold text-sidebar-text">
+			<div class="border-b border-surface-border/40 px-3 py-2.5">
+				<h2 class="text-md font-semibold text-sidebar-text">
 					{editingTier ? 'Edit Tier' : 'Add Tier'}
 				</h2>
 			</div>
-			<form onsubmit={(e) => { e.preventDefault(); saveTier(); }} class="space-y-4 p-4">
+			<form onsubmit={(e) => { e.preventDefault(); saveTier(); }} class="space-y-3 p-3">
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label for="tier-name" class={labelClass}>Name</label>
@@ -727,20 +747,20 @@
 					</div>
 					<div class="flex items-end pb-1">
 						<button type="button" class="flex items-center gap-3" onclick={() => { tierActive = !tierActive; }}>
-							<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-							{tierActive ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+							<span class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+							{tierActive ? 'border-accent bg-accent' : 'border-surface-border/60'}">
 							{#if tierActive}{@html checkSvg}{/if}
 							</span>
-							<span class="text-xs text-sidebar-text">Active</span>
+							<span class="text-base text-sidebar-text">Active</span>
 						</button>
 					</div>
 				</div>
 
 				{#if tierError}
-					<p class="text-xs text-red-500">{tierError}</p>
+					<p class="text-sm text-red-400">{tierError}</p>
 				{/if}
 
-				<div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+				<div class="flex justify-end gap-2 border-t border-surface-border/40 pt-3">
 					<button type="button" class={btnSecondary} onclick={() => (tierModalOpen = false)}>
 						Cancel
 					</button>

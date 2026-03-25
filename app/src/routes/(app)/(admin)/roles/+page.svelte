@@ -48,14 +48,14 @@
 
 	const canManage = $derived(auth.can('members', 'manage_roles'));
 
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
-	const sectionLabel = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted';
+	const sectionLabel = 'text-xs font-medium uppercase tracking-[0.08em] text-muted';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
 	const btnSecondary =
-		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
 	const btnPrimary =
-		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
+		'flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
 
 	const permissionGroups = $derived.by(() => {
@@ -277,46 +277,46 @@
 </script>
 
 <div class="mx-auto w-full">
-	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
-		<h1 class="text-sm font-semibold text-sidebar-text">Roles</h1>
+	<div class="flex items-center justify-between px-3 py-1.5">
+		<h1 class="text-md font-semibold text-sidebar-text">Roles</h1>
 		{#if canManage}
 			<button class={btnPrimary} onclick={openCreateModal}>New role</button>
 		{/if}
 	</div>
 
 	{#if loading}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
+		<p class="px-3 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else if error}
-		<p class="px-6 py-8 text-center text-sm text-red-500">{error}</p>
+		<p class="px-3 py-8 text-center text-sm text-red-400">{error}</p>
 	{:else if roles.length === 0}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No roles found.</p>
+		<p class="px-3 py-8 text-center text-sm text-muted">No roles found.</p>
 	{:else}
-		<div class="overflow-x-auto">
-			<table class="w-full text-xs">
+		<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+			<table class="w-full text-sm">
 				<thead>
-					<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
-						<th class="px-4 py-2.5">Name</th>
-						<th class="px-4 py-2.5">Type</th>
-						<th class="px-4 py-2.5">Description</th>
-						<th class="px-4 py-2.5">Permissions</th>
+					<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
+						<th class="px-3 py-2">Name</th>
+						<th class="px-3 py-2">Type</th>
+						<th class="px-3 py-2">Description</th>
+						<th class="px-3 py-2">Permissions</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each roles as role (role.id)}
 						<tr
-							class="cursor-pointer border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50 {selectedRole?.id === role.id ? 'bg-surface-hover/50' : ''}"
+							class="cursor-pointer border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60 {selectedRole?.id === role.id ? 'bg-surface-hover/60' : ''}"
 							onclick={() => openPanel(role)}
 						>
-							<td class="px-4 py-2.5 font-medium text-sidebar-text">{role.name}</td>
-							<td class="px-4 py-2.5">
+							<td class="px-3 py-2 font-medium text-sidebar-text">{role.name}</td>
+							<td class="px-3 py-2">
 								{#if role.is_system}
-									<span class="inline-block bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">System</span>
+									<span class="text-xs font-medium text-accent">System</span>
 								{:else}
-									<span class="inline-block bg-surface-hover px-1.5 py-0.5 text-[10px] font-medium text-sidebar-icon">Custom</span>
+									<span class="text-xs font-medium text-muted">Custom</span>
 								{/if}
 							</td>
-							<td class="max-w-[300px] truncate px-4 py-2.5 text-sidebar-icon">{role.description ?? '—'}</td>
-							<td class="px-4 py-2.5 text-sidebar-icon">{role.permissions.length}</td>
+							<td class="max-w-[300px] truncate px-3 py-2 text-muted">{role.description ?? '—'}</td>
+							<td class="px-3 py-2 text-muted">{role.permissions.length}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -337,35 +337,35 @@
 		></button>
 
 		<div
-			class="absolute top-0 right-0 bottom-0 flex w-[480px] flex-col overflow-hidden border-l border-surface-border bg-surface shadow-xl"
+			class="absolute top-0 right-0 bottom-0 flex w-[420px] flex-col overflow-hidden border-l border-surface-border bg-surface shadow-xl"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Header -->
-			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
+			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-3 py-2.5">
 				<div class="min-w-0 flex-1">
 					<span class="text-xs font-medium text-accent">{selectedRole.slug}</span>
-					<h2 class="truncate text-sm font-semibold text-sidebar-text">{selectedRole.name}</h2>
+					<h2 class="truncate text-lg font-semibold text-sidebar-text">{selectedRole.name}</h2>
 				</div>
-				<div class="ml-3 flex shrink-0 items-center gap-2">
+				<div class="ml-3 flex shrink-0 items-center gap-1">
 					{#if isEditable}
 						<button
-							class="p-1 text-red-400 transition-colors hover:text-red-500"
+							class="flex h-6 w-6 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-red-400"
 							onclick={() => openDeleteDialog(selectedRole!)}
 							aria-label="Delete role"
 							title="Delete role"
 						>
-							<svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+							<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
 							</svg>
 						</button>
 					{/if}
 					<button
-						class="p-1 text-sidebar-icon transition-colors hover:text-sidebar-text"
+						class="flex h-6 w-6 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-sidebar-text"
 						onclick={closePanel}
 						aria-label="Close"
 					>
-						<X size={18} />
+						<X size={14} />
 					</button>
 				</div>
 			</div>
@@ -373,17 +373,17 @@
 			<!-- Tabs -->
 			<div class="flex shrink-0 border-b border-surface-border">
 				<button
-					class="px-4 py-2.5 text-xs font-medium transition-colors {panelTab === 'details'
+					class="px-3 py-2 text-sm font-medium transition-all duration-150 {panelTab === 'details'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { panelTab = 'details'; editError = null; editSuccess = null; }}
 				>
 					Details
 				</button>
 				<button
-					class="px-4 py-2.5 text-xs font-medium transition-colors {panelTab === 'permissions'
+					class="px-3 py-2 text-sm font-medium transition-all duration-150 {panelTab === 'permissions'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { panelTab = 'permissions'; permsError = null; permsSuccess = null; }}
 				>
 					Permissions ({selectedRole.permissions.length})
@@ -393,8 +393,8 @@
 			<!-- Content -->
 			<div class="min-w-0 flex-1 overflow-y-auto">
 				{#if panelTab === 'details'}
-					<form onsubmit={(e) => { e.preventDefault(); saveRoleDetails(); }} class="px-4">
-						<div class="border-b border-surface-border py-4">
+					<form onsubmit={(e) => { e.preventDefault(); saveRoleDetails(); }} class="p-3">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Properties</span>
 							<div class="space-y-3">
 								<div class="grid grid-cols-2 gap-3">
@@ -418,37 +418,37 @@
 							</div>
 						</div>
 
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-2 block">Info</span>
-							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
 								<div>
-									<span class="text-sidebar-icon">Type</span>
+									<span class="text-muted/50">Type</span>
 									<p class="text-sidebar-text">{selectedRole.is_system ? 'System' : 'Custom'}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Permissions</span>
+									<span class="text-muted/50">Permissions</span>
 									<p class="text-sidebar-text">{selectedRole.permissions.length}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Created</span>
-									<p class="text-sidebar-text">{new Date(selectedRole.created_at).toLocaleDateString('de-DE')}</p>
+									<span class="text-muted/50">Created</span>
+									<p class="font-mono text-sidebar-text">{new Date(selectedRole.created_at).toLocaleDateString('de-DE')}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Updated</span>
-									<p class="text-sidebar-text">{new Date(selectedRole.updated_at).toLocaleDateString('de-DE')}</p>
+									<span class="text-muted/50">Updated</span>
+									<p class="font-mono text-sidebar-text">{new Date(selectedRole.updated_at).toLocaleDateString('de-DE')}</p>
 								</div>
 							</div>
 						</div>
 
 						{#if editError}
-							<p class="pt-3 text-xs text-red-500">{editError}</p>
+							<p class="pt-2 text-sm text-red-400">{editError}</p>
 						{/if}
 						{#if editSuccess}
-							<p class="pt-3 text-xs text-green-600">{editSuccess}</p>
+							<p class="pt-2 text-sm text-green-400">{editSuccess}</p>
 						{/if}
 
 						{#if isEditable}
-							<div class="flex justify-end py-4">
+							<div class="flex justify-end pt-2">
 								<button type="submit" disabled={editSaving || !editName.trim() || !editSlug.trim()} class={btnPrimary}>
 									{editSaving ? 'Saving...' : 'Save changes'}
 								</button>
@@ -458,13 +458,13 @@
 				{/if}
 
 				{#if panelTab === 'permissions'}
-					<div class="px-4">
+					<div class="p-3">
 						{#if selectedRole.is_system}
-							<p class="py-3 text-[11px] text-sidebar-icon">System role permissions are read-only.</p>
+							<p class="pb-2 text-sm text-muted/50">System role permissions are read-only.</p>
 						{/if}
 
 						{#each [...permissionGroups] as [resource, perms] (resource)}
-							<div class="border-b border-surface-border py-4">
+							<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 								<span class="{sectionLabel} mb-3 block">{resourceLabel(resource)}</span>
 								<div class="space-y-2">
 									{#each perms as perm (perm.id)}
@@ -477,24 +477,24 @@
 												onclick={() => { if (isEditable) togglePermission(perm.id); }}
 												disabled={!isEditable}
 											>
-												<span 												class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-													{isChecked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}
+												<span 												class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+													{isChecked ? 'border-accent bg-accent' : 'border-surface-border/60'}
 													{!isEditable ? 'opacity-60' : ''}">
 													{#if isChecked}{@html checkSvg}{/if}
 												</span>
-												<span class="shrink-0 text-xs font-medium text-sidebar-text">{perm.action}</span>
+												<span class="shrink-0 text-sm font-medium text-sidebar-text">{perm.action}</span>
 												{#if perm.description}
-													<span class="truncate text-[10px] text-sidebar-icon">{perm.description}</span>
+													<span class="truncate text-xs text-muted/50">{perm.description}</span>
 												{/if}
 											</button>
 
 											{#if isChecked}
 												<button
 													type="button"
-													class="shrink-0 border px-2 py-0.5 text-[10px] font-medium transition-colors
+													class="shrink-0 rounded-sm px-2 py-0.5 text-xs font-medium transition-all duration-150
 														{scope === 'all'
-															? 'border-accent/30 bg-accent/10 text-accent'
-															: 'border-surface-border bg-surface text-sidebar-icon hover:border-sidebar-icon/30'}
+															? 'bg-accent/10 text-accent'
+															: 'bg-surface-hover/40 text-muted hover:text-sidebar-text'}
 														{!isEditable ? 'pointer-events-none opacity-60' : ''}"
 													onclick={() => { if (isEditable) toggleScope(perm.id); }}
 													disabled={!isEditable}
@@ -510,14 +510,14 @@
 						{/each}
 
 						{#if permsError}
-							<p class="pt-3 text-xs text-red-500">{permsError}</p>
+							<p class="pt-2 text-sm text-red-400">{permsError}</p>
 						{/if}
 						{#if permsSuccess}
-							<p class="pt-3 text-xs text-green-600">{permsSuccess}</p>
+							<p class="pt-2 text-sm text-green-400">{permsSuccess}</p>
 						{/if}
 
 						{#if isEditable}
-							<div class="flex justify-end py-4">
+							<div class="flex justify-end pt-2">
 								<button type="button" disabled={permsSaving} class={btnPrimary} onclick={savePermissions}>
 									{permsSaving ? 'Saving...' : 'Save permissions'}
 								</button>
@@ -534,10 +534,10 @@
 {#if createModalOpen}
 	<Modal open={true} onClose={() => (createModalOpen = false)}>
 		<div>
-			<div class="border-b border-surface-border px-4 py-3">
-				<h2 class="text-sm font-semibold text-sidebar-text">New Role</h2>
+			<div class="border-b border-surface-border/40 px-3 py-2.5">
+				<h2 class="text-md font-semibold text-sidebar-text">New Role</h2>
 			</div>
-			<form onsubmit={(e) => { e.preventDefault(); createRole(); }} class="space-y-4 p-4">
+			<form onsubmit={(e) => { e.preventDefault(); createRole(); }} class="space-y-3 p-3">
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label for="create-name" class={labelClass}>Name</label>
@@ -559,10 +559,10 @@
 				</div>
 
 				{#if createError}
-					<p class="text-xs text-red-500">{createError}</p>
+					<p class="text-sm text-red-400">{createError}</p>
 				{/if}
 
-				<div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+				<div class="flex justify-end gap-2 border-t border-surface-border/40 pt-3">
 					<button type="button" class={btnSecondary} onclick={() => (createModalOpen = false)}>
 						Cancel
 					</button>

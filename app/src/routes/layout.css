@@ -30,6 +30,18 @@
 	--color-surface-hover: #f5f5f5;
 	--color-muted: #71717a;
 	--font-sans: 'Geist', sans-serif;
+
+	/* Typography scale — override via .compact / .cozy on <html> */
+	--text-4xs: 7px;
+	--text-3xs: 8px;
+	--text-2xs: 9px;
+	--text-xs: 10px;
+	--text-sm: 11px;
+	--text-base: 12px;
+	--text-md: 13px;
+	--text-lg: 14px;
+	--text-xl: 18px;
+	--text-2xl: 24px;
 }
 
 body {
@@ -78,5 +90,45 @@ body {
 		--color-surface-border: #45475a;
 		--color-surface-hover: #3b3d50;
 		--color-muted: #a6adc8;
+	}
+
+	/* Density variants — apply on <html> */
+	.compact {
+		--text-4xs: 6px;
+		--text-3xs: 7px;
+		--text-2xs: 8px;
+		--text-xs: 9px;
+		--text-sm: 10px;
+		--text-base: 11px;
+		--text-md: 12px;
+		--text-lg: 13px;
+		--text-xl: 16px;
+		--text-2xl: 20px;
+	}
+
+	.comfortable {
+		--text-4xs: 8px;
+		--text-3xs: 9px;
+		--text-2xs: 10px;
+		--text-xs: 11px;
+		--text-sm: 12px;
+		--text-base: 13px;
+		--text-md: 14px;
+		--text-lg: 15px;
+		--text-xl: 19px;
+		--text-2xl: 26px;
+	}
+
+	.cozy {
+		--text-4xs: 9px;
+		--text-3xs: 10px;
+		--text-2xs: 11px;
+		--text-xs: 12px;
+		--text-sm: 13px;
+		--text-base: 14px;
+		--text-md: 15px;
+		--text-lg: 16px;
+		--text-xl: 21px;
+		--text-2xl: 30px;
 	}
 }

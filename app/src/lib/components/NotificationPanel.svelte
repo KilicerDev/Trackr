@@ -54,30 +54,27 @@
 	}
 </script>
 
-<div class="absolute right-0 top-full z-50 mt-1 w-96 border border-surface-border bg-surface shadow-xl">
-	<div class="flex items-center justify-between border-b border-surface-border px-4 py-2.5">
-		<h3 class="text-sm font-semibold text-sidebar-text">Notifications</h3>
+<div class="absolute right-0 top-full z-30 mt-1.5 w-80 origin-top-right animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20">
+	<div class="flex items-center justify-between px-3 py-2">
+		<h3 class="text-base font-semibold text-sidebar-text">Notifications</h3>
 		{#if notificationCenter.unreadCount > 0}
 			<button
 				type="button"
-				class="flex items-center gap-1 text-[11px] text-muted transition-colors hover:text-sidebar-text"
+				class="text-xs text-muted/50 transition-colors hover:text-accent"
 				onclick={handleMarkAllRead}
 			>
-				<CheckCheck size={13} />
-				Mark all as read
+				Mark all read
 			</button>
 		{/if}
 	</div>
 
-	<div class="max-h-[420px] overflow-y-auto" onscroll={handleScroll}>
+	<div class="max-h-[360px] overflow-y-auto border-t border-surface-border/40" onscroll={handleScroll}>
 		{#if notificationCenter.loading && notificationCenter.items.length === 0}
-			<div class="flex items-center justify-center py-12">
-				<Loader2 size={20} class="animate-spin text-muted" />
+			<div class="flex items-center justify-center py-10">
+				<Loader2 size={16} class="animate-spin text-muted/40" />
 			</div>
 		{:else if notificationCenter.items.length === 0}
-			<div class="py-12 text-center">
-				<p class="text-xs text-muted">You're all caught up</p>
-			</div>
+			<p class="py-10 text-center text-sm text-muted/40">All caught up</p>
 		{:else}
 			{#each notificationCenter.items as n (n.id)}
 				<NotificationPanelItem
@@ -87,13 +84,23 @@
 				/>
 			{/each}
 			{#if notificationCenter.loading}
-				<div class="flex items-center justify-center py-3">
-					<Loader2 size={16} class="animate-spin text-muted" />
+				<div class="flex items-center justify-center py-2">
+					<Loader2 size={14} class="animate-spin text-muted/40" />
 				</div>
 			{/if}
 			{#if !notificationCenter.hasMore && notificationCenter.items.length > 0}
-				<p class="py-3 text-center text-[10px] text-muted">No more notifications</p>
+				<p class="py-2 text-center text-2xs text-muted/30">End of notifications</p>
 			{/if}
 		{/if}
 	</div>
 </div>
+
+<style>
+	@keyframes dropdown-in {
+		from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+		to { opacity: 1; transform: scale(1) translateY(0); }
+	}
+	:global(.animate-dropdown-in) {
+		animation: dropdown-in 150ms ease-out;
+	}
+</style>

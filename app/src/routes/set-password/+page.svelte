@@ -51,29 +51,29 @@
 	}
 </script>
 
-<div class="relative min-h-screen bg-gray-50 font-mono">
+<div class="relative min-h-screen bg-page-bg">
 	<div class="flex min-h-screen items-center justify-center px-4">
-		<div class="w-full max-w-md rounded-lg border border-gray-200 bg-white px-10 py-10">
+		<div class="w-full max-w-md rounded border border-surface-border bg-surface px-10 py-10 shadow-xl">
 			<div class="flex flex-col items-center">
 				<div class="mb-1 flex items-center gap-2">
 					<img src={logo} alt="Trackr" class="h-8" />
-					<span class="text-xl font-bold tracking-widest text-gray-800">TRACKR</span>
+					<span class="text-lg font-bold tracking-widest text-sidebar-text">TRACKR</span>
 				</div>
 
-				<p class="mb-8 mt-2 text-sm text-gray-500">Set your password to complete your account setup.</p>
+				<p class="mb-6 mt-2 text-sm text-muted">Set your password to complete your account setup.</p>
 
 				{#if error}
-					<div class="mb-4 w-full rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+					<div class="mb-4 w-full rounded border border-red-400/30 bg-red-400/10 px-3 py-2.5 text-sm text-red-400">
 						{error}
 					</div>
 				{/if}
 
 				<form
 					onsubmit={(e) => { e.preventDefault(); setPassword(); }}
-					class="w-full space-y-5"
+					class="w-full space-y-4"
 				>
 					<div>
-						<label for="password" class="mb-1.5 block text-xs font-semibold tracking-wide text-accent">
+						<label for="password" class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent">
 							Password
 						</label>
 						<div class="relative">
@@ -84,25 +84,25 @@
 								bind:value={password}
 								required
 								minlength={6}
-								class="w-full rounded-lg bg-gray-100 px-4 py-3 pr-11 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+								class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 pr-9 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 							/>
 							<button
 								type="button"
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-gray-400 transition-colors hover:text-gray-600"
+								class="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer text-muted/40 transition-all duration-150 hover:text-sidebar-text"
 								onclick={() => (showPassword = !showPassword)}
 								tabindex={-1}
 							>
 								{#if showPassword}
-									<EyeOff size={18} />
+									<EyeOff size={14} />
 								{:else}
-									<Eye size={18} />
+									<Eye size={14} />
 								{/if}
 							</button>
 						</div>
 					</div>
 
 					<div>
-						<label for="confirm-password" class="mb-1.5 block text-xs font-semibold tracking-wide text-accent">
+						<label for="confirm-password" class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent">
 							Confirm Password
 						</label>
 						<input
@@ -112,20 +112,20 @@
 							bind:value={confirmPassword}
 							required
 							minlength={6}
-							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+							class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 						/>
 						{#if confirmPassword && password !== confirmPassword}
-							<p class="mt-1.5 text-xs text-red-500">Passwords do not match.</p>
+							<p class="mt-1.5 text-xs text-red-400">Passwords do not match.</p>
 						{/if}
 					</div>
 
 					<button
 						type="submit"
 						disabled={loading || !valid}
-						class="flex w-full cursor-pointer items-center justify-center rounded-lg bg-accent py-3.5 text-sm font-semibold tracking-wide text-white shadow-md shadow-accent/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+						class="flex h-8 w-full cursor-pointer items-center justify-center rounded-sm bg-accent text-sm font-semibold text-white transition-all duration-150 hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-30"
 					>
 						{#if loading}
-							<LoaderCircle size={18} class="animate-spin" />
+							<LoaderCircle size={14} class="animate-spin" />
 						{:else}
 							Set Password & Continue
 						{/if}

@@ -92,22 +92,22 @@
 
 	// ── Shared CSS classes ──
 
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
 	const btnSecondary =
-		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
 	const btnPrimary =
-		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
-	const sectionLabel = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+		'flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
+	const sectionLabel = 'text-xs font-medium uppercase tracking-[0.08em] text-muted';
 	const dropBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =
-		'absolute left-0 z-30 mt-1 max-h-48 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in';
 	const dropItemBase =
-		'flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover';
+		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-all duration-150 hover:bg-surface-hover/60';
 
-	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 
 	function toggleDropdown(key: string) {
 		openDropdown = openDropdown === key ? null : key;
@@ -441,11 +441,11 @@
 
 	function statusBadgeClass(status: string): string {
 		switch (status) {
-			case 'pending': return 'bg-yellow-500/10 text-yellow-600';
-			case 'accepted': return 'bg-green-500/10 text-green-600';
-			case 'expired': return 'bg-sidebar-icon/10 text-sidebar-icon';
-			case 'revoked': return 'bg-red-500/10 text-red-600';
-			default: return 'bg-sidebar-icon/10 text-sidebar-icon';
+			case 'pending': return 'text-yellow-500';
+			case 'accepted': return 'text-green-400';
+			case 'expired': return 'text-muted/50';
+			case 'revoked': return 'text-red-400';
+			default: return 'text-muted/50';
 		}
 	}
 
@@ -467,33 +467,33 @@
 
 {#snippet toggle(checked: boolean, onToggle: () => void, label: string)}
 	<button type="button" class="flex items-center gap-3" onclick={onToggle}>
-		<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-			{checked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+		<span class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+			{checked ? 'border-accent bg-accent' : 'border-surface-border/60'}">
 			{#if checked}{@html checkSvg}{/if}
 		</span>
-		<span class="text-xs text-sidebar-text">{label}</span>
+		<span class="text-base text-sidebar-text">{label}</span>
 	</button>
 {/snippet}
 
 <div class="mx-auto w-full">
 	<!-- Header -->
-	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
+	<div class="flex items-center justify-between px-3 py-1.5">
 		<div class="flex items-center gap-4">
-			<h1 class="text-sm font-semibold text-sidebar-text">User Management</h1>
+			<h1 class="text-md font-semibold text-sidebar-text">User Management</h1>
 			<div class="flex">
 				<button
-					class="px-3 py-1.5 text-xs font-medium transition-colors {pageTab === 'users'
+					class="px-2.5 py-1.5 text-sm font-medium transition-all duration-150 {pageTab === 'users'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => (pageTab = 'users')}
 				>
 					Users
 				</button>
 				{#if canInvite}
 					<button
-						class="px-3 py-1.5 text-xs font-medium transition-colors {pageTab === 'invitations'
+						class="px-2.5 py-1.5 text-sm font-medium transition-all duration-150 {pageTab === 'invitations'
 							? 'border-b-2 border-accent text-accent'
-							: 'text-sidebar-icon hover:text-sidebar-text'}"
+							: 'text-muted hover:text-sidebar-text'}"
 						onclick={() => (pageTab = 'invitations')}
 					>
 						Invitations
@@ -501,9 +501,9 @@
 				{/if}
 				{#if canRemoveMember}
 					<button
-						class="px-3 py-1.5 text-xs font-medium transition-colors {pageTab === 'former'
+						class="px-2.5 py-1.5 text-sm font-medium transition-all duration-150 {pageTab === 'former'
 							? 'border-b-2 border-accent text-accent'
-							: 'text-sidebar-icon hover:text-sidebar-text'}"
+							: 'text-muted hover:text-sidebar-text'}"
 						onclick={() => (pageTab = 'former')}
 					>
 						Former Users
@@ -514,7 +514,7 @@
 		{#if canInvite}
 			<button class={btnPrimary} onclick={openInviteModal}>
 				<span class="flex items-center gap-1.5">
-					<UserPlus size={14} />
+					<UserPlus size={13} />
 					Invite User
 				</span>
 			</button>
@@ -522,65 +522,65 @@
 	</div>
 
 	{#if loading}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
+		<p class="px-3 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else if error}
-		<p class="px-6 py-8 text-center text-sm text-red-500">{error}</p>
+		<p class="px-3 py-8 text-center text-sm text-red-400">{error}</p>
 	{:else if pageTab === 'users'}
 		<!-- Users Table -->
 		{#if usersList.length === 0}
-			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No users yet.</p>
+			<p class="px-3 py-8 text-center text-sm text-muted">No users yet.</p>
 		{:else}
-			<div class="overflow-x-auto">
-				<table class="w-full text-xs">
+			<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
-							<th class="px-4 py-2.5">Name</th>
-							<th class="px-4 py-2.5">Email</th>
-							<th class="px-4 py-2.5">Organization</th>
-							<th class="px-4 py-2.5">Status</th>
-							<th class="px-4 py-2.5">Last Seen</th>
+						<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
+							<th class="px-3 py-2">Name</th>
+							<th class="px-3 py-2">Email</th>
+							<th class="px-3 py-2">Organization</th>
+							<th class="px-3 py-2">Status</th>
+							<th class="px-3 py-2">Last Seen</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each usersList as user (user.id)}
 							<tr
-								class="cursor-pointer border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50 {selectedUser?.id === user.id ? 'bg-surface-hover/50' : ''}"
+								class="cursor-pointer border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60 {selectedUser?.id === user.id ? 'bg-surface-hover/60' : ''}"
 								onclick={() => openPanel(user)}
 							>
-								<td class="px-4 py-2.5">
+								<td class="px-3 py-2">
 									<div class="flex items-center gap-2">
 										{#if user.avatar_url}
-											<img src={user.avatar_url} alt="" class="h-6 w-6 rounded-full object-cover" />
+											<img src={user.avatar_url} alt="" class="h-5 w-5 rounded-full object-cover" />
 										{:else}
-											<div class="flex h-6 w-6 items-center justify-center rounded-full bg-accent/10 text-[10px] font-medium text-accent">
+											<div class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/10 text-2xs font-medium text-accent">
 												{user.full_name.charAt(0).toUpperCase()}
 											</div>
 										{/if}
 										<div>
 											<span class="font-medium text-sidebar-text">{user.full_name}</span>
-											<span class="ml-1 text-sidebar-icon">@{user.username}</span>
+											<span class="ml-1 text-muted/50">@{user.username}</span>
 										</div>
 									</div>
 								</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{user.email}</td>
-								<td class="px-4 py-2.5">
+								<td class="px-3 py-2 text-muted">{user.email}</td>
+								<td class="px-3 py-2">
 									{#if user.organization}
-										<span class="inline-flex items-center gap-1 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+										<span class="text-xs font-medium text-accent">
 											{user.organization.name}
 											{#if user.organization.id === platformOrgId}
-												<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1 py-px text-[8px] font-semibold uppercase tracking-wide">Internal</span>
+												<span class="ml-1 shrink-0 whitespace-nowrap rounded-sm bg-accent/10 px-1 py-px text-3xs font-semibold uppercase tracking-wide">Internal</span>
 											{/if}
 										</span>
 									{:else}
-										<span class="text-sidebar-icon">—</span>
+										<span class="text-muted/50">—</span>
 									{/if}
 								</td>
-								<td class="px-4 py-2.5">
-									<span class="text-[10px] font-medium {user.is_active ? 'text-green-600' : 'text-sidebar-icon'}">
+								<td class="px-3 py-2">
+									<span class="text-xs font-medium {user.is_active ? 'text-green-400' : 'text-muted/50'}">
 										{user.is_active ? 'Active' : 'Inactive'}
 									</span>
 								</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{formatRelative(user.last_seen_at)}</td>
+								<td class="px-3 py-2 font-mono text-muted">{formatRelative(user.last_seen_at)}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -590,54 +590,54 @@
 	{:else if pageTab === 'invitations'}
 		<!-- Invitations Table -->
 		{#if invitations.length === 0}
-			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No invitations yet.</p>
+			<p class="px-3 py-8 text-center text-sm text-muted">No invitations yet.</p>
 		{:else}
-			<div class="overflow-x-auto">
-				<table class="w-full text-xs">
+			<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
-							<th class="px-4 py-2.5">Email</th>
-							<th class="px-4 py-2.5">Organization</th>
-							<th class="px-4 py-2.5">Role</th>
-							<th class="px-4 py-2.5">Status</th>
-							<th class="px-4 py-2.5">Invited</th>
-							<th class="px-4 py-2.5">Expires</th>
-							<th class="px-4 py-2.5"></th>
+						<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
+							<th class="px-3 py-2">Email</th>
+							<th class="px-3 py-2">Organization</th>
+							<th class="px-3 py-2">Role</th>
+							<th class="px-3 py-2">Status</th>
+							<th class="px-3 py-2">Invited</th>
+							<th class="px-3 py-2">Expires</th>
+							<th class="px-3 py-2"></th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each invitations as inv (inv.id)}
-							<tr class="border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50">
-								<td class="px-4 py-2.5">
+							<tr class="border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60">
+								<td class="px-3 py-2">
 									<div class="flex items-center gap-1.5">
-										<Mail size={12} class="text-sidebar-icon" />
+										<Mail size={12} class="text-muted/40" />
 										<span class="font-medium text-sidebar-text">{inv.email}</span>
 									</div>
 								</td>
-								<td class="px-4 py-2.5">
+								<td class="px-3 py-2">
 									{#if inv.organization}
-										<span class="inline-flex items-center gap-1 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+										<span class="text-xs font-medium text-accent">
 											{inv.organization.name}
 											{#if inv.organization_id === platformOrgId}
-												<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1 py-px text-[8px] font-semibold uppercase tracking-wide">Internal</span>
+												<span class="ml-1 shrink-0 whitespace-nowrap rounded-sm bg-accent/10 px-1 py-px text-3xs font-semibold uppercase tracking-wide">Internal</span>
 											{/if}
 										</span>
 									{:else}
-										<span class="text-sidebar-icon">—</span>
+										<span class="text-muted/50">—</span>
 									{/if}
 								</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{inv.role?.name ?? '—'}</td>
-								<td class="px-4 py-2.5">
-									<span class="inline-block px-1.5 py-0.5 text-[10px] font-medium {statusBadgeClass(inv.status)}">
+								<td class="px-3 py-2 text-muted">{inv.role?.name ?? '—'}</td>
+								<td class="px-3 py-2">
+									<span class="text-xs font-medium {statusBadgeClass(inv.status)}">
 										{inv.status}
 									</span>
 								</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{formatDate(inv.created_at)}</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{formatDate(inv.expires_at)}</td>
-								<td class="px-4 py-2.5">
+								<td class="px-3 py-2 font-mono text-muted">{formatDate(inv.created_at)}</td>
+								<td class="px-3 py-2 font-mono text-muted">{formatDate(inv.expires_at)}</td>
+								<td class="px-3 py-2">
 									{#if inv.status === 'pending'}
 										<button
-											class="text-[10px] font-medium text-red-500 transition-colors hover:text-red-700"
+											class="text-xs font-medium text-muted/50 transition-all duration-150 hover:text-red-400"
 											onclick={() => revokeInvitation(inv)}
 										>
 											Revoke
@@ -653,53 +653,53 @@
 	{:else if pageTab === 'former'}
 		<!-- Former Users Table -->
 		{#if formerLoading}
-			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
+			<p class="px-3 py-8 text-center text-sm text-muted">Loading...</p>
 		{:else if formerUsers.length === 0}
-			<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No former users.</p>
+			<p class="px-3 py-8 text-center text-sm text-muted">No former users.</p>
 		{:else}
-			<div class="overflow-x-auto">
-				<table class="w-full text-xs">
+			<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+				<table class="w-full text-sm">
 					<thead>
-						<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
-							<th class="px-4 py-2.5">Name</th>
-							<th class="px-4 py-2.5">Email</th>
-							<th class="px-4 py-2.5">Organization</th>
-							<th class="px-4 py-2.5">Deleted</th>
-							<th class="px-4 py-2.5"></th>
+						<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
+							<th class="px-3 py-2">Name</th>
+							<th class="px-3 py-2">Email</th>
+							<th class="px-3 py-2">Organization</th>
+							<th class="px-3 py-2">Deleted</th>
+							<th class="px-3 py-2"></th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each formerUsers as user (user.id)}
-							<tr class="border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50">
-								<td class="px-4 py-2.5">
+							<tr class="border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60">
+								<td class="px-3 py-2">
 									<div class="flex items-center gap-2">
 										{#if user.avatar_url}
-											<img src={user.avatar_url} alt="" class="h-6 w-6 rounded-full object-cover" />
+											<img src={user.avatar_url} alt="" class="h-5 w-5 rounded-full object-cover" />
 										{:else}
-											<div class="flex h-6 w-6 items-center justify-center rounded-full bg-sidebar-icon/10 text-[10px] font-medium text-sidebar-icon">
+											<div class="flex h-5 w-5 items-center justify-center rounded-full bg-muted/10 text-2xs font-medium text-muted">
 												{user.full_name.charAt(0).toUpperCase()}
 											</div>
 										{/if}
 										<div>
 											<span class="font-medium text-sidebar-text">{user.full_name}</span>
-											<span class="ml-1 text-sidebar-icon">@{user.username}</span>
+											<span class="ml-1 text-muted/50">@{user.username}</span>
 										</div>
 									</div>
 								</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{user.email}</td>
-								<td class="px-4 py-2.5">
+								<td class="px-3 py-2 text-muted">{user.email}</td>
+								<td class="px-3 py-2">
 									{#if user.organization}
-										<span class="inline-flex items-center gap-1 bg-sidebar-icon/10 px-1.5 py-0.5 text-[10px] font-medium text-sidebar-icon">
+										<span class="text-xs font-medium text-muted">
 											{user.organization.name}
 										</span>
 									{:else}
-										<span class="text-sidebar-icon">—</span>
+										<span class="text-muted/50">—</span>
 									{/if}
 								</td>
-								<td class="px-4 py-2.5 text-sidebar-icon">{formatDate(user.deleted_at)}</td>
-								<td class="px-4 py-2.5">
+								<td class="px-3 py-2 font-mono text-muted">{formatDate(user.deleted_at)}</td>
+								<td class="px-3 py-2">
 									<button
-										class="text-xs font-medium text-accent transition-colors hover:text-accent/80"
+										class="text-sm font-medium text-muted/50 transition-all duration-150 hover:text-accent"
 										onclick={() => openReactivateConfirm(user)}
 									>
 										Reactivate
@@ -725,41 +725,41 @@
 		></button>
 
 		<div
-			class="absolute top-0 right-0 bottom-0 flex w-[480px] flex-col border-l border-surface-border bg-surface shadow-xl"
+			class="absolute top-0 right-0 bottom-0 flex w-[420px] flex-col border-l border-surface-border bg-surface shadow-xl"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Header -->
-			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
-				<div class="flex items-center gap-3 min-w-0 flex-1">
+			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-3 py-2.5">
+				<div class="flex items-center gap-2.5 min-w-0 flex-1">
 					{#if selectedUser.avatar_url}
-						<img src={selectedUser.avatar_url} alt="" class="h-8 w-8 rounded-full object-cover" />
+						<img src={selectedUser.avatar_url} alt="" class="h-7 w-7 rounded-full object-cover" />
 					{:else}
-						<div class="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-xs font-medium text-accent">
+						<div class="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-xs font-medium text-accent">
 							{selectedUser.full_name.charAt(0).toUpperCase()}
 						</div>
 					{/if}
 					<div class="min-w-0">
-						<h2 class="truncate text-sm font-semibold text-sidebar-text">{selectedUser.full_name}</h2>
-						<p class="truncate text-xs text-sidebar-icon">{selectedUser.email}</p>
+						<h2 class="truncate text-lg font-semibold text-sidebar-text">{selectedUser.full_name}</h2>
+						<p class="truncate text-sm text-muted">{selectedUser.email}</p>
 					</div>
 				</div>
 				<div class="ml-3 flex items-center gap-1">
 					{#if canRemoveMember && selectedUser.id !== auth.user?.id}
 						<button
-							class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-red-500"
+							class="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-red-400"
 							onclick={confirmDeleteUser}
 							aria-label="Delete user"
 						>
-							<Trash2 size={16} />
+							<Trash2 size={14} />
 						</button>
 					{/if}
 					<button
-						class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-sidebar-text"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-sidebar-text"
 						onclick={closePanel}
 						aria-label="Close"
 					>
-						<X size={18} />
+						<X size={14} />
 					</button>
 				</div>
 			</div>
@@ -767,17 +767,17 @@
 			<!-- Tabs -->
 			<div class="flex shrink-0 border-b border-surface-border">
 				<button
-					class="px-4 py-2.5 text-xs font-medium transition-colors {panelTab === 'profile'
+					class="px-3 py-2 text-sm font-medium transition-all duration-150 {panelTab === 'profile'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { panelTab = 'profile'; openDropdown = null; editError = null; editSuccess = null; }}
 				>
 					Profile
 				</button>
 				<button
-					class="px-4 py-2.5 text-xs font-medium transition-colors {panelTab === 'organizations'
+					class="px-3 py-2 text-sm font-medium transition-all duration-150 {panelTab === 'organizations'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { panelTab = 'organizations'; openDropdown = null; }}
 				>
 					Organizations
@@ -787,9 +787,9 @@
 			<!-- Scrollable content -->
 			<div class="flex-1 overflow-y-auto">
 				{#if panelTab === 'profile'}
-					<form onsubmit={(e) => { e.preventDefault(); saveProfile(); }} class="px-4">
+					<form onsubmit={(e) => { e.preventDefault(); saveProfile(); }} class="p-3">
 						<!-- Properties -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Properties</span>
 							<div class="space-y-3">
 								<div class="grid grid-cols-2 gap-3">
@@ -816,43 +816,43 @@
 						</div>
 
 						<!-- Status -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Status</span>
 							{@render toggle(editActive, () => { editActive = !editActive; }, 'Active')}
 						</div>
 
 						<!-- Info (read-only) -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-2 block">Info</span>
-							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
 								<div>
-									<span class="text-sidebar-icon">Email</span>
+									<span class="text-muted/50">Email</span>
 									<p class="text-sidebar-text">{selectedUser.email}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Origin Org</span>
+									<span class="text-muted/50">Origin Org</span>
 									<p class="text-sidebar-text">{selectedUser.organization?.name ?? '—'}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Created</span>
-									<p class="text-sidebar-text">{formatDate(selectedUser.created_at)}</p>
+									<span class="text-muted/50">Created</span>
+									<p class="font-mono text-sidebar-text">{formatDate(selectedUser.created_at)}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Last Seen</span>
-									<p class="text-sidebar-text">{formatRelative(selectedUser.last_seen_at)}</p>
+									<span class="text-muted/50">Last Seen</span>
+									<p class="font-mono text-sidebar-text">{formatRelative(selectedUser.last_seen_at)}</p>
 								</div>
 							</div>
 						</div>
 
 						{#if editError}
-							<p class="pt-3 text-xs text-red-500">{editError}</p>
+							<p class="pt-2 text-sm text-red-400">{editError}</p>
 						{/if}
 						{#if editSuccess}
-							<p class="pt-3 text-xs text-green-600">{editSuccess}</p>
+							<p class="pt-2 text-sm text-green-400">{editSuccess}</p>
 						{/if}
 
 						{#if canManageRoles || selectedUser.id === auth.user?.id}
-							<div class="flex justify-end py-4">
+							<div class="flex justify-end pt-2">
 								<button type="submit" disabled={editSaving || !editFullName.trim() || !editUsername.trim()} class={btnPrimary}>
 									{editSaving ? 'Saving...' : 'Save changes'}
 								</button>
@@ -862,49 +862,50 @@
 				{/if}
 
 				{#if panelTab === 'organizations'}
-					<div class="px-4">
-						<div class="flex items-center justify-between border-b border-surface-border py-4">
-							<span class="{sectionLabel}">Memberships</span>
-							{#if canInvite && availableOrgsForMembership.length > 0}
-								<button class="text-xs font-medium text-accent hover:text-accent/80" onclick={openAddMembership}>
-									+ Add
-								</button>
-							{/if}
-						</div>
+					<div class="p-3">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+							<div class="mb-2.5 flex items-center justify-between">
+								<span class="{sectionLabel}">Memberships</span>
+								{#if canInvite && availableOrgsForMembership.length > 0}
+									<button class="text-sm text-muted/50 transition-all duration-150 hover:text-accent" onclick={openAddMembership}>
+										+ Add
+									</button>
+								{/if}
+							</div>
 
 						{#if membershipsLoading}
-							<p class="py-4 text-xs text-sidebar-icon">Loading...</p>
+							<p class="py-3 text-sm text-muted">Loading...</p>
 						{:else if memberships.length === 0}
-							<p class="py-4 text-xs text-sidebar-icon">No memberships.</p>
+							<p class="py-3 text-sm text-muted">No memberships.</p>
 						{:else}
-							<div class="divide-y divide-surface-border/50">
+							<div class="divide-y divide-surface-border/30">
 								{#each memberships as m (m.id)}
-									<div class="flex items-center justify-between py-3">
+									<div class="flex items-center justify-between py-2.5">
 										<div class="flex items-center gap-2.5 min-w-0">
-											<Building2 size={14} class="shrink-0 text-sidebar-icon" />
+											<Building2 size={14} class="shrink-0 text-muted/40" />
 											<div class="min-w-0">
-												<p class="flex items-center gap-1.5 text-xs font-medium text-sidebar-text">
+												<p class="flex items-center gap-1.5 text-base font-medium text-sidebar-text">
 													<span class="truncate">{m.organization?.name ?? 'Unknown'}</span>
 													{#if m.organization_id === platformOrgId}
-														<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">Internal</span>
+														<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-accent">Internal</span>
 													{/if}
 												</p>
 												<div class="flex items-center gap-1.5 mt-0.5">
-													<Shield size={10} class="text-sidebar-icon" />
+													<Shield size={10} class="text-muted/40" />
 													<!-- Role dropdown -->
 													{#if canManageRoles && selectedUser && m.user_id !== auth.user?.id}
 														<div class="relative" data-dropdown>
 															<button
-																class="flex items-center gap-1 text-[11px] text-sidebar-icon hover:text-accent transition-colors"
+																class="flex items-center gap-1 text-sm text-muted transition-all duration-150 hover:text-accent"
 																onclick={() => toggleDropdown(`role-${m.id}`)}
 															>
 															{m.role?.name ?? 'Unknown'} {@html chevronSvg}
 															</button>
 															{#if openDropdown === `role-${m.id}`}
-																<div class="absolute left-0 z-30 mt-1 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl">
+																<div class="absolute left-0 z-30 mt-1.5 min-w-[140px] rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in">
 																	{#each allowedRoles(m.organization_id) as r (r.id)}
 																		<button
-																			class="{dropItemBase} {m.role_id === r.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+																			class="{dropItemBase} {m.role_id === r.id ? 'font-medium text-accent' : 'text-muted'}"
 																			onmousedown={(e) => { e.preventDefault(); updateMemberRole(m, r.id); }}
 																		>
 																			{r.name}
@@ -914,28 +915,29 @@
 															{/if}
 														</div>
 													{:else}
-														<span class="text-[11px] text-sidebar-icon">{m.role?.name ?? 'Unknown'}</span>
+														<span class="text-sm text-muted">{m.role?.name ?? 'Unknown'}</span>
 													{/if}
 												</div>
 											</div>
 										</div>
 									{#if canRemoveMember && selectedUser && m.user_id !== auth.user?.id}
 										<button
-											class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-red-500"
+											class="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-red-400"
 											onclick={() => confirmRemoveMembership(m)}
 											aria-label="Remove membership"
 										>
-											<Ban size={14} />
+											<Ban size={12} />
 										</button>
 									{/if}
 									</div>
 								{/each}
 							</div>
 						{/if}
+						</div>
 
 						<!-- Add membership inline form -->
 						{#if addMembershipOpen}
-							<div class="border-t border-surface-border py-4 space-y-3">
+							<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5 space-y-3">
 								<span class="{sectionLabel} block">Add to Organization</span>
 								<div>
 									<span class={labelClass}>Organization</span>
@@ -948,12 +950,12 @@
 											<div class={dropPanelClass}>
 												{#each availableOrgsForMembership as org (org.id)}
 													<button
-														class="{dropItemBase} {addOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+														class="{dropItemBase} {addOrgId === org.id ? 'font-medium text-accent' : 'text-muted'}"
 														onmousedown={(e) => { e.preventDefault(); addOrgId = org.id; addRoleId = allowedRoles(org.id)[0]?.id ?? ''; openDropdown = null; }}
 													>
 														<span class="truncate">{org.name}</span>
 														{#if org.id === platformOrgId}
-															<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">Internal</span>
+															<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-accent">Internal</span>
 														{/if}
 													</button>
 												{/each}
@@ -972,7 +974,7 @@
 											<div class={dropPanelClass}>
 												{#each allowedRoles(addOrgId) as r (r.id)}
 													<button
-														class="{dropItemBase} {addRoleId === r.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+														class="{dropItemBase} {addRoleId === r.id ? 'font-medium text-accent' : 'text-muted'}"
 														onmousedown={(e) => { e.preventDefault(); addRoleId = r.id; openDropdown = null; }}
 													>
 														{r.name}
@@ -1001,10 +1003,10 @@
 {#if inviteModalOpen}
 	<Modal open={true} onClose={() => (inviteModalOpen = false)}>
 		<div>
-			<div class="border-b border-surface-border px-4 py-3">
-				<h2 class="text-sm font-semibold text-sidebar-text">Invite User</h2>
+			<div class="border-b border-surface-border/40 px-3 py-2.5">
+				<h2 class="text-md font-semibold text-sidebar-text">Invite User</h2>
 			</div>
-			<form onsubmit={(e) => { e.preventDefault(); sendInvite(); }} class="space-y-4 p-4">
+			<form onsubmit={(e) => { e.preventDefault(); sendInvite(); }} class="space-y-3 p-3">
 				<div>
 					<label for="invite-email" class={labelClass}>Email</label>
 					<input id="invite-email" type="email" required bind:value={inviteEmail}
@@ -1029,12 +1031,12 @@
 							<div class={dropPanelClass}>
 								{#each organizations as org (org.id)}
 									<button
-										class="{dropItemBase} {inviteOrgId === org.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+										class="{dropItemBase} {inviteOrgId === org.id ? 'font-medium text-accent' : 'text-muted'}"
 									onmousedown={(e) => { e.preventDefault(); inviteOrgId = org.id; inviteRoleId = allowedRoles(org.id)[0]?.id ?? ''; openDropdown = null; }}
 								>
 									<span class="truncate">{org.name}</span>
 									{#if org.id === platformOrgId}
-										<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">Internal</span>
+										<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/10 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-accent">Internal</span>
 									{/if}
 									</button>
 								{/each}
@@ -1055,7 +1057,7 @@
 							<div class={dropPanelClass}>
 								{#each allowedRoles(inviteOrgId) as r (r.id)}
 									<button
-										class="{dropItemBase} {inviteRoleId === r.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+										class="{dropItemBase} {inviteRoleId === r.id ? 'font-medium text-accent' : 'text-muted'}"
 										onmousedown={(e) => { e.preventDefault(); inviteRoleId = r.id; openDropdown = null; }}
 									>
 										{r.name}
@@ -1066,7 +1068,7 @@
 					</div>
 				</div>
 
-				<div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+				<div class="flex justify-end gap-2 border-t border-surface-border/40 pt-3">
 					<button type="button" class={btnSecondary} onclick={() => (inviteModalOpen = false)}>
 						Cancel
 					</button>
@@ -1105,16 +1107,16 @@
 <!-- Reactivate User Modal -->
 {#if reactivateConfirmOpen && reactivateTarget}
 	<Modal open={true} onClose={() => (reactivateConfirmOpen = false)} maxWidth="max-w-sm">
-		<div class="border-b border-surface-border px-5 py-3.5">
-			<h2 class="text-[13px] font-semibold text-sidebar-text">Reactivate User</h2>
+		<div class="border-b border-surface-border/40 px-3 py-2.5">
+			<h2 class="text-md font-semibold text-sidebar-text">Reactivate User</h2>
 		</div>
-		<div class="px-5 py-4 space-y-3">
-			<p class="text-xs leading-relaxed text-sidebar-text/80">
+		<div class="px-3 py-3 space-y-3">
+			<p class="text-base leading-relaxed text-sidebar-text/80">
 				Reactivate <strong>{reactivateTarget.full_name}</strong>? They will regain access with their existing organization and memberships.
 			</p>
 			{@render toggle(reactivateSendReset, () => { reactivateSendReset = !reactivateSendReset; }, 'Send password reset email')}
 		</div>
-		<div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3.5">
+		<div class="flex justify-end gap-2 border-t border-surface-border/40 px-3 py-2.5">
 			<button class={btnSecondary} disabled={reactivating} onclick={() => (reactivateConfirmOpen = false)}>Cancel</button>
 			<button class={btnPrimary} disabled={reactivating} onclick={reactivateUser}>
 				{reactivating ? 'Reactivating...' : 'Reactivate'}

@@ -29,17 +29,17 @@
 	}
 </script>
 
-<div class="relative min-h-screen bg-gray-50 font-mono">
+<div class="relative min-h-screen bg-page-bg">
 	<div class="absolute top-4 right-4">
 		<div class="relative">
 			<button
-				class="flex cursor-pointer items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm"
+				class="flex cursor-pointer items-center gap-1 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-sm transition-all duration-150 hover:bg-surface-hover/60"
 				onclick={() => (dropdownOpen = !dropdownOpen)}
 				onblur={() => setTimeout(() => (dropdownOpen = false), 150)}
 			>
 				<span class="text-base">{localeFlags[getLocale()] ?? ''}</span>
-				<span class="text-xs">{localeLabels[getLocale()] ?? getLocale()}</span>
-				<svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<span class="text-xs text-sidebar-text">{localeLabels[getLocale()] ?? getLocale()}</span>
+				<svg class="h-3 w-3 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -51,7 +51,7 @@
 
 			{#if dropdownOpen}
 				<div
-					class="absolute right-0 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white"
+					class="absolute right-0 z-20 mt-1.5 min-w-[8rem] overflow-hidden rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20"
 				>
 					{#each locales as loc (loc)}
 						<a
@@ -60,7 +60,7 @@
 								e.preventDefault();
 								switchLocale(loc);
 							}}
-							class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50"
+							class="flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
 						>
 							<span class="text-base">{localeFlags[loc] ?? ''}</span>
 							<span class="text-xs">{localeLabels[loc] ?? loc}</span>
@@ -72,18 +72,18 @@
 	</div>
 
 	<div class="flex min-h-screen items-center justify-center px-4">
-		<div class="w-full max-w-md rounded-lg border border-gray-200 bg-white px-10 py-10">
+		<div class="w-full max-w-md rounded border border-surface-border bg-surface px-10 py-10 shadow-xl">
 			<div class="flex flex-col items-center">
 				<div class="mb-1 flex items-center gap-2">
 					<img src={logo} alt="Trackr" class="h-8" />
-					<span class="text-xl font-bold tracking-widest text-gray-800">TRACKR</span>
+					<span class="text-lg font-bold tracking-widest text-sidebar-text">TRACKR</span>
 				</div>
 
-				<p class="mb-8 text-sm text-gray-500">{m.setup_subtitle()}</p>
+				<p class="mb-6 text-sm text-muted">{m.setup_subtitle()}</p>
 
 				{#if form?.message}
 					<div
-						class="mb-4 w-full rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-accent"
+						class="mb-4 w-full rounded border border-red-400/30 bg-red-400/10 px-3 py-2.5 text-sm text-red-400"
 					>
 						{form.message}
 					</div>
@@ -91,7 +91,7 @@
 
 				<form
 					method="POST"
-					class="w-full space-y-5"
+					class="w-full space-y-4"
 					use:enhance={() => {
 						loading = true;
 						return async ({ result, update }) => {
@@ -107,7 +107,7 @@
 					<div>
 						<label
 							for="org_name"
-							class="mb-1.5 block text-xs font-semibold tracking-wide text-accent"
+							class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent"
 						>
 							{m.setup_org_name()}
 						</label>
@@ -118,14 +118,14 @@
 							placeholder={m.setup_org_name()}
 							defaultValue={form?.orgName ?? ''}
 							required
-							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+							class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 						/>
 					</div>
 
 					<div>
 						<label
 							for="full_name"
-							class="mb-1.5 block text-xs font-semibold tracking-wide text-accent"
+							class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent"
 						>
 							{m.setup_full_name()}
 						</label>
@@ -136,14 +136,14 @@
 							placeholder={m.setup_full_name()}
 							defaultValue={form?.fullName ?? ''}
 							required
-							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+							class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 						/>
 					</div>
 
 					<div>
 						<label
 							for="email"
-							class="mb-1.5 block text-xs font-semibold tracking-wide text-accent"
+							class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent"
 						>
 							{m.auth_email()}
 						</label>
@@ -154,14 +154,14 @@
 							placeholder={m.auth_email()}
 							defaultValue={form?.email ?? ''}
 							required
-							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+							class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 						/>
 					</div>
 
 					<div>
 						<label
 							for="password"
-							class="mb-1.5 block text-xs font-semibold tracking-wide text-accent"
+							class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent"
 						>
 							{m.auth_password()}
 						</label>
@@ -172,18 +172,18 @@
 								type={showPassword ? 'text' : 'password'}
 								placeholder={m.auth_password()}
 								required
-								class="w-full rounded-lg bg-gray-100 px-4 py-3 pr-11 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+								class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 pr-9 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 							/>
 							<button
 								type="button"
-								class="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-gray-400 transition-colors hover:text-gray-600"
+								class="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer text-muted/40 transition-all duration-150 hover:text-sidebar-text"
 								onclick={() => (showPassword = !showPassword)}
 								tabindex={-1}
 							>
 								{#if showPassword}
-									<EyeOff size={18} />
+									<EyeOff size={14} />
 								{:else}
-									<Eye size={18} />
+									<Eye size={14} />
 								{/if}
 							</button>
 						</div>
@@ -192,7 +192,7 @@
 					<div>
 						<label
 							for="confirm_password"
-							class="mb-1.5 block text-xs font-semibold tracking-wide text-accent"
+							class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-accent"
 						>
 							{m.setup_confirm_password()}
 						</label>
@@ -202,17 +202,17 @@
 							type="password"
 							placeholder={m.setup_confirm_password()}
 							required
-							class="w-full rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+							class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 						/>
 					</div>
 
 					<button
 						type="submit"
 						disabled={loading}
-						class="flex w-full cursor-pointer items-center justify-center rounded-lg bg-accent py-3.5 text-sm font-semibold tracking-wide text-white shadow-md shadow-accent/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+						class="flex h-8 w-full cursor-pointer items-center justify-center rounded-sm bg-accent text-sm font-semibold text-white transition-all duration-150 hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-30"
 					>
 						{#if loading}
-							<LoaderCircle size={18} class="animate-spin" />
+							<LoaderCircle size={14} class="animate-spin" />
 						{:else}
 							{m.setup_submit()}
 						{/if}

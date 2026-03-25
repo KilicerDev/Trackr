@@ -39,12 +39,12 @@
 	};
 
 	const taskStatusBadge: Record<string, string> = {
-		backlog: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
-		todo: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
-		in_progress: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
-		in_review: 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
-		done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
-		cancelled: 'bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-300'
+		backlog: 'text-zinc-400',
+		todo: 'text-blue-400',
+		in_progress: 'text-amber-400',
+		in_review: 'text-violet-400',
+		done: 'text-green-400',
+		cancelled: 'text-red-400'
 	};
 
 	const priorityColors: Record<string, string> = {
@@ -55,10 +55,10 @@
 	};
 
 	const priorityBadge: Record<string, string> = {
-		low: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
-		medium: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
-		high: 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
-		urgent: 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300'
+		low: 'text-blue-400',
+		medium: 'text-yellow-500',
+		high: 'text-orange-400',
+		urgent: 'text-red-400'
 	};
 
 	let loading = $state(true);
@@ -193,69 +193,69 @@
 	);
 </script>
 
-<div class="mx-auto max-w-7xl px-6 py-6">
+<div class="mx-auto max-w-7xl p-3">
 	{#if loading}
 		<div class="flex h-64 items-center justify-center">
 			<Loader2 size={24} class="animate-spin text-muted" />
 		</div>
 	{:else}
-		<div class="mb-6">
+		<div class="mb-4">
 			<h1 class="text-lg font-semibold text-sidebar-text">
 				Welcome back, {auth.user?.full_name?.split(' ')[0] ?? 'there'}
 			</h1>
-			<p class="mt-1 text-xs text-muted">Here's what's happening across your workspace.</p>
+			<p class="mt-1 text-sm text-muted/50">Here's what's happening across your workspace.</p>
 		</div>
 
 		<!-- KPI Cards -->
-		<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-			<div class="border border-surface-border bg-surface px-4 py-4">
-				<div class="mb-2 flex items-center gap-2 text-muted">
-					<FolderKanban size={15} />
-					<span class="text-[11px] uppercase tracking-wide">Active Projects</span>
+		<div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+			<div class="rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+				<div class="mb-2 flex items-center gap-2 text-muted/50">
+					<FolderKanban size={14} />
+					<span class="text-xs font-medium uppercase tracking-[0.08em]">Active Projects</span>
 				</div>
 				<p class="text-2xl font-semibold text-sidebar-text">{activeProjects}</p>
-				<p class="mt-1 text-[11px] text-muted">{projects.length} total</p>
+				<p class="mt-1 text-xs text-muted/50">{projects.length} total</p>
 			</div>
 
-			<div class="border border-surface-border bg-surface px-4 py-4">
-				<div class="mb-2 flex items-center gap-2 text-muted">
-					<ListChecks size={15} />
-					<span class="text-[11px] uppercase tracking-wide">Open Tasks</span>
+			<div class="rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+				<div class="mb-2 flex items-center gap-2 text-muted/50">
+					<ListChecks size={14} />
+					<span class="text-xs font-medium uppercase tracking-[0.08em]">Open Tasks</span>
 				</div>
 				<p class="text-2xl font-semibold text-sidebar-text">{openTasks}</p>
-				<div class="mt-1 flex items-center gap-2 text-[11px] text-muted">
+				<div class="mt-1 flex items-center gap-2 text-xs text-muted/50">
 					<span>{allTaskCount} total</span>
 					{#if backlogTasks > 0}
-						<span class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+						<span class="text-xs font-medium text-zinc-400">
 							{backlogTasks} in backlog
 						</span>
 					{/if}
 				</div>
 			</div>
 
-			<div class="border border-surface-border bg-surface px-4 py-4">
-				<div class="mb-2 flex items-center gap-2 text-muted">
-					<TicketIcon size={15} />
-					<span class="text-[11px] uppercase tracking-wide">Open Tickets</span>
+			<div class="rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+				<div class="mb-2 flex items-center gap-2 text-muted/50">
+					<TicketIcon size={14} />
+					<span class="text-xs font-medium uppercase tracking-[0.08em]">Open Tickets</span>
 				</div>
 				<p class="text-2xl font-semibold text-sidebar-text">{openTickets}</p>
-				<p class="mt-1 text-[11px] text-muted">{allTicketCount} total</p>
+				<p class="mt-1 text-xs text-muted/50">{allTicketCount} total</p>
 			</div>
 
-			<div class="border border-surface-border bg-surface px-4 py-4">
-				<div class="mb-2 flex items-center gap-2 text-muted">
-					<ShieldAlert size={15} />
-					<span class="text-[11px] uppercase tracking-wide">SLA Breaches</span>
+			<div class="rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+				<div class="mb-2 flex items-center gap-2 text-muted/50">
+					<ShieldAlert size={14} />
+					<span class="text-xs font-medium uppercase tracking-[0.08em]">SLA Breaches</span>
 				</div>
 				<p class="text-2xl font-semibold text-sidebar-text">{breachCount}</p>
-				<p class="mt-1 text-[11px] text-muted">all time</p>
+				<p class="mt-1 text-xs text-muted/50">all time</p>
 			</div>
 		</div>
 
 		<!-- Charts -->
-		<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-			<div class="border border-surface-border bg-surface p-4">
-				<h2 class="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">
+		<div class="mb-4 grid grid-cols-1 gap-2 lg:grid-cols-2">
+			<div class="rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+				<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted/50">
 					Tasks by Status
 				</h2>
 				{#if allTasks.length > 0}
@@ -265,20 +265,20 @@
 					<div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
 						{#each TASK_STATUSES as s (s)}
 							<div class="flex items-center gap-1.5">
-								<span class="inline-block h-[7px] w-[7px] rounded-full" style="background:{taskStatusColors[s]}"></span>
-								<span class="text-[11px] text-muted">{taskStatusLabels[s]}</span>
+								<span class="inline-block h-1.5 w-1.5 rounded-full" style="background:{taskStatusColors[s]}"></span>
+								<span class="text-sm text-muted">{taskStatusLabels[s]}</span>
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<div class="flex h-52 items-center justify-center text-xs text-muted">
+					<div class="flex h-52 items-center justify-center text-sm text-muted/50">
 						No task data yet
 					</div>
 				{/if}
 			</div>
 
-			<div class="border border-surface-border bg-surface p-4">
-				<h2 class="mb-4 text-xs font-semibold uppercase tracking-wide text-muted">
+			<div class="rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+				<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted/50">
 					Tickets by Priority
 				</h2>
 				{#if allTickets.length > 0}
@@ -288,13 +288,13 @@
 					<div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
 						{#each TICKET_PRIORITIES as p (p)}
 							<div class="flex items-center gap-1.5">
-								<span class="inline-block h-[7px] w-[7px] rounded-full" style="background:{priorityColors[p]}"></span>
-								<span class="text-[11px] text-muted">{p.charAt(0).toUpperCase() + p.slice(1)}</span>
+								<span class="inline-block h-1.5 w-1.5 rounded-full" style="background:{priorityColors[p]}"></span>
+								<span class="text-sm text-muted">{p.charAt(0).toUpperCase() + p.slice(1)}</span>
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<div class="flex h-52 items-center justify-center text-xs text-muted">
+					<div class="flex h-52 items-center justify-center text-sm text-muted/50">
 						No ticket data yet
 					</div>
 				{/if}
@@ -302,14 +302,14 @@
 		</div>
 
 		<!-- Lists -->
-		<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<div class="grid grid-cols-1 gap-2 lg:grid-cols-2">
 			<!-- My Tasks -->
-			<div class="border border-surface-border bg-surface">
-				<div class="flex items-center justify-between border-b border-surface-border px-4 py-3">
-					<h2 class="text-xs font-semibold uppercase tracking-wide text-muted">My Tasks</h2>
+			<div class="rounded border border-surface-border/40 bg-surface/50">
+				<div class="flex items-center justify-between border-b border-surface-border/30 px-3 py-2.5">
+					<h2 class="text-xs font-medium uppercase tracking-[0.08em] text-muted/50">My Tasks</h2>
 				<a
 					href={localizeHref("/projects")}
-					class="flex items-center gap-1 text-[11px] text-accent hover:underline"
+					class="flex items-center gap-1 text-sm text-muted/50 transition-colors hover:text-accent"
 				>
 					View all <ArrowRight size={12} />
 				</a>
@@ -320,7 +320,7 @@
 						<li>
 							<a
 								href={localizeHref(`/projects/${task.project_id}`)}
-									class="flex items-center gap-3 border-b border-surface-border px-4 py-2.5 last:border-0 hover:bg-surface-hover"
+									class="flex items-center gap-3 px-3 py-[7px] transition-all duration-150 hover:bg-surface-hover/40"
 								>
 									<Circle
 										size={8}
@@ -329,13 +329,13 @@
 										style="color: {taskStatusColors[task.status] ?? '#a1a1aa'}"
 									/>
 									<div class="min-w-0 flex-1">
-										<p class="truncate text-xs text-sidebar-text">{task.title}</p>
-										<p class="mt-0.5 text-[10px] text-muted">
+										<p class="truncate text-base text-sidebar-text">{task.title}</p>
+										<p class="mt-0.5 font-mono text-xs text-muted/50">
 											{task.project?.identifier ?? ''}-{task.short_id}
 										</p>
 									</div>
 									<span
-										class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {taskStatusBadge[task.status] ?? ''}"
+										class="shrink-0 text-xs font-medium {taskStatusBadge[task.status] ?? ''}"
 									>
 										{formatLabel(task.status)}
 									</span>
@@ -344,21 +344,21 @@
 						{/each}
 					</ul>
 				{:else}
-					<div class="flex h-32 items-center justify-center text-xs text-muted">
+					<div class="flex h-32 items-center justify-center text-sm text-muted/50">
 						No tasks assigned to you
 					</div>
 				{/if}
 			</div>
 
 			<!-- Recent Tickets -->
-			<div class="border border-surface-border bg-surface">
-				<div class="flex items-center justify-between border-b border-surface-border px-4 py-3">
-					<h2 class="text-xs font-semibold uppercase tracking-wide text-muted">
+			<div class="rounded border border-surface-border/40 bg-surface/50">
+				<div class="flex items-center justify-between border-b border-surface-border/30 px-3 py-2.5">
+					<h2 class="text-xs font-medium uppercase tracking-[0.08em] text-muted/50">
 						Recent Tickets
 					</h2>
 				<a
 					href={localizeHref("/tickets")}
-					class="flex items-center gap-1 text-[11px] text-accent hover:underline"
+					class="flex items-center gap-1 text-sm text-muted/50 transition-colors hover:text-accent"
 					>
 						View all <ArrowRight size={12} />
 					</a>
@@ -368,19 +368,19 @@
 						{#each recentTickets as ticket (ticket.id)}
 							<li>
 								<div
-									class="flex items-center gap-3 border-b border-surface-border px-4 py-2.5 last:border-0"
+									class="flex items-center gap-3 px-3 py-[7px] transition-all duration-150 hover:bg-surface-hover/40"
 								>
 									<div class="min-w-0 flex-1">
-										<p class="truncate text-xs text-sidebar-text">{ticket.subject}</p>
-										<p class="mt-0.5 text-[10px] text-muted">
+										<p class="truncate text-base text-sidebar-text">{ticket.subject}</p>
+										<p class="mt-0.5 text-xs text-muted/50">
 											{ticket.customer?.full_name ?? 'Unknown'}
 											{#if ticket.created_at}
-												&middot; {timeAgo(ticket.created_at as string)}
+												&middot; <span class="font-mono">{timeAgo(ticket.created_at as string)}</span>
 											{/if}
 										</p>
 									</div>
 									<span
-										class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {priorityBadge[ticket.priority] ?? ''}"
+										class="shrink-0 text-xs font-medium {priorityBadge[ticket.priority] ?? ''}"
 									>
 										{formatLabel(ticket.priority)}
 									</span>
@@ -389,7 +389,7 @@
 						{/each}
 					</ul>
 				{:else}
-					<div class="flex h-32 items-center justify-center text-xs text-muted">
+					<div class="flex h-32 items-center justify-center text-sm text-muted/50">
 						No open tickets
 					</div>
 				{/if}

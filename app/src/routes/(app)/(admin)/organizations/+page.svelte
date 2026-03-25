@@ -64,20 +64,20 @@
 	let settingsError = $state<string | null>(null);
 	let settingsSuccess = $state<string | null>(null);
 
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
-	const sectionLabel = 'text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted';
+	const sectionLabel = 'text-xs font-medium uppercase tracking-[0.08em] text-muted';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
 	const btnSecondary =
-		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
 	const btnPrimary =
-		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
+		'flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
 	const dropBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =
-		'absolute left-0 z-30 mt-1 max-h-48 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in';
 	const dropItemBase =
-		'flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover';
+		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-all duration-150 hover:bg-surface-hover/60';
 
 	function toggleDropdown(key: string) {
 		openDropdown = openDropdown === key ? null : key;
@@ -292,64 +292,64 @@
 		return t ? `${t.response_time_hours}h / ${t.resolution_time_hours}h` : '';
 	}
 
-	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
 </script>
 
 {#snippet toggle(checked: boolean, onToggle: () => void, label: string)}
 	<button type="button" class="flex items-center gap-3" onclick={onToggle}>
-		<span class="flex h-4 w-4 shrink-0 items-center justify-center border transition-colors
-			{checked ? 'border-accent bg-accent' : 'border-surface-border bg-surface hover:border-sidebar-icon/30'}">
+		<span class="flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+			{checked ? 'border-accent bg-accent' : 'border-surface-border/60'}">
 		{#if checked}{@html checkSvg}{/if}
 	</span>
-	<span class="text-xs text-sidebar-text">{label}</span>
+	<span class="text-base text-sidebar-text">{label}</span>
 	</button>
 {/snippet}
 
 <div class="mx-auto w-full">
-	<div class="flex items-center justify-between border-b border-surface-border px-6 py-4">
-		<h1 class="text-sm font-semibold text-sidebar-text">Organizations</h1>
+	<div class="flex items-center justify-between px-3 py-1.5">
+		<h1 class="text-md font-semibold text-sidebar-text">Organizations</h1>
 		{#if auth.isOwner}
 			<button class={btnPrimary} onclick={openCreateModal}>New organization</button>
 		{/if}
 	</div>
 
 	{#if loading}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">Loading...</p>
+		<p class="px-3 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else if error}
-		<p class="px-6 py-8 text-center text-sm text-red-500">{error}</p>
+		<p class="px-3 py-8 text-center text-sm text-red-400">{error}</p>
 	{:else if organizations.length === 0}
-		<p class="px-6 py-8 text-center text-sm text-sidebar-icon">No organizations yet.</p>
+		<p class="px-3 py-8 text-center text-sm text-muted">No organizations yet.</p>
 	{:else}
-		<div class="overflow-x-auto">
-			<table class="w-full text-xs">
+		<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+			<table class="w-full text-sm">
 				<thead>
-					<tr class="border-b border-surface-border text-left text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">
-						<th class="px-4 py-2.5">Name</th>
-						<th class="px-4 py-2.5">Slug</th>
-						<th class="px-4 py-2.5">Tier</th>
-						<th class="px-4 py-2.5">Status</th>
+					<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
+						<th class="px-3 py-2">Name</th>
+						<th class="px-3 py-2">Slug</th>
+						<th class="px-3 py-2">Tier</th>
+						<th class="px-3 py-2">Status</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each organizations as org (org.id)}
 						<tr
-							class="cursor-pointer border-b border-surface-border/50 transition-colors hover:bg-surface-hover/50 {selectedOrg?.id === org.id ? 'bg-surface-hover/50' : ''}"
+							class="cursor-pointer border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60 {selectedOrg?.id === org.id ? 'bg-surface-hover/60' : ''}"
 							onclick={() => openPanel(org)}
 						>
-							<td class="px-4 py-2.5 font-medium text-sidebar-text">{org.name}</td>
-							<td class="px-4 py-2.5 text-sidebar-icon">{org.slug}</td>
-							<td class="px-4 py-2.5">
+							<td class="px-3 py-2 font-medium text-sidebar-text">{org.name}</td>
+							<td class="px-3 py-2 text-muted">{org.slug}</td>
+							<td class="px-3 py-2">
 								{#if org.support_tier}
-									<span class="inline-block bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+									<span class="text-xs font-medium text-accent">
 										{org.support_tier.name}
 									</span>
 								{:else}
-									<span class="text-sidebar-icon">—</span>
+									<span class="text-muted/50">—</span>
 								{/if}
 							</td>
-							<td class="px-4 py-2.5">
-								<span class="text-[10px] font-medium {org.is_active ? 'text-green-600' : 'text-sidebar-icon'}">
+							<td class="px-3 py-2">
+								<span class="text-xs font-medium {org.is_active ? 'text-green-400' : 'text-muted/50'}">
 									{org.is_active ? 'Active' : 'Inactive'}
 								</span>
 							</td>
@@ -372,39 +372,39 @@
 		></button>
 
 		<div
-			class="absolute top-0 right-0 bottom-0 flex w-[480px] flex-col border-l border-surface-border bg-surface shadow-xl"
+			class="absolute top-0 right-0 bottom-0 flex w-[420px] flex-col border-l border-surface-border bg-surface shadow-xl"
 			role="dialog"
 			aria-modal="true"
 		>
 			<!-- Header -->
-			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
+			<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-3 py-2.5">
 				<div class="min-w-0 flex-1">
 					<span class="text-xs font-medium text-accent">{selectedOrg.slug}</span>
-					<h2 class="truncate text-sm font-semibold text-sidebar-text">{selectedOrg.name}</h2>
+					<h2 class="truncate text-lg font-semibold text-sidebar-text">{selectedOrg.name}</h2>
 				</div>
 				<button
-					class="ml-3 shrink-0 p-1 text-sidebar-icon transition-colors hover:text-sidebar-text"
+					class="ml-3 flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-sidebar-text"
 					onclick={closePanel}
 					aria-label="Close"
 				>
-					<X size={18} />
+					<X size={14} />
 				</button>
 			</div>
 
 			<!-- Tabs -->
 			<div class="flex shrink-0 border-b border-surface-border">
 				<button
-					class="px-4 py-2.5 text-xs font-medium transition-colors {panelTab === 'details'
+					class="px-3 py-2 text-sm font-medium transition-all duration-150 {panelTab === 'details'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { panelTab = 'details'; openDropdown = null; editError = null; editSuccess = null; }}
 				>
 					Details
 				</button>
 				<button
-					class="px-4 py-2.5 text-xs font-medium transition-colors {panelTab === 'settings'
+					class="px-3 py-2 text-sm font-medium transition-all duration-150 {panelTab === 'settings'
 						? 'border-b-2 border-accent text-accent'
-						: 'text-sidebar-icon hover:text-sidebar-text'}"
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => { panelTab = 'settings'; openDropdown = null; settingsError = null; settingsSuccess = null; }}
 				>
 					Settings
@@ -414,9 +414,9 @@
 			<!-- Scrollable content -->
 			<div class="flex-1 overflow-y-auto">
 				{#if panelTab === 'details'}
-					<form onsubmit={(e) => { e.preventDefault(); saveOrgDetails(); }} class="px-4">
+					<form onsubmit={(e) => { e.preventDefault(); saveOrgDetails(); }} class="p-3">
 						<!-- Properties -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Properties</span>
 							<div class="space-y-3">
 								<div class="grid grid-cols-2 gap-3">
@@ -445,14 +445,14 @@
 						</div>
 
 						<!-- Support Tier (custom dropdown) -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Support Tier</span>
 							<div class="relative" data-dropdown>
 								<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('edit-tier')}>
 									<div class="min-w-0">
 										<span class="truncate">{tierLabel(editTierId)}</span>
 										{#if tierSublabel(editTierId)}
-											<span class="ml-1.5 text-sidebar-icon">({tierSublabel(editTierId)})</span>
+											<span class="ml-1.5 text-muted/50">({tierSublabel(editTierId)})</span>
 										{/if}
 								</div>
 								{@html chevronSvg}
@@ -460,23 +460,23 @@
 							{#if openDropdown === 'edit-tier'}
 									<div class={dropPanelClass}>
 										<button type="button"
-											class="{dropItemBase} {editTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
+											class="{dropItemBase} {editTierId === null ? 'font-medium text-accent' : 'text-muted'}"
 											onmousedown={(e) => { e.preventDefault(); editTierId = null; openDropdown = null; }}
 										>No tier</button>
 										{#each activeTiers as t (t.id)}
 											<button type="button"
-												class="{dropItemBase} {editTierId === t.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+												class="{dropItemBase} {editTierId === t.id ? 'font-medium text-accent' : 'text-muted'}"
 												onmousedown={(e) => { e.preventDefault(); editTierId = t.id; openDropdown = null; }}
 											>
 												{t.name}
-												<span class="ml-auto pl-3 text-sidebar-icon">{t.response_time_hours}h / {t.resolution_time_hours}h</span>
+												<span class="ml-auto pl-3 text-muted/50">{t.response_time_hours}h / {t.resolution_time_hours}h</span>
 											</button>
 										{/each}
 									</div>
 								{/if}
 							</div>
 							{#if selectedOrg.support_tier}
-								<p class="mt-2 text-[11px] text-sidebar-icon">
+								<p class="mt-2 text-sm text-muted/50">
 									Current: <span class="font-medium text-accent">{selectedOrg.support_tier.name}</span>
 									({selectedOrg.support_tier.response_time_hours}h / {selectedOrg.support_tier.resolution_time_hours}h)
 								</p>
@@ -484,41 +484,41 @@
 						</div>
 
 						<!-- Notes -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<label for="edit-notes" class="{sectionLabel} mb-3 block">Notes</label>
 							<textarea id="edit-notes" bind:value={editNotes} rows="3"
 								class="{inputClass} resize-none" placeholder="Internal notes..."></textarea>
 						</div>
 
 						<!-- Status -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Status</span>
 							{@render toggle(editActive, () => { editActive = !editActive; }, 'Active')}
 						</div>
 
 						<!-- Timestamps -->
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-2 block">Timestamps</span>
-							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
 								<div>
-									<span class="text-sidebar-icon">Created</span>
-									<p class="text-sidebar-text">{new Date(selectedOrg.created_at).toLocaleDateString('de-DE')}</p>
+									<span class="text-muted/50">Created</span>
+									<p class="font-mono text-sidebar-text">{new Date(selectedOrg.created_at).toLocaleDateString('de-DE')}</p>
 								</div>
 								<div>
-									<span class="text-sidebar-icon">Updated</span>
-									<p class="text-sidebar-text">{new Date(selectedOrg.updated_at).toLocaleDateString('de-DE')}</p>
+									<span class="text-muted/50">Updated</span>
+									<p class="font-mono text-sidebar-text">{new Date(selectedOrg.updated_at).toLocaleDateString('de-DE')}</p>
 								</div>
 							</div>
 						</div>
 
 						{#if editError}
-							<p class="pt-3 text-xs text-red-500">{editError}</p>
+							<p class="pt-2 text-sm text-red-400">{editError}</p>
 						{/if}
 						{#if editSuccess}
-							<p class="pt-3 text-xs text-green-600">{editSuccess}</p>
+							<p class="pt-2 text-sm text-green-400">{editSuccess}</p>
 						{/if}
 
-						<div class="flex justify-end py-4">
+						<div class="flex justify-end pt-2">
 							<button type="submit" disabled={editSaving || !editName.trim() || !editSlug.trim()} class={btnPrimary}>
 								{editSaving ? 'Saving...' : 'Save changes'}
 							</button>
@@ -527,8 +527,8 @@
 				{/if}
 
 				{#if panelTab === 'settings'}
-					<form onsubmit={(e) => { e.preventDefault(); saveSettings(); }} class="px-4">
-						<div class="border-b border-surface-border py-4">
+					<form onsubmit={(e) => { e.preventDefault(); saveSettings(); }} class="p-3">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Ticket Settings</span>
 							<div class="space-y-3">
 								{@render toggle(autoAssign, () => { autoAssign = !autoAssign; }, 'Auto-assign tickets')}
@@ -544,7 +544,7 @@
 											<div class={dropPanelClass}>
 												{#each PRIORITIES as p (p)}
 													<button type="button"
-														class="{dropItemBase} {defaultPriority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
+														class="{dropItemBase} {defaultPriority === p ? 'font-medium text-accent' : 'text-muted'}"
 														onmousedown={(e) => { e.preventDefault(); defaultPriority = p; openDropdown = null; }}
 													>{p}</button>
 												{/each}
@@ -557,7 +557,7 @@
 							</div>
 						</div>
 
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Notifications</span>
 							<div class="space-y-2.5">
 								{@render toggle(notifyTicketCreated, () => { notifyTicketCreated = !notifyTicketCreated; }, 'Ticket created')}
@@ -569,9 +569,9 @@
 							</div>
 						</div>
 
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Limits</span>
-							<p class="mb-2 text-[11px] text-sidebar-icon">Leave empty to use system defaults.</p>
+							<p class="mb-2 text-sm text-muted/50">Leave empty to use system defaults.</p>
 							<div class="grid grid-cols-2 gap-3">
 								<div>
 									<label for="sp-max-projects" class={labelClass}>Max projects</label>
@@ -586,7 +586,7 @@
 							</div>
 						</div>
 
-						<div class="border-b border-surface-border py-4">
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 							<span class="{sectionLabel} mb-3 block">Custom Branding</span>
 							<div class="space-y-3">
 								<div>
@@ -600,7 +600,7 @@
 										<input id="sp-color" type="text" bind:value={primaryColor}
 											class={inputClass} placeholder="#3b82f6" />
 										{#if primaryColor}
-											<div class="h-[34px] w-[34px] shrink-0 border border-surface-border"
+											<div class="h-7 w-7 shrink-0 rounded-sm border border-surface-border/40"
 												style="background-color: {primaryColor}"></div>
 										{/if}
 									</div>
@@ -609,13 +609,13 @@
 						</div>
 
 						{#if settingsError}
-							<p class="pt-3 text-xs text-red-500">{settingsError}</p>
+							<p class="pt-2 text-sm text-red-400">{settingsError}</p>
 						{/if}
 						{#if settingsSuccess}
-							<p class="pt-3 text-xs text-green-600">{settingsSuccess}</p>
+							<p class="pt-2 text-sm text-green-400">{settingsSuccess}</p>
 						{/if}
 
-						<div class="flex justify-end py-4">
+						<div class="flex justify-end pt-2">
 							<button type="submit" disabled={settingsSaving} class={btnPrimary}>
 								{settingsSaving ? 'Saving...' : 'Save settings'}
 							</button>
@@ -631,10 +631,10 @@
 {#if createModalOpen}
 	<Modal open={true} onClose={() => (createModalOpen = false)}>
 		<div>
-			<div class="border-b border-surface-border px-4 py-3">
-				<h2 class="text-sm font-semibold text-sidebar-text">New Organization</h2>
+			<div class="border-b border-surface-border/40 px-3 py-2.5">
+				<h2 class="text-md font-semibold text-sidebar-text">New Organization</h2>
 			</div>
-			<form onsubmit={(e) => { e.preventDefault(); createOrg(); }} class="space-y-4 p-4">
+			<form onsubmit={(e) => { e.preventDefault(); createOrg(); }} class="space-y-3 p-3">
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label for="create-name" class={labelClass}>Name</label>
@@ -670,7 +670,7 @@
 							<div class="min-w-0">
 								<span class="truncate">{tierLabel(createTierId)}</span>
 								{#if tierSublabel(createTierId)}
-									<span class="ml-1.5 text-sidebar-icon">({tierSublabel(createTierId)})</span>
+									<span class="ml-1.5 text-muted/50">({tierSublabel(createTierId)})</span>
 								{/if}
 						</div>
 						{@html chevronSvg}
@@ -678,16 +678,16 @@
 					{#if openDropdown === 'create-tier'}
 							<div class={dropPanelClass}>
 								<button type="button"
-									class="{dropItemBase} {createTierId === null ? 'font-medium text-accent' : 'text-sidebar-text'}"
+									class="{dropItemBase} {createTierId === null ? 'font-medium text-accent' : 'text-muted'}"
 									onmousedown={(e) => { e.preventDefault(); createTierId = null; openDropdown = null; }}
 								>No tier</button>
 								{#each activeTiers as t (t.id)}
 									<button type="button"
-										class="{dropItemBase} {createTierId === t.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
+										class="{dropItemBase} {createTierId === t.id ? 'font-medium text-accent' : 'text-muted'}"
 										onmousedown={(e) => { e.preventDefault(); createTierId = t.id; openDropdown = null; }}
 									>
 										{t.name}
-										<span class="ml-auto pl-3 text-sidebar-icon">{t.response_time_hours}h / {t.resolution_time_hours}h</span>
+										<span class="ml-auto pl-3 text-muted/50">{t.response_time_hours}h / {t.resolution_time_hours}h</span>
 									</button>
 								{/each}
 							</div>
@@ -702,10 +702,10 @@
 				</div>
 
 				{#if createError}
-					<p class="text-xs text-red-500">{createError}</p>
+					<p class="text-sm text-red-400">{createError}</p>
 				{/if}
 
-				<div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+				<div class="flex justify-end gap-2 border-t border-surface-border/40 pt-3">
 					<button type="button" class={btnSecondary} onclick={() => (createModalOpen = false)}>
 						Cancel
 					</button>

@@ -22,24 +22,24 @@
 	}
 </script>
 
-<div class="relative min-h-screen bg-gray-50 font-mono">
+<div class="relative min-h-screen bg-page-bg">
 	<div class="absolute top-4 right-4">
 		<div class="relative">
 			<button
-				class="flex cursor-pointer items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm"
+				class="flex cursor-pointer items-center gap-1 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-sm transition-all duration-150 hover:bg-surface-hover/60"
 				onclick={() => (dropdownOpen = !dropdownOpen)}
 				onblur={() => setTimeout(() => (dropdownOpen = false), 150)}
 			>
 				<span class="text-base">{localeFlags[getLocale()] ?? ''}</span>
-				<span class="text-xs">{localeLabels[getLocale()] ?? getLocale()}</span>
-				<svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<span class="text-xs text-sidebar-text">{localeLabels[getLocale()] ?? getLocale()}</span>
+				<svg class="h-3 w-3 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 				</svg>
 			</button>
 
 			{#if dropdownOpen}
 				<div
-					class="absolute right-0 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white "
+					class="absolute right-0 z-20 mt-1.5 min-w-[8rem] overflow-hidden rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20"
 				>
 					{#each locales as loc (loc)}
 						<a
@@ -48,7 +48,7 @@
 								e.preventDefault();
 								switchLocale(loc);
 							}}
-							class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50"
+							class="flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
 						>
 							<span class="text-base">{localeFlags[loc] ?? ''}</span>
 							<span class="text-xs">{localeLabels[loc] ?? loc}</span>
@@ -60,7 +60,7 @@
 	</div>
 
 	<div class="flex min-h-screen items-center justify-center px-4">
-		<div class="w-full max-w-md rounded-lg border border-gray-200 bg-white px-10 py-10">
+		<div class="w-full max-w-md rounded border border-surface-border bg-surface px-10 py-10 shadow-xl">
 			{@render children()}
 		</div>
 	</div>

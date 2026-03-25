@@ -11,50 +11,34 @@
 
 	let { task, depth = 0, selected = false, onclick }: Props = $props();
 
-	const priorityColors: Record<string, string> = {
-		urgent:
-			'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300',
-		high:
-			'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300',
-		medium:
-			'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300',
-		low:
-			'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
-		none:
-			'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'
+	const statusDot: Record<string, string> = {
+		backlog: 'bg-gray-400/60',
+		todo: 'bg-gray-400',
+		in_progress: 'bg-amber-400',
+		in_review: 'bg-purple-400',
+		done: 'bg-green-400',
+		cancelled: 'bg-gray-400/30'
 	};
 
-	const statusColors: Record<string, string> = {
-		backlog:
-			'bg-gray-100 text-gray-600 dark:bg-surface-hover dark:text-sidebar-text',
-		todo:
-			'bg-gray-100 text-gray-700 dark:bg-surface-hover dark:text-sidebar-text',
-		in_progress:
-			'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300',
-		in_review:
-			'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
-		done:
-			'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300',
-		cancelled:
-			'bg-gray-100 text-gray-400 dark:bg-surface-hover dark:text-muted'
+	const priorityColors: Record<string, string> = {
+		urgent: 'text-red-400',
+		high: 'text-orange-400',
+		medium: 'text-yellow-500',
+		low: 'text-blue-400',
+		none: 'text-muted/40'
 	};
 
 	function formatDate(dateStr: unknown): string {
 		if (!dateStr || typeof dateStr !== 'string') return '';
 		const d = new Date(dateStr);
 		if (isNaN(d.getTime())) return '';
-		return d.toLocaleDateString('de-DE', {
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric'
-		});
+		const day = d.getDate().toString().padStart(2, '0');
+		const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+		return `${day} ${months[d.getMonth()]}`;
 	}
 
 	function formatStatus(status: string): string {
-		return status
-			.split('_')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
+		return status.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 	}
 
 	function formatPriority(priority: string): string {
@@ -79,61 +63,47 @@
 
 <button
 	data-task-id={task.id}
-	class="group flex w-full items-center gap-3 border-b border-surface-border py-2.5 text-left text-sm transition-colors {selected ? 'bg-accent/10' : 'hover:bg-surface-hover'}"
-	style="padding-left: {16 + depth * 24}px; padding-right: 16px;"
+	class="group flex w-full items-center gap-2.5 px-3 py-[7px] text-left transition-all duration-100 {selected ? 'bg-accent/8' : 'hover:bg-surface-hover/40'}"
+	style={depth > 0 ? `padding-left: ${12 + depth * 16}px` : ''}
 	{onclick}
 >
-	<span class="shrink-0 text-muted">
-		<TypeIcon size={16} />
-	</span>
+	<!-- Status dot -->
+	<span class="h-1.5 w-1.5 shrink-0 rounded-full {statusDot[task.status] ?? 'bg-gray-400'}"></span>
 
-	<span class="shrink-0 font-medium text-accent">
+	<!-- ID -->
+	<span class="w-[52px] shrink-0 font-mono text-xs text-muted/50">
 		{displayId}
 	</span>
 
-	<span class="min-w-0 flex-1 truncate text-sidebar-text">
+	<!-- Title -->
+	<span class="min-w-0 flex-1 truncate text-base leading-tight text-sidebar-text">
 		{task.title}
 	</span>
 
+	<!-- Tags (show on hover) -->
 	{#if tags.length > 0}
-		<div class="flex shrink-0 items-center gap-1">
-			{#each tags.slice(0, 3) as tag (tag.id)}
-				<span
-					class="inline-flex items-center px-1.5 py-0 text-[10px] font-medium"
-					style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
-				>
-					{tag.name}
-				</span>
+		<div class="hidden shrink-0 items-center gap-1 group-hover:flex">
+			{#each tags.slice(0, 2) as tag (tag.id)}
+				<span class="rounded px-1 py-px text-2xs font-medium" style="background-color: {tag.color}12; color: {tag.color}">{tag.name}</span>
 			{/each}
-			{#if tags.length > 3}
-				<span class="text-[10px] text-muted">+{tags.length - 3}</span>
+			{#if tags.length > 2}
+				<span class="text-2xs text-muted/30">+{tags.length - 2}</span>
 			{/if}
 		</div>
 	{/if}
 
-	<div class="flex shrink-0 items-center gap-3">
-		<span
-			class="inline-flex min-w-[70px] justify-center rounded-sm px-2 py-0.5 text-xs font-medium {priorityColors[
-				task.priority
-			] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
-		>
-			{formatPriority(task.priority)}
-		</span>
+	<!-- Priority -->
+	<span class="w-12 shrink-0 text-right text-xs font-medium {priorityColors[task.priority] ?? 'text-muted/40'}">
+		{formatPriority(task.priority)}
+	</span>
 
-		<span
-			class="inline-flex min-w-[90px] justify-center rounded-sm px-2 py-0.5 text-xs font-medium {statusColors[
-				task.status
-			] ?? 'bg-gray-100 text-gray-600 dark:bg-surface-hover dark:text-sidebar-text'}"
-		>
-			{formatStatus(task.status)}
-		</span>
+	<!-- Status text -->
+	<span class="shrink-0 whitespace-nowrap text-right text-xs text-muted/50">
+		{formatStatus(task.status)}
+	</span>
 
-		<span class="w-[80px] text-right text-xs text-muted">
-			{formatDate(task.start_at)}
-		</span>
-
-		<span class="w-[80px] text-right text-xs text-muted">
-			{formatDate(task.end_at)}
-		</span>
-	</div>
+	<!-- Due date -->
+	{#if formatDate(task.end_at)}
+		<span class="shrink-0 font-mono text-xs text-muted/30">{formatDate(task.end_at)}</span>
+	{/if}
 </button>

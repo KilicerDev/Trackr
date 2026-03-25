@@ -228,22 +228,22 @@
 	};
 
 	const priorityColor: Record<string, string> = {
-		low: 'bg-blue-500/10 text-blue-600',
-		medium: 'bg-yellow-500/10 text-yellow-600',
-		high: 'bg-orange-500/10 text-orange-600',
-		urgent: 'bg-red-500/10 text-red-600'
+		low: 'text-blue-400',
+		medium: 'text-yellow-500',
+		high: 'text-orange-400',
+		urgent: 'text-red-400'
 	};
 
-	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 	const dropdownBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1 max-h-48 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl';
+		'absolute left-0 z-20 mt-1.5 max-h-48 w-full origin-top-left animate-dropdown-in overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20';
 	const dropdownItemBase =
-		'flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover';
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60';
 </script>
 
 {#if selectedTicketId}
@@ -255,9 +255,9 @@
 			</div>
 		{:else if ticketError || !ticket}
 			<div class="flex flex-1 flex-col items-center justify-center gap-3">
-				<p class="text-sm text-red-500">{ticketError ?? 'Ticket not found'}</p>
+				<p class="text-base text-red-400">{ticketError ?? 'Ticket not found'}</p>
 				<button
-					class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:bg-surface-hover"
+					class="flex h-7 items-center gap-1 rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 					onclick={backToCreate}
 				>
 					Go back
@@ -265,22 +265,22 @@
 			</div>
 		{:else}
 			<!-- Ticket header -->
-			<div class="shrink-0 border-b border-surface-border px-6 py-4">
+			<div class="shrink-0 border-b border-surface-border/40 px-6 py-4">
 				<div class="mx-auto flex max-w-3xl items-center gap-3">
 					<button
-						class="shrink-0 p-1 text-sidebar-icon transition-colors hover:text-sidebar-text"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-sidebar-text"
 						onclick={backToCreate}
 						aria-label="Back"
 					>
-						<ArrowLeft size={16} />
+						<ArrowLeft size={14} />
 					</button>
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-2">
-							<h1 class="truncate text-sm font-semibold text-sidebar-text">
+							<h1 class="truncate text-lg font-semibold text-sidebar-text">
 								{ticket.subject}
 							</h1>
 						</div>
-						<div class="mt-1 flex items-center gap-3 text-[11px] text-muted">
+						<div class="mt-1 flex items-center gap-3 text-sm text-muted/50">
 							<span class="flex items-center gap-1">
 							<Circle
 								size={7}
@@ -290,7 +290,7 @@
 								{displayName(ticket.status)}
 							</span>
 							<span
-								class="px-1.5 py-0.5 text-[10px] font-medium {priorityColor[ticket.priority] ??
+								class="text-xs font-medium {priorityColor[ticket.priority] ??
 									''}"
 							>
 								{displayName(ticket.priority)}
@@ -298,15 +298,15 @@
 							{#if ticket.category}
 								<span>{displayName(ticket.category)}</span>
 							{/if}
-							<span>Created {formatDateTime(ticket.created_at)}</span>
+							<span class="font-mono">Created {formatDateTime(ticket.created_at)}</span>
 						</div>
 					</div>
 				</div>
 
 				{#if ticket.description}
 					<div class="mx-auto mt-3 max-w-3xl pl-8">
-						<div class="border-l-2 border-surface-border pl-3">
-							<p class="whitespace-pre-wrap text-xs text-sidebar-text/80">
+						<div class="border-l-2 border-surface-border/40 pl-3">
+							<p class="whitespace-pre-wrap text-base text-sidebar-text/80">
 								{ticket.description}
 							</p>
 						</div>
@@ -322,7 +322,7 @@
 				<div class="mx-auto max-w-3xl">
 					{#if messages.length === 0}
 						<div class="flex h-full items-center justify-center py-20">
-							<p class="text-xs text-muted">No messages yet. Start the conversation below.</p>
+							<p class="text-sm text-muted/50">No messages yet. Start the conversation below.</p>
 						</div>
 					{:else}
 						<div class="space-y-4">
@@ -330,19 +330,19 @@
 								{@const isOwn = msg.sender?.id === auth.user?.id}
 								<div class="flex {isOwn ? 'justify-end' : 'justify-start'}">
 									<div
-										class="max-w-[70%] border {isOwn
+										class="max-w-[70%] rounded border {isOwn
 											? 'border-accent/20 bg-accent/5'
-											: 'border-surface-border bg-surface'} p-3"
+											: 'border-surface-border/40 bg-surface/50'} p-3"
 									>
 										<div class="mb-1 flex items-center justify-between gap-4">
-											<span class="text-[11px] font-medium text-sidebar-text">
+											<span class="text-sm font-medium text-sidebar-text">
 												{msg.sender?.full_name ?? 'Unknown'}
 											</span>
-											<span class="text-[10px] text-muted">
+											<span class="font-mono text-xs text-muted/50">
 												{formatTime(msg.created_at)}
 											</span>
 										</div>
-										<p class="whitespace-pre-wrap text-xs text-sidebar-text">
+										<p class="whitespace-pre-wrap text-base text-sidebar-text">
 											{msg.body}
 										</p>
 									</div>
@@ -354,7 +354,7 @@
 			</div>
 
 			<!-- Compose -->
-			<div class="shrink-0 border-t border-surface-border px-6 py-3">
+			<div class="shrink-0 border-t border-surface-border/40 px-6 py-3">
 				<div class="mx-auto max-w-3xl">
 					<div class="flex items-end gap-2">
 						<textarea
@@ -376,7 +376,7 @@
 							}}
 						></textarea>
 						<button
-							class="flex h-8.5 w-8.5 shrink-0 items-center justify-center self-end bg-accent text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+							class="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-sm bg-accent text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 							disabled={!messageBody.trim() || sendingMessage}
 							onclick={sendMessage}
 							aria-label="Send message"
@@ -384,10 +384,10 @@
 							<Send size={14} />
 						</button>
 					</div>
-					<p class="mt-1.5 text-[10px] text-muted">
-						Press <kbd class="border border-surface-border px-1 py-0.5 text-[9px]">Ctrl</kbd>
+					<p class="mt-1.5 text-xs text-muted/50">
+						Press <kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5 text-2xs">Ctrl</kbd>
 						+
-						<kbd class="border border-surface-border px-1 py-0.5 text-[9px]">Enter</kbd>
+						<kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5 text-2xs">Enter</kbd>
 						to send
 					</p>
 				</div>
@@ -399,7 +399,7 @@
 	<div class="flex min-h-screen items-center justify-center px-6">
 		<div class="w-full max-w-lg">
 			<h1 class="mb-1 text-lg font-semibold text-sidebar-text">New Support Ticket</h1>
-			<p class="mb-6 text-xs text-muted">Describe your issue and we'll get back to you.</p>
+			<p class="mb-6 text-sm text-muted/50">Describe your issue and we'll get back to you.</p>
 
 			<form
 				onsubmit={(e) => {
@@ -504,7 +504,7 @@
 				<button
 					type="submit"
 					disabled={!subject.trim() || creating}
-					class="flex w-full items-center justify-center bg-accent py-2.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex h-7 w-full items-center justify-center rounded-sm bg-accent text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 				>
 					{#if creating}
 						<LoaderCircle size={14} class="mr-2 animate-spin" />
@@ -517,3 +517,13 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	@keyframes dropdown-in {
+		from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+		to   { opacity: 1; transform: scale(1) translateY(0); }
+	}
+	:global(.animate-dropdown-in) {
+		animation: dropdown-in 150ms ease-out;
+	}
+</style>
