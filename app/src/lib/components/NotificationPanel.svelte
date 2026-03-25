@@ -4,7 +4,7 @@
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { api } from '$lib/api';
 	import { localizeHref } from '$lib/paraglide/runtime';
-	import { CheckCheck, Loader2 } from '@lucide/svelte';
+	import { CheckCheck, Loader2, Mail, MailX } from '@lucide/svelte';
 	import NotificationPanelItem from './NotificationPanelItem.svelte';
 	import type { AppNotification } from '$lib/api/notifications';
 
@@ -52,20 +52,45 @@
 			notificationCenter.loadMore();
 		}
 	}
+
+	async function handleToggleEmail() {
+		try {
+			await notificationCenter.toggleEmailNotifications(!notificationCenter.emailEnabled);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : 'Unknown error';
+			notifications.add('error', 'Failed to update email preference', msg);
+		}
+	}
 </script>
 
 <div class="absolute right-0 top-full z-30 mt-1.5 w-80 origin-top-right animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20">
 	<div class="flex items-center justify-between px-3 py-2">
 		<h3 class="text-base font-semibold text-sidebar-text">Notifications</h3>
-		{#if notificationCenter.unreadCount > 0}
+		<div class="flex items-center gap-3">
 			<button
 				type="button"
-				class="text-xs text-muted/50 transition-colors hover:text-accent"
-				onclick={handleMarkAllRead}
+				class="flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs transition-colors {notificationCenter.emailEnabled ? 'text-accent' : 'text-muted/70'} hover:bg-surface-hover"
+				title={notificationCenter.emailEnabled ? 'Disable email notifications' : 'Enable email notifications'}
+				onclick={handleToggleEmail}
 			>
-				Mark all read
+				{#if notificationCenter.emailEnabled}
+					<Mail size={12} />
+					<span>On</span>
+				{:else}
+					<MailX size={12} />
+					<span>Off</span>
+				{/if}
 			</button>
-		{/if}
+			{#if notificationCenter.unreadCount > 0}
+				<button
+					type="button"
+					class="text-xs text-muted/50 transition-colors hover:text-accent"
+					onclick={handleMarkAllRead}
+				>
+					Mark all read
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<div class="max-h-[360px] overflow-y-auto border-t border-surface-border/40" onscroll={handleScroll}>

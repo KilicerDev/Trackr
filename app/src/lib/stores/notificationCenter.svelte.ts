@@ -8,16 +8,34 @@ class NotificationCenterStore {
 	isOpen = $state(false);
 	loading = $state(false);
 	hasMore = $state(true);
+	emailEnabled = $state(true);
 
 	private page = 1;
 	private perPage = 15;
 	private channel: RealtimeChannel | null = null;
+	private userId: string | null = null;
 
 	async init(userId: string) {
+		this.userId = userId;
+
 		try {
 			this.unreadCount = await notificationsApi.getUnreadCount();
 		} catch {
 			// API may be unreachable; keep default count and retry on next load
+		}
+
+		try {
+			const supabase = getClient();
+			const { data } = await supabase
+				.from("users")
+				.select("email_notifications_enabled")
+				.eq("id", userId)
+				.single();
+			if (data) {
+				this.emailEnabled = data.email_notifications_enabled;
+			}
+		} catch {
+			// Keep default (true) on error
 		}
 
 		const supabase = getClient();
@@ -38,6 +56,18 @@ class NotificationCenterStore {
 				}
 			)
 			.subscribe();
+	}
+
+	async toggleEmailNotifications(enabled: boolean) {
+		if (!this.userId) return;
+		const supabase = getClient();
+		const { error } = await supabase
+			.from("users")
+			.update({ email_notifications_enabled: enabled })
+			.eq("id", this.userId);
+		if (!error) {
+			this.emailEnabled = enabled;
+		}
 	}
 
 	toggle() {
