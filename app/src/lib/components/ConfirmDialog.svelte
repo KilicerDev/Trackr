@@ -24,21 +24,21 @@
 	}: Props = $props();
 
 	const btnSecondary =
-		'border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover disabled:opacity-50';
+		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
 	const btnDestructive =
-		'bg-red-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-red-600 disabled:opacity-50';
+		'flex h-7 items-center rounded-sm bg-red-500 px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-red-600 disabled:opacity-30';
 	const btnConfirm =
-		'bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50';
+		'flex h-7 items-center rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
 </script>
 
 <Modal {open} onClose={onCancel} maxWidth="max-w-sm">
-	<div class="border-b border-surface-border px-5 py-3.5">
-		<h2 class="text-[13px] font-semibold text-sidebar-text">{title}</h2>
+	<div class="border-b border-surface-border px-4 py-3">
+		<h2 class="text-lg font-semibold text-sidebar-text">{title}</h2>
 	</div>
-	<div class="px-5 py-4">
-		<p class="text-xs leading-relaxed text-sidebar-text/80">{message}</p>
+	<div class="p-4">
+		<p class="text-base leading-relaxed text-sidebar-text/80">{message}</p>
 	</div>
-	<div class="flex justify-end gap-2 border-t border-surface-border px-5 py-3.5">
+	<div class="flex justify-end gap-2 border-t border-surface-border px-4 py-3">
 		<button type="button" class={btnSecondary} disabled={loading} onclick={onCancel}>
 			Cancel
 		</button>
