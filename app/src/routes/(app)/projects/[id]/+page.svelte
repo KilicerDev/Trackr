@@ -475,7 +475,7 @@
 		<p class="px-4 py-12 text-center text-sm text-red-500">{projectStore.error}</p>
 	{:else if project}
 		<!-- Project details — scrollable, shrinks when board needs space -->
-		<div class="shrink overflow-y-auto min-h-0">
+		<div class="flex-1 overflow-y-auto min-h-0">
 		<div class="px-3 py-4">
 			<div class="flex items-start justify-between gap-4">
 				<div class="min-w-0 flex-1">
