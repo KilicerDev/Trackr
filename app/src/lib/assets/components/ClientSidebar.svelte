@@ -103,41 +103,34 @@
 	</div>
 
 	<!-- Ticket list -->
-	<nav class="flex-1 overflow-y-auto overflow-x-hidden">
-		<div class="px-4 pt-3 pb-1 text-xs font-medium tracking-[0.08em] text-sidebar-label/70 uppercase">
+	<nav class="flex-1 overflow-y-auto overflow-x-hidden px-2 py-2">
+		<div class="flex h-5 items-center px-3 pt-3 pb-1 text-xs font-medium tracking-[0.08em] text-sidebar-label/70 uppercase">
 			Tickets
 		</div>
 
 		{#if clientPortal.loading}
-			<div class="px-5 py-4 text-sm text-muted/50">Loading...</div>
+			<div class="px-3 py-4 text-sm text-muted/50">Loading...</div>
 		{:else if clientPortal.tickets.length === 0}
-			<div class="px-5 py-4 text-sm text-muted/50">No tickets yet</div>
+			<div class="px-3 py-4 text-sm text-muted/50">No tickets yet</div>
 		{:else}
 			{#each clientPortal.tickets as ticket (ticket.id)}
 				{@const isActive = selectedTicketId === ticket.id}
 				<button
-					class="group relative flex w-full items-start gap-3 px-2.5 py-2 text-left transition-all duration-150 {isActive
+					class="group relative flex w-full items-center gap-2.5 rounded-sm px-3 py-1.5 text-left transition-all duration-150 {isActive
 						? 'bg-accent/10'
 						: 'hover:bg-sidebar-hover-bg'}"
 					onclick={() => selectTicket(ticket.id)}
 				>
 					<Circle
-						size={8}
-						class="mt-1 shrink-0 {statusColor[ticket.status] ?? 'text-sidebar-icon'}"
+						size={7}
+						class="shrink-0 {statusColor[ticket.status] ?? 'text-sidebar-icon'}"
 						fill="currentColor"
 					/>
-					<div class="min-w-0 flex-1">
-						<p
-							class="truncate text-md {isActive
-								? 'font-medium text-accent'
-								: 'text-sidebar-text'}"
-						>
-							{ticket.subject}
-						</p>
-						<p class="mt-0.5 text-xs text-muted/50">
-							{ticket.status.replace(/_/g, ' ')}
-						</p>
-					</div>
+					<span class="min-w-0 flex-1 truncate text-sm {isActive
+						? 'font-medium text-accent'
+						: 'text-sidebar-text'}">
+						{ticket.subject}
+					</span>
 				</button>
 			{/each}
 		{/if}
