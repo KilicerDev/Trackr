@@ -80,9 +80,9 @@
 		{task.title}
 	</span>
 
-	<!-- Tags (show on hover) -->
+	<!-- Tags -->
 	{#if tags.length > 0}
-		<div class="hidden shrink-0 items-center gap-1 group-hover:flex">
+		<div class="flex shrink-0 items-center gap-1 whitespace-nowrap">
 			{#each tags.slice(0, 2) as tag (tag.id)}
 				<span class="rounded px-1 py-px text-2xs font-medium" style="background-color: {tag.color}12; color: {tag.color}">{tag.name}</span>
 			{/each}
