@@ -7,8 +7,17 @@
 	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { localizeHref } from '$lib/paraglide/runtime';
-	import { Users } from '@lucide/svelte';
+	import { Users, ChevronDown } from '@lucide/svelte';
 	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte';
+
+	let collapsedGroups = $state<Set<string>>(new Set());
+
+	function toggleGroupCollapse(key: string) {
+		const next = new Set(collapsedGroups);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		collapsedGroups = next;
+	}
 
 	const PROJECT_STATUSES = ['planning', 'active', 'paused', 'completed', 'archived'] as const;
 
@@ -148,16 +157,16 @@
 		enabled: orgDropdownOpen
 	}}
 >
-	<div class="flex items-center justify-between border-b border-surface-border px-4 py-3">
-		<div class="flex items-center gap-3">
+	<div class="flex items-center justify-between px-3 py-1.5">
+		<div class="flex items-center gap-1">
 			<div class="relative">
 				<button
-					class="flex min-w-[11rem] cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs font-medium text-sidebar-text shadow-sm transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+					class="flex h-7 min-w-[11rem] cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 					onclick={() => (orgDropdownOpen = !orgDropdownOpen)}
 				>
 					<span>{orgDropdownLabel}</span>
 					<svg
-						class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {orgDropdownOpen
+						class="h-3.5 w-3.5 shrink-0 text-muted/40 transition-transform duration-150 {orgDropdownOpen
 							? 'rotate-180'
 							: ''}"
 						fill="none"
@@ -174,12 +183,12 @@
 				</button>
 			{#if orgDropdownOpen}
 				<div
-					class="absolute left-0 z-10 mt-1.5 min-w-[200px] overflow-hidden border border-surface-border bg-surface py-1 shadow-xl"
+					class="absolute left-0 z-20 mt-1.5 min-w-[12rem] origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20"
 				>
 					<button
-						class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {isAllOrgs
+						class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60 {isAllOrgs
 							? 'font-medium text-accent'
-							: 'text-sidebar-text'}"
+							: 'text-muted'}"
 						onmousedown={(e) => {
 							e.preventDefault();
 							selectOrg(ALL_ORGS);
@@ -187,13 +196,13 @@
 					>
 						<span class="whitespace-nowrap">All Organizations</span>
 					</button>
-					<div class="mx-3 my-1 border-t border-surface-border"></div>
+					<div class="mx-2.5 my-1 h-px bg-surface-border/30"></div>
 					{#each organizations as org (org.id)}
 						<button
-							class="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover {!isAllOrgs && selectedOrgId ===
+							class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60 {!isAllOrgs && selectedOrgId ===
 							org.id
 								? 'font-medium text-accent'
-								: 'text-sidebar-text'}"
+								: 'text-muted'}"
 							onmousedown={(e) => {
 								e.preventDefault();
 								selectOrg(org.id);
@@ -201,7 +210,7 @@
 						>
 							<span class="whitespace-nowrap">{org.name}</span>
 							{#if org.id === platformOrgId}
-								<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
+								<span class="shrink-0 whitespace-nowrap rounded-sm bg-accent/15 px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-accent">
 									Internal
 								</span>
 							{/if}
@@ -211,21 +220,22 @@
 			{/if}
 			</div>
 
-			<div class="flex items-center gap-1">
+			<div class="h-4 w-px bg-surface-border"></div>
+			<div class="flex items-center gap-0.5">
 				<button
-					class="border border-surface-border px-2.5 py-2 text-xs transition-colors {statusFilter === ''
-						? 'bg-accent text-white'
-						: 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+					class="flex h-7 items-center rounded-sm px-2 text-sm font-medium transition-all duration-150 {statusFilter === ''
+						? 'text-accent'
+						: 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setStatusFilter('')}
 				>
 					All
 				</button>
 				{#each PROJECT_STATUSES as s (s)}
 					<button
-						class="border border-surface-border px-2.5 py-2 text-xs transition-colors {statusFilter ===
+						class="flex h-7 items-center rounded-sm px-2 text-sm font-medium transition-all duration-150 {statusFilter ===
 						s
-							? 'bg-accent text-white'
-							: 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+							? 'text-accent'
+							: 'text-muted hover:text-sidebar-text'}"
 						onclick={() => setStatusFilter(s)}
 					>
 						{formatStatus(s)}
@@ -236,7 +246,7 @@
 
 		{#if auth.can('projects', 'create') && !isAllOrgs}
 			<button
-				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
+				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
 				onclick={() => (createModalOpen = true)}
 			>
 				New Project
@@ -258,35 +268,33 @@
 	{#snippet projectRow(project: typeof filteredProjects[number])}
 		<a
 			href={localizeHref(`/projects/${project.id}`)}
-			class="group flex w-full items-center gap-4 border-b border-surface-border px-4 py-3 transition-colors hover:bg-surface-hover"
+			class="group flex w-full items-center gap-4 px-3 py-[7px] transition-all duration-150 hover:bg-surface-hover/40"
 		>
 			<span
-				class="h-2.5 w-2.5 shrink-0 rounded-full"
+				class="h-1.5 w-1.5 shrink-0 rounded-full"
 				style="background-color: {project.color ?? 'var(--color-accent)'}"
 			></span>
 
-			<span class="shrink-0 w-[60px] text-xs font-medium text-accent">
+			<span class="shrink-0 w-[60px] font-mono text-xs text-muted/50">
 				{project.identifier}
 			</span>
 
-			<span class="min-w-0 flex-1 truncate text-sm text-sidebar-text">
+			<span class="min-w-0 flex-1 truncate text-base text-sidebar-text">
 				{project.name}
 			</span>
 
 			<span
-				class="shrink-0 inline-flex min-w-[80px] justify-center px-2 py-0.5 text-[10px] font-medium {statusColors[
-					project.status
-				] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
+				class="shrink-0 text-xs text-muted/50"
 			>
 				{formatStatus(project.status)}
 			</span>
 
-			<span class="shrink-0 flex items-center gap-1 text-[11px] text-muted w-[50px]">
+			<span class="shrink-0 flex items-center gap-1 text-xs text-muted/50 w-[50px]">
 				<Users size={12} />
 				{project.members?.length ?? 0}
 			</span>
 
-			<span class="shrink-0 w-[90px] text-right text-xs text-muted">
+			<span class="shrink-0 w-[90px] text-right font-mono text-xs text-muted/50">
 				{formatDate(project.start_at)}
 			</span>
 
@@ -300,12 +308,12 @@
 						/>
 					{:else}
 						<span
-							class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[10px] font-medium text-accent"
+							class="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-xs font-medium text-accent"
 						>
 							{project.owner.full_name.charAt(0)}
 						</span>
 					{/if}
-					<span class="truncate text-[11px] text-muted">{project.owner.full_name}</span>
+					<span class="truncate text-xs text-muted/50">{project.owner.full_name}</span>
 				</span>
 			{/if}
 		</a>
@@ -324,33 +332,46 @@
 			{statusFilter ? 'No projects match this filter.' : 'No projects yet.'}
 		</p>
 	{:else if isAllOrgs && groupedProjects}
-		<div>
+		<div class="space-y-1 p-3">
 			{#each groupedProjects as group (group.orgId)}
-				<div class="flex items-center gap-2 border-b border-surface-border bg-surface-hover/50 px-4 py-2">
-					<span class="text-[11px] font-semibold uppercase tracking-wider text-muted">
-						{group.orgName}
-					</span>
-					<span class="text-[10px] text-muted/60">
-						({group.projects.length})
-					</span>
-				</div>
-				{#each group.projects as project (project.id)}
-					{@render projectRow(project)}
-				{/each}
+				{@const isCollapsed = collapsedGroups.has(group.orgId)}
+				<button
+					class="flex w-full items-center gap-1.5 px-1 py-1 text-left"
+					onclick={() => toggleGroupCollapse(group.orgId)}
+				>
+					<ChevronDown size={10} class="shrink-0 text-muted/30 transition-transform duration-150 {isCollapsed ? '-rotate-90' : ''}" />
+					<span class="text-sm font-medium text-muted">{group.orgName}</span>
+					<span class="text-xs text-muted/30">{group.projects.length}</span>
+				</button>
+				{#if !isCollapsed}
+					<div class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+						{#each group.projects as project, i (project.id)}
+							{@render projectRow(project)}
+							{#if i < group.projects.length - 1}
+								<div class="mx-3 h-px bg-surface-border/30"></div>
+							{/if}
+						{/each}
+					</div>
+				{/if}
 			{/each}
 		</div>
 
-		<p class="px-4 py-3 text-xs text-muted">
+		<p class="px-3 py-2 text-xs text-muted/50">
 			{filteredProjects.length} project{filteredProjects.length === 1 ? '' : 's'} across {groupedProjects.length} organization{groupedProjects.length === 1 ? '' : 's'}
 		</p>
 	{:else}
-		<div>
-			{#each filteredProjects as project (project.id)}
-				{@render projectRow(project)}
-			{/each}
+		<div class="p-3">
+			<div class="overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+				{#each filteredProjects as project, i (project.id)}
+					{@render projectRow(project)}
+					{#if i < filteredProjects.length - 1}
+						<div class="mx-3 h-px bg-surface-border/30"></div>
+					{/if}
+				{/each}
+			</div>
 		</div>
 
-		<p class="px-4 py-3 text-xs text-muted">
+		<p class="px-3 py-2 text-xs text-muted/50">
 			{filteredProjects.length} project{filteredProjects.length === 1 ? '' : 's'}
 		</p>
 	{/if}
