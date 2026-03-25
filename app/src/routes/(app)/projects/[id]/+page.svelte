@@ -395,6 +395,13 @@
 		if (taskParam) selectTask(taskParam);
 	});
 
+	$effect(() => {
+		if (taskViewMode === 'board' && !taskStore.loading) {
+			taskStore.items;
+			rebuildTaskBoard();
+		}
+	});
+
 	async function handleProjectFileUpload(files: File[]) {
 		if (!project || !auth.user || uploadingFiles) return;
 		uploadingFiles = true;
@@ -1050,7 +1057,7 @@
 	<CreateTaskModal
 		projectId={project.id}
 		onClose={() => (createModalOpen = false)}
-		onCreated={(id) => selectTask(id)}
+		onCreated={async (id) => { await taskStore.load(getTaskFilters()); if (taskViewMode === 'board') rebuildTaskBoard(); selectTask(id); }}
 	/>
 {/if}
 
