@@ -25,6 +25,9 @@
 		Columns3,
 		ChevronLeft,
 		ChevronRight,
+		ChevronDown,
+		FolderOpen,
+		Folder,
 		Search,
 		X,
 		Plus,
@@ -157,6 +160,14 @@
 	let currentPage = $state(1);
 	const perPage = 50;
 	let initialLoading = $state(true);
+	let collapsedGroups = $state<Set<string>>(new Set());
+
+	function toggleGroupCollapse(key: string) {
+		const next = new Set(collapsedGroups);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		collapsedGroups = next;
+	}
 
 	// ---------- derived ----------
 
@@ -599,32 +610,34 @@
 <div class="flex h-full">
 <div class="flex min-w-0 flex-1 flex-col {viewMode === 'board' ? 'overflow-hidden' : 'overflow-y-auto'}">
 	<!-- ===== HEADER ===== -->
-	<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-3">
-		<div class="flex items-center gap-2">
+	<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-3 py-1.5">
+		<div class="flex items-center gap-1">
 			<!-- View toggle -->
-			<div class="flex items-center border border-surface-border">
+			<div class="flex items-center gap-0.5">
 				<button
-					class="flex h-[34px] items-center gap-1.5 px-2.5 text-xs transition-colors {viewMode === 'list' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {viewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setView('list')}
 				>
-					<LayoutList size={14} />
+					<LayoutList size={13} />
 					List
 				</button>
 				<button
-					class="flex h-[34px] items-center gap-1.5 px-2.5 text-xs transition-colors {viewMode === 'board' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {viewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setView('board')}
 				>
-					<Columns3 size={14} />
+					<Columns3 size={13} />
 					Board
 				</button>
 			</div>
 
+			<span class="mx-1 h-4 w-px bg-surface-border"></span>
+
 			<!-- Group-by -->
-			<div class="flex items-center border border-surface-border">
+			<div class="flex items-center gap-0.5">
 				{#each GROUP_OPTIONS as g (g)}
 					{#if !(viewMode === 'board' && g === 'none')}
 						<button
-							class="flex h-[34px] items-center px-2.5 text-xs transition-colors {groupBy === g ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+							class="flex h-7 items-center rounded-sm px-2 text-sm font-medium transition-all duration-150 {groupBy === g ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 							onclick={() => setGroupBy(g)}
 						>
 							{formatStatus(g)}
@@ -633,18 +646,20 @@
 				{/each}
 			</div>
 
+			<span class="mx-1 h-4 w-px bg-surface-border"></span>
+
 			<!-- Filter toggle -->
 			<div class="relative shrink-0">
 				<button
-					class="flex h-[34px] w-[34px] items-center justify-center border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {filtersVisible ? 'text-accent' : 'text-sidebar-icon'}"
+					class="flex h-7 w-7 items-center justify-center rounded-sm transition-all duration-150 hover:bg-surface-hover/50 {filtersVisible ? 'text-accent' : 'text-muted'}"
 					onclick={() => (filtersVisible = !filtersVisible)}
 					title={filtersVisible ? 'Hide filters' : 'Show filters'}
 				>
-					<ListFilter size={16} />
+					<ListFilter size={14} />
 				</button>
 				{#if activeFiltersCount > 0}
 					<span
-						class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center bg-accent px-1 text-[10px] leading-none font-medium text-white"
+						class="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-3xs leading-none font-semibold text-white"
 					>
 						{activeFiltersCount > 9 ? '9+' : activeFiltersCount}
 					</span>
@@ -654,7 +669,7 @@
 			<!-- Views dropdown -->
 			<div class="relative shrink-0" data-views-dropdown>
 				<button
-					class="flex h-[34px] items-center gap-1.5 border border-surface-border bg-surface px-2.5 text-xs transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover {viewsDropdownOpen || activeViewId ? 'text-accent' : 'text-sidebar-icon'}"
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 hover:bg-surface-hover/50 {viewsDropdownOpen || activeViewId ? 'text-accent' : 'text-muted'}"
 					onclick={() => { viewsDropdownOpen = !viewsDropdownOpen; viewSubMenuId = null; editingViewId = null; }}
 					title="Saved views"
 				>
@@ -664,66 +679,65 @@
 					{/if}
 				</button>
 				{#if viewsDropdownOpen}
-					<div class="absolute left-0 top-full z-40 mt-1 w-56 border border-surface-border bg-surface py-1 shadow-xl">
+					<div class="absolute left-0 top-full z-20 mt-1.5 w-52 origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
 						<!-- Save current view -->
 						<button
-							class="flex w-full items-center gap-2 border-b border-surface-border px-3 py-2 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+							class="flex w-full items-center gap-2 border-b border-surface-border/40 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
 							onclick={() => { saveModalOpen = true; saveViewName = ''; viewsDropdownOpen = false; }}
 						>
-							<Plus size={12} class="text-sidebar-icon" />
+							<Plus size={11} class="text-muted/40" />
 							Save current view
 						</button>
 
 						{#if savedViews.length === 0}
-							<p class="px-3 py-3 text-center text-[11px] text-muted">No saved views yet.</p>
+							<p class="px-3 py-3 text-center text-xs text-muted/40">No saved views yet.</p>
 						{:else}
 							{#each savedViews as view (view.id)}
-								<div class="group flex items-center justify-between transition-colors hover:bg-surface-hover">
+								<div class="group flex items-center justify-between transition-colors hover:bg-surface-hover/60">
 									{#if editingViewId === view.id}
-										<form class="flex min-w-0 flex-1 items-center gap-1 px-3 py-1.5" onsubmit={(e) => { e.preventDefault(); renameView(view.id); }}>
+										<form class="flex min-w-0 flex-1 items-center gap-1 px-2.5 py-1" onsubmit={(e) => { e.preventDefault(); renameView(view.id); }}>
 											<input
 												type="text"
 												bind:value={editingViewName}
-												class="h-6 min-w-0 flex-1 border border-accent bg-surface px-2 text-xs text-sidebar-text outline-none"
+												class="h-6 min-w-0 flex-1 rounded-sm border border-accent/40 bg-transparent px-2 text-sm text-sidebar-text outline-none focus:border-accent"
 												onkeydown={(e) => { if (e.key === 'Escape') editingViewId = null; }}
 											/>
-											<button type="submit" class="shrink-0 text-accent hover:text-accent/80"><Check size={12} /></button>
-											<button type="button" class="shrink-0 text-sidebar-icon hover:text-sidebar-text" onclick={() => (editingViewId = null)}><X size={12} /></button>
+											<button type="submit" class="shrink-0 text-accent hover:text-accent/80"><Check size={11} /></button>
+											<button type="button" class="shrink-0 text-muted hover:text-sidebar-text" onclick={() => (editingViewId = null)}><X size={11} /></button>
 										</form>
 									{:else}
 										<button
-											class="flex flex-1 items-center gap-2 px-3 py-2 text-left text-xs transition-colors
-												{activeViewId === view.id ? 'text-accent font-medium' : 'text-sidebar-text'}"
+											class="flex flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors
+												{activeViewId === view.id ? 'text-accent font-medium' : 'text-muted hover:text-sidebar-text'}"
 											onclick={() => applySavedView(view)}
 										>
 											{#if activeViewId === view.id}<Check size={11} class="shrink-0" />{/if}
 											<span class="truncate">{view.name}</span>
 										</button>
-										<!-- Three dots -->
 										<div class="relative">
 											<button
-												class="shrink-0 px-2 py-2 text-sidebar-icon opacity-0 transition-opacity hover:text-sidebar-text group-hover:opacity-100
+												class="shrink-0 px-1.5 py-1.5 text-muted/30 opacity-0 transition-opacity hover:text-sidebar-text group-hover:opacity-100
 													{viewSubMenuId === view.id ? '!opacity-100' : ''}"
 												onclick={(e) => { e.stopPropagation(); viewSubMenuId = viewSubMenuId === view.id ? null : view.id; }}
 											>
-												<EllipsisVertical size={13} />
+												<EllipsisVertical size={12} />
 											</button>
 											{#if viewSubMenuId === view.id}
-												<div class="absolute right-0 top-full z-50 mt-0.5 w-40 border border-surface-border bg-surface py-1 shadow-xl">
+												<div class="absolute right-0 top-full z-30 mt-1 w-36 origin-top-right animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
 													<button
-														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
 														onclick={() => { editingViewId = view.id; editingViewName = view.name; viewSubMenuId = null; }}
 													>
 														<Pencil size={11} /> Rename
 													</button>
 													<button
-														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
 														onclick={() => updateViewFilters(view.id)}
 													>
 														<Bookmark size={11} /> Update filters
 													</button>
 													<button
-														class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-500 transition-colors hover:bg-surface-hover"
+														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-red-400 transition-colors hover:bg-surface-hover/60"
 														onclick={() => deleteView(view.id)}
 													>
 														<Trash2 size={11} /> Delete
@@ -740,16 +754,16 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-1.5">
 			<!-- Search -->
 			<div class="relative flex items-center">
-				<Search size={14} class="absolute left-2.5 text-sidebar-icon pointer-events-none" />
+				<Search size={12} class="absolute left-2 text-muted pointer-events-none" />
 				<input
 					type="text"
-					placeholder="Search tasks..."
+					placeholder="Search..."
 					value={searchQuery}
 					oninput={onSearchInput}
-					class="h-[34px] border border-surface-border bg-surface pl-8 pr-7 text-xs text-sidebar-text transition-colors placeholder:text-muted hover:border-sidebar-icon/30 focus:border-accent focus:outline-none w-48"
+					class="h-7 w-40 rounded-sm border border-transparent bg-surface-hover/50 pl-7 pr-6 text-sm text-sidebar-text transition-all duration-150 placeholder:text-muted/50 focus:w-56 focus:border-surface-border focus:bg-surface focus:outline-none"
 				/>
 				{#if searchQuery}
 					<button
@@ -762,29 +776,19 @@
 			</div>
 
 			<button
-				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90"
+				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
 				onclick={() => { createPrefill = {}; createModalOpen = true; }}
 			>
-				New Task
+				<Plus size={12} />
+				New
 			</button>
 		</div>
 	</div>
 
 	<!-- ===== FILTERS ===== -->
 	{#if filtersVisible}
-		<div class="shrink-0 border-b border-surface-border bg-surface/40 px-4 py-4">
-			<div class="mb-3 flex items-center justify-between">
-				<span class="text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">Filters</span>
-				{#if hasActiveFilters}
-					<button
-						class="text-xs font-medium text-sidebar-icon transition-colors hover:text-accent"
-						onclick={clearFilters}
-					>
-						Clear all
-					</button>
-				{/if}
-			</div>
-			<div class="flex flex-wrap items-end gap-4">
+		<div class="flex shrink-0 items-center gap-0.5 border-b border-surface-border px-3 py-1">
+			<div class="flex flex-wrap items-center gap-0.5">
 				{#if !(viewMode === 'board' && groupBy === 'status')}
 					<FilterDropdown
 						label="Status"
@@ -829,38 +833,60 @@
 				/>
 				{/if}
 			</div>
+			{#if hasActiveFilters}
+				<button
+					class="ml-1 text-xs text-muted/40 transition-colors hover:text-accent"
+					onclick={clearFilters}
+				>
+					Clear
+				</button>
+			{/if}
 		</div>
 	{/if}
 
 	<!-- ===== CONTENT ===== -->
 	{#if initialLoading}
-		<p class="px-4 py-12 text-center text-sm text-muted">Loading...</p>
+		<p class="px-4 py-12 text-center text-lg text-muted">Loading...</p>
 	{:else if taskStore.error}
-		<p class="px-4 py-12 text-center text-sm text-red-500">{taskStore.error}</p>
+		<p class="px-4 py-12 text-center text-lg text-red-500">{taskStore.error}</p>
 	{:else if viewMode === 'list'}
 		<!-- LIST VIEW -->
 		{#if taskStore.items.length === 0}
-			<p class="px-4 py-12 text-center text-sm text-muted">
+			<p class="px-4 py-12 text-center text-lg text-muted">
 				{hasActiveFilters ? 'No tasks match your filters.' : 'No tasks yet.'}
 			</p>
 		{:else if listGroups}
 			<!-- Grouped list -->
-			<div>
+			<div class="space-y-1 p-3">
 				{#each listGroups as group (group.key)}
-					<div class="flex items-center gap-2 border-b border-surface-border bg-surface-hover/50 px-4 py-2">
+					{@const isCollapsed = collapsedGroups.has(group.key)}
+					<!-- Group header — plain, no background -->
+					<button
+						class="flex w-full items-center gap-1.5 px-1 py-1 text-left"
+						onclick={() => toggleGroupCollapse(group.key)}
+					>
+						<ChevronDown size={10} class="shrink-0 text-muted/30 transition-transform duration-150 {isCollapsed ? '-rotate-90' : ''}" />
 						{#if group.color}
-							<span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {group.color}"></span>
+							<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {group.color}"></span>
 						{/if}
-						<span class="text-[11px] font-semibold uppercase tracking-wider text-muted">{group.label}</span>
-						<span class="text-[10px] text-muted/60">({group.tasks.length})</span>
-					</div>
-					{#each group.tasks as task (task.id)}
-						<TaskRow
-							{task}
-							selected={task.id === selectedTaskId}
-							onclick={() => selectTask(task.id)}
-						/>
-					{/each}
+						<span class="text-sm font-medium text-muted">{group.label}</span>
+						<span class="text-xs text-muted/30">{group.tasks.length}</span>
+					</button>
+					<!-- Task cards -->
+					{#if !isCollapsed}
+						<div class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+							{#each group.tasks as task, i (task.id)}
+								<TaskRow
+									{task}
+									selected={task.id === selectedTaskId}
+									onclick={() => selectTask(task.id)}
+								/>
+								{#if i < group.tasks.length - 1}
+									<div class="mx-3 h-px bg-surface-border/30"></div>
+								{/if}
+							{/each}
+						</div>
+					{/if}
 				{/each}
 			</div>
 		{:else}
@@ -877,21 +903,21 @@
 
 			<!-- Pagination -->
 			<div class="flex items-center justify-between border-t border-surface-border px-4 py-3">
-				<span class="text-xs text-muted">{taskStore.count} task{taskStore.count === 1 ? '' : 's'}</span>
+				<span class="font-mono text-sm text-muted">{taskStore.count} task{taskStore.count === 1 ? '' : 's'}</span>
 				{#if totalPages > 1}
 					<div class="flex items-center gap-2">
 						<button
-							class="flex items-center justify-center border border-surface-border bg-surface p-1.5 text-sidebar-icon transition-colors hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed"
+							class="flex items-center justify-center border border-surface-border bg-surface p-1.5 text-sidebar-icon transition-colors hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 							disabled={currentPage <= 1}
 							onclick={() => goToPage(currentPage - 1)}
 						>
 							<ChevronLeft size={14} />
 						</button>
-						<span class="text-xs text-sidebar-text">
+						<span class="text-base text-sidebar-text">
 							Page {currentPage} of {totalPages}
 						</span>
 						<button
-							class="flex items-center justify-center border border-surface-border bg-surface p-1.5 text-sidebar-icon transition-colors hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed"
+							class="flex items-center justify-center border border-surface-border bg-surface p-1.5 text-sidebar-icon transition-colors hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 							disabled={currentPage >= totalPages}
 							onclick={() => goToPage(currentPage + 1)}
 						>
@@ -905,33 +931,19 @@
 		<!-- BOARD VIEW -->
 		<div class="flex min-h-0 flex-1 gap-0 overflow-x-auto">
 			{#each boardColumns as col, colIndex (col.key)}
-				<div class="flex w-72 min-w-[18rem] shrink-0 flex-col border-r border-surface-border max-h-full last:border-r-0">
+				<div class="flex w-64 shrink-0 flex-col border-r border-surface-border/50 max-h-full last:border-r-0">
 					<!-- Column header -->
-					<div class="flex items-center gap-2 px-3 py-2.5 border-b border-surface-border">
+					<div class="flex items-center gap-2 px-3 py-2">
 						{#if groupBy === 'project' && col.key !== '__none__'}
-							<span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {col.color}"></span>
+							<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {col.color}"></span>
 						{/if}
-						<span class="text-[11px] font-semibold uppercase tracking-wider text-muted truncate">{col.label}</span>
-						<span class="ml-auto shrink-0 text-[10px] text-muted">{col.items.length}</span>
+						<span class="text-sm font-medium text-muted truncate">{col.label}</span>
+						<span class="text-xs text-muted/30">{col.items.length}</span>
 					</div>
-
-					<!-- Create task shortcut -->
-					<button
-						class="flex w-full items-center justify-center gap-1.5 border-b border-dashed border-surface-border px-3 py-2 text-[11px] text-muted transition-colors hover:text-accent shrink-0"
-						onclick={() => {
-							createPrefill = groupBy === 'status'
-								? { status: col.key }
-								: { projectId: col.key !== '__none__' ? col.key : undefined };
-							createModalOpen = true;
-						}}
-					>
-						<Plus size={12} />
-						Create task
-					</button>
 
 					<!-- Cards container -->
 					<div
-						class="flex-1 overflow-y-auto p-2 min-h-[60px] scrollbar-none"
+						class="flex-1 overflow-y-auto px-2 pb-2 min-h-[60px] scrollbar-none"
 						style="-ms-overflow-style: none; scrollbar-width: none;"
 						use:dndzone={{ items: col.items, flipDurationMs: 200, dropTargetStyle: { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' } }}
 						onconsider={(e) => handleConsider(colIndex, e)}
@@ -941,75 +953,75 @@
 							{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
 							{@const cardTags = ((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined)?.map((tt) => tt.tag).filter(Boolean) ?? []}
 							<button
-								class="mb-2 w-full cursor-pointer border border-surface-border px-3.5 py-3 text-left transition-colors hover:bg-surface-hover last:mb-0 {selectedTaskId === task.id ? 'bg-accent/8' : ''}"
+								class="mb-1.5 w-full cursor-pointer rounded border border-surface-border/50 bg-surface/50 px-3 py-2 text-left transition-all duration-150 hover:bg-surface/80 last:mb-0 {selectedTaskId === task.id ? '!border-accent/50 !bg-accent/15' : ''}"
 								onclick={() => selectTask(task.id)}
 							>
-								<!-- Card top row: type icon + short_id + priority/status -->
-								<div class="mb-2 flex items-center gap-2">
-									<span class="text-muted"><TypeIcon size={12} /></span>
-									<span class="text-[10px] font-medium text-accent">{task.short_id || '—'}</span>
+								<!-- ID + priority -->
+								<div class="mb-1 flex items-center justify-between">
+									<span class="font-mono text-xs text-muted/50">{task.short_id || '—'}</span>
+									<span class="text-xs {task.priority === 'urgent' ? 'text-red-400' : task.priority === 'high' ? 'text-orange-400' : task.priority === 'medium' ? 'text-yellow-500' : 'text-muted/30'}">
+										{formatPriority(task.priority)}
+									</span>
+								</div>
 
-									<div class="ml-auto flex items-center gap-1.5">
-										<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-medium {priorityColors[task.priority] ?? priorityColors.none}">
-											{formatPriority(task.priority)}
-										</span>
+								<!-- Title -->
+								<p class="line-clamp-2 text-base leading-snug text-sidebar-text">{task.title}</p>
+
+								<!-- Bottom row -->
+								{#if cardTags.length > 0 || task.assignments?.length || (groupBy === 'status' && task.project) || (groupBy === 'project')}
+									<div class="mt-2 flex items-center gap-1.5">
 										{#if groupBy === 'status' && task.project}
-											<span class="flex items-center gap-1 text-[10px] text-muted truncate">
+											<span class="flex items-center gap-1 text-xs text-muted/40">
 												<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {task.project.color ?? 'var(--color-accent)'}"></span>
 												{task.project.identifier}
 											</span>
 										{:else if groupBy === 'project'}
-											<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[10px] font-medium {statusColors[task.status] ?? statusColors.backlog}">
-												{formatStatus(task.status)}
-											</span>
+											<span class="text-xs text-muted/40">{formatStatus(task.status)}</span>
+										{/if}
+
+										{#if cardTags.length > 0}
+											<div class="flex flex-1 items-center gap-1 min-w-0">
+												{#each cardTags.slice(0, 2) as tag (tag.id)}
+													<span class="rounded px-1 py-px text-2xs font-medium truncate" style="color: {tag.color}; opacity: 0.5">{tag.name}</span>
+												{/each}
+												{#if cardTags.length > 2}
+													<span class="text-2xs text-muted/30">+{cardTags.length - 2}</span>
+												{/if}
+											</div>
+										{:else}
+											<div class="flex-1"></div>
+										{/if}
+
+										{#if task.assignments?.length}
+											<div class="flex shrink-0 -space-x-1">
+												{#each task.assignments.slice(0, 3) as a (a.user_id)}
+													{#if a.user.avatar_url}
+														<img src={a.user.avatar_url} alt={a.user.full_name} class="h-4 w-4 rounded-full border border-page-bg object-cover" />
+													{:else}
+														<span class="flex h-4 w-4 items-center justify-center rounded-full border border-page-bg bg-accent/10 text-4xs font-semibold text-accent">
+															{a.user.full_name.charAt(0)}
+														</span>
+													{/if}
+												{/each}
+											</div>
 										{/if}
 									</div>
-								</div>
-
-								<!-- Title -->
-								<p class="mb-2.5 line-clamp-2 text-xs leading-snug text-sidebar-text">{task.title}</p>
-
-								<!-- Bottom: tags + assignees -->
-								<div class="flex items-center gap-2">
-									{#if cardTags.length > 0}
-										<div class="flex flex-1 flex-wrap items-center gap-1 min-w-0">
-											{#each cardTags.slice(0, 3) as tag (tag.id)}
-												<span
-													class="inline-flex items-center px-1.5 py-0 text-[10px] font-medium truncate"
-													style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
-												>
-													{tag.name}
-												</span>
-											{/each}
-											{#if cardTags.length > 3}
-												<span class="text-[10px] text-muted">+{cardTags.length - 3}</span>
-											{/if}
-										</div>
-									{:else}
-										<div class="flex-1"></div>
-									{/if}
-
-									{#if task.assignments?.length}
-										<div class="flex shrink-0 -space-x-1.5">
-											{#each task.assignments.slice(0, 3) as a (a.user_id)}
-												{#if a.user.avatar_url}
-													<img src={a.user.avatar_url} alt={a.user.full_name} class="h-4 w-4 rounded-full object-cover" />
-												{:else}
-													<span class="flex h-4 w-4 items-center justify-center rounded-full bg-accent/15 text-[8px] font-medium text-accent">
-														{a.user.full_name.charAt(0)}
-													</span>
-												{/if}
-											{/each}
-											{#if task.assignments.length > 3}
-												<span class="flex h-4 w-4 items-center justify-center rounded-full bg-surface-hover text-[7px] text-muted">
-													+{task.assignments.length - 3}
-												</span>
-											{/if}
-										</div>
-									{/if}
-								</div>
+								{/if}
 							</button>
 						{/each}
+
+						<!-- Create task inline -->
+						<button
+							class="mt-0.5 flex w-full items-center justify-center gap-1 rounded py-1.5 text-sm text-muted/30 transition-colors hover:bg-surface-hover/30 hover:text-muted"
+							onclick={() => {
+								createPrefill = groupBy === 'status'
+									? { status: col.key }
+									: { projectId: col.key !== '__none__' ? col.key : undefined };
+								createModalOpen = true;
+							}}
+						>
+							<Plus size={11} />
+						</button>
 					</div>
 				</div>
 			{/each}
@@ -1039,22 +1051,22 @@
 <!-- ===== SAVE VIEW MODAL ===== -->
 <Modal open={saveModalOpen} onClose={() => (saveModalOpen = false)} maxWidth="max-w-sm">
 	<div class="px-4 py-3 border-b border-surface-border">
-		<h2 class="text-sm font-semibold text-sidebar-text">Save View</h2>
+		<h2 class="text-lg font-semibold text-sidebar-text">Save View</h2>
 	</div>
 	<form onsubmit={(e) => { e.preventDefault(); saveCurrentView(); }} class="p-4">
-		<label for="view-name" class="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon">Name</label>
+		<label for="view-name" class="mb-1.5 block text-sm font-medium uppercase tracking-wider text-sidebar-icon">Name</label>
 		<input
 			id="view-name"
 			type="text"
 			bind:value={saveViewName}
 			placeholder="e.g. My active bugs"
-			class="w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text shadow-sm outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30"
+			class="w-full border border-surface-border bg-surface px-3 py-2 text-base text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-accent/40 hover:border-sidebar-icon/30"
 		/>
-		<p class="mt-2 text-[11px] text-muted">Saves the current filters, view mode, and grouping.</p>
+		<p class="mt-2 text-sm text-muted">Saves the current filters, view mode, and grouping.</p>
 		<div class="mt-4 flex justify-end gap-2">
 			<button
 				type="button"
-				class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+				class="border border-surface-border bg-surface px-4 py-2 text-base font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 				onclick={() => (saveModalOpen = false)}
 			>
 				Cancel
@@ -1062,7 +1074,7 @@
 			<button
 				type="submit"
 				disabled={savingView || !saveViewName.trim()}
-				class="bg-accent px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-accent/90 disabled:opacity-50"
+				class="bg-accent px-4 py-2 text-base font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50 focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
 			>
 				{savingView ? 'Saving...' : 'Save view'}
 			</button>
@@ -1073,5 +1085,20 @@
 <style>
 	.scrollbar-none::-webkit-scrollbar {
 		display: none;
+	}
+
+	@keyframes dropdown-in {
+		from {
+			opacity: 0;
+			transform: scale(0.95) translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1) translateY(0);
+		}
+	}
+
+	:global(.animate-dropdown-in) {
+		animation: dropdown-in 150ms ease-out;
 	}
 </style>

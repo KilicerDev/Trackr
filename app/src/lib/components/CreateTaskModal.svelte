@@ -179,24 +179,24 @@
 			.join(' ');
 	}
 
-	const labelClass = 'mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-sidebar-icon';
+	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
 	const inputClass =
-		'w-full border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-sidebar-icon/30 hover:border-sidebar-icon/30';
+		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
 	const dropdownBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 border border-surface-border bg-surface px-3 py-2 text-xs text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1.5 max-h-56 w-full min-w-[10rem] overflow-y-auto border border-surface-border bg-surface py-1';
+		'absolute left-0 z-20 mt-1.5 max-h-48 w-full min-w-[10rem] overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20';
 	const dropdownItemBase =
-		'flex w-full items-center px-4 py-2.5 text-left text-xs transition-colors hover:bg-surface-hover';
-	const chevronSvg = `<svg class="h-4 w-4 shrink-0 text-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
+	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 </script>
 
 <Modal open={true} {onClose}>
 	<div>
-		<div class="border-b border-surface-border px-4 py-3">
-			<h2 class="text-sm font-semibold text-sidebar-text">Create task</h2>
+		<div class="px-3 py-2.5">
+			<h2 class="text-md font-semibold text-sidebar-text">Create task</h2>
 		</div>
-		<div class="p-4">
+		<div class="p-3">
 			<form onsubmit={handleSubmit} class="space-y-4">
 				<div>
 					<label for="create-task-title" class={labelClass}>Title</label>
@@ -245,7 +245,7 @@
 											<span class="flex flex-col items-start">
 												<span>{p.name}</span>
 												{#if orgNameMap[p.organization_id]}
-													<span class="text-[10px] text-accent/50">{orgNameMap[p.organization_id]}</span>
+													<span class="text-xs text-accent/50">{orgNameMap[p.organization_id]}</span>
 												{/if}
 											</span>
 										</button>
@@ -256,43 +256,7 @@
 					</div>
 				{/if}
 
-				<!-- Parent task -->
-				{#if parentOptions.length > 0}
-					<div>
-						<span class={labelClass}>Parent Task</span>
-						<div class="relative" data-dropdown>
-							<button
-								type="button"
-								class={dropdownBtnClass}
-								onclick={() => toggleDropdown('parent')}
-							>
-							<span class="truncate">{selectedParentLabel}</span>
-							{@html chevronSvg}
-							</button>
-							{#if openDropdown === 'parent'}
-								<div class={dropdownPanelClass}>
-									<button
-										type="button"
-										class="{dropdownItemBase} {!parentId ? 'font-medium text-accent' : 'text-sidebar-text'}"
-										onmousedown={(e) => { e.preventDefault(); parentId = ''; openDropdown = null; }}
-									>
-										None
-									</button>
-									{#each parentOptions as p (p.id)}
-										<button
-											type="button"
-											class="{dropdownItemBase} {parentId === p.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-											onmousedown={(e) => { e.preventDefault(); parentId = p.id; openDropdown = null; }}
-										>
-											{p.label}
-										</button>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					</div>
-				{/if}
-
+	
 				<div class="grid grid-cols-3 gap-3">
 					<!-- Type -->
 					<div>
@@ -413,7 +377,7 @@
 							<div class="mb-2 flex flex-wrap gap-1.5">
 								{#each selectedTags as tag (tag.id)}
 									<span
-										class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium"
+										class="inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-sm font-medium"
 										style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
 									>
 										{tag.name}
@@ -441,11 +405,11 @@
 								}}
 							/>
 							{#if tagDropdownOpen}
-								<div class="absolute left-0 z-20 mt-1 max-h-40 w-full overflow-y-auto border border-surface-border bg-surface py-1 shadow-xl">
+								<div class="absolute left-0 z-20 mt-1.5 max-h-40 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
 									{#each filteredTags as tag (tag.id)}
 										<button
 											type="button"
-											class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-sidebar-text transition-colors hover:bg-surface-hover"
+											class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60"
 											onmousedown={(e) => {
 												e.preventDefault();
 												selectedTags = [...selectedTags, { id: tag.id, name: tag.name, color: tag.color }];
@@ -457,13 +421,13 @@
 										</button>
 									{:else}
 										{#if !tagSearch.trim()}
-											<p class="px-3 py-2 text-xs text-muted">No tags yet</p>
+											<p class="px-3 py-2 text-base text-muted">No tags yet</p>
 										{/if}
 									{/each}
 									{#if tagSearch.trim() && !tagExactMatch}
 										<button
 											type="button"
-											class="flex w-full items-center gap-2 border-t border-surface-border px-3 py-1.5 text-left text-xs text-accent transition-colors hover:bg-surface-hover"
+											class="flex w-full items-center gap-2 border-t border-surface-border/30 px-2.5 py-1.5 text-left text-sm text-accent transition-colors hover:bg-surface-hover/60"
 											onmousedown={(e) => {
 												e.preventDefault();
 												createTag();
@@ -488,7 +452,7 @@
 					{#if pendingFiles.length > 0}
 						<div class="mt-2 flex flex-wrap gap-1">
 							{#each pendingFiles as file, i (file.name + i)}
-								<span class="flex items-center gap-1 border border-surface-border bg-surface px-2 py-0.5 text-[10px] text-sidebar-text">
+								<span class="flex items-center gap-1 rounded border border-surface-border/40 bg-surface/50 px-2 py-0.5 text-xs text-sidebar-text">
 									<Paperclip size={10} />
 									<span class="max-w-[120px] truncate">{file.name}</span>
 									<button type="button" class="text-muted hover:text-red-500" onclick={() => { pendingFiles = pendingFiles.filter((_, idx) => idx !== i); }}>
@@ -500,10 +464,10 @@
 					{/if}
 				</div>
 
-				<div class="flex justify-end gap-2 border-t border-surface-border pt-4">
+				<div class="flex justify-end gap-2 pt-3">
 					<button
 						type="button"
-						class="border border-surface-border bg-surface px-4 py-2 text-xs font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover"
+						class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 						onclick={onClose}
 					>
 						Cancel
@@ -511,7 +475,7 @@
 					<button
 						type="submit"
 						disabled={!canSubmit || submitting}
-						class="bg-accent px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+						class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 					>
 						{submitting ? 'Creating…' : 'Create task'}
 					</button>

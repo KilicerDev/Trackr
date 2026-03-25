@@ -12,7 +12,7 @@
 	import type { TaskFilters, FilterOp } from '$lib/api/tasks';
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { ArrowLeft, Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter } from '@lucide/svelte';
+	import { ArrowLeft, Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter, Info, Paperclip, SquareCheckBig } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
@@ -221,6 +221,7 @@
 	});
 
 	let selectedTaskId = $state<string | null>(null);
+	let projectTab = $state<'tasks' | 'details' | 'attachments'>('tasks');
 
 	function selectTask(id: string | null) {
 		selectedTaskId = id;
@@ -444,10 +445,10 @@
 <div class="flex h-full">
 <div class="min-w-0 flex-1 flex flex-col overflow-hidden">
 <div class="mx-auto w-full flex flex-col flex-1 min-h-0">
-	<div class="flex shrink-0 items-center gap-3 border-b border-surface-border px-4 py-3">
+	<div class="flex shrink-0 items-center gap-3 px-3 py-1.5">
 		<button
 			onclick={() => history.back()}
-			class="flex cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-sidebar-text"
+			class="flex h-7 cursor-pointer items-center gap-1 rounded-sm px-2 text-sm text-muted transition-all duration-150 hover:text-sidebar-text"
 		>
 			<ArrowLeft size={14} />
 			Projects
@@ -461,7 +462,7 @@
 	{:else if project}
 		<!-- Project details — scrollable, shrinks when board needs space -->
 		<div class="shrink overflow-y-auto min-h-0">
-		<div class="border-b border-surface-border px-4 py-6">
+		<div class="px-3 py-4">
 			<div class="flex items-start justify-between gap-4">
 				<div class="min-w-0 flex-1">
 					<!-- Identifier + Status + Color -->
@@ -477,7 +478,7 @@
 								></button>
 								{#if openDropdown === 'color'}
 									<div
-										class="absolute left-0 z-20 mt-2 flex gap-1.5 border border-surface-border bg-surface p-2.5 shadow-xl"
+										class="absolute left-0 z-20 mt-2 flex gap-1.5 rounded-md border border-surface-border/70 bg-surface p-2.5 shadow-lg shadow-black/20"
 									>
 										{#each PRESET_COLORS as c (c)}
 											<button
@@ -503,7 +504,7 @@
 							></span>
 						{/if}
 
-						<span class="text-[11px] font-semibold tracking-wider text-muted">
+						<span class="text-sm font-semibold tracking-wider text-muted">
 							{project.identifier}
 						</span>
 
@@ -511,23 +512,21 @@
 						{#if canUpdateProject}
 							<div class="relative flex items-center" data-dropdown>
 								<button
-									class="inline-flex cursor-pointer items-center px-2 py-1 text-[10px] font-medium leading-none transition-colors hover:opacity-80 {statusColors[
-										project.status
-									] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
+									class="inline-flex cursor-pointer items-center rounded-sm px-2 py-1 text-xs font-medium leading-none text-muted/50 transition-all duration-150 hover:text-sidebar-text"
 									onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
 								>
 									{formatStatus(project.status)}
 								</button>
 								{#if openDropdown === 'status'}
 									<div
-										class="absolute top-full left-0 z-20 mt-1.5 min-w-[140px] border border-surface-border bg-surface py-1 shadow-xl"
+										class="absolute top-full left-0 z-20 mt-1.5 min-w-[140px] origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20"
 									>
 										{#each PROJECT_STATUSES as s (s)}
 											<button
-												class="flex w-full items-center px-4 py-2 text-left text-xs transition-colors hover:bg-surface-hover {project.status ===
+												class="flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60 {project.status ===
 												s
 													? 'font-medium text-accent'
-													: 'text-sidebar-text'}"
+													: 'text-muted'}"
 												onmousedown={(e) => {
 													e.preventDefault();
 													updateField('status', s);
@@ -541,7 +540,7 @@
 							</div>
 						{:else}
 							<span
-								class="inline-flex items-center px-2 py-1 text-[10px] font-medium leading-none {statusColors[project.status] ?? 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'}"
+								class="inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium leading-none text-muted/50"
 							>
 								{formatStatus(project.status)}
 							</span>
@@ -554,7 +553,7 @@
 							<input
 								type="text"
 								bind:value={nameDraft}
-								class="flex-1 border border-surface-border bg-surface px-2 py-1 text-lg font-semibold text-sidebar-text outline-none focus:border-sidebar-icon/30"
+								class="flex-1 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-lg font-semibold text-sidebar-text outline-none focus:bg-surface-hover/60"
 								onkeydown={(e) => {
 									if (e.key === 'Enter') saveName();
 									if (e.key === 'Escape') editingName = false;
@@ -577,7 +576,7 @@
 						</div>
 					{:else if canUpdateProject}
 						<button
-							class="mt-1 cursor-pointer text-left text-lg font-semibold text-sidebar-text transition-colors hover:text-accent"
+							class="mt-1 cursor-pointer text-left text-lg font-semibold text-sidebar-text transition-all duration-150 hover:text-accent"
 							onclick={startEditName}
 						>
 							{project.name}
@@ -594,21 +593,21 @@
 							<textarea
 								bind:value={descriptionDraft}
 								rows="3"
-								class="w-full resize-none border border-surface-border bg-surface px-3 py-2 text-xs leading-relaxed text-sidebar-text outline-none focus:border-sidebar-icon/30"
+								class="w-full resize-none rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base leading-relaxed text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
 								onkeydown={(e) => {
 									if (e.key === 'Escape') editingDescription = false;
 								}}
 							></textarea>
 							<div class="mt-1.5 flex gap-2">
 								<button
-									class="bg-accent px-3 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+									class="flex h-7 items-center rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 									disabled={savingField}
 									onclick={saveDescription}
 								>
 									{savingField ? 'Saving…' : 'Save'}
 								</button>
 								<button
-									class="border border-surface-border bg-surface px-3 py-1.5 text-[11px] font-medium text-sidebar-text transition-colors hover:bg-surface-hover"
+									class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 									onclick={() => (editingDescription = false)}
 								>
 									Cancel
@@ -617,13 +616,13 @@
 						</div>
 					{:else if canUpdateProject}
 						<button
-							class="mt-1.5 cursor-pointer text-left text-xs leading-relaxed text-muted transition-colors hover:text-sidebar-text"
+							class="mt-1.5 cursor-pointer text-left text-sm leading-relaxed text-muted/50 transition-all duration-150 hover:text-sidebar-text"
 							onclick={startEditDescription}
 						>
 							{project.description || 'Add a description…'}
 						</button>
 					{:else}
-						<p class="mt-1.5 text-xs leading-relaxed text-muted">
+						<p class="mt-1.5 text-sm leading-relaxed text-muted/50">
 							{project.description || 'No description.'}
 						</p>
 					{/if}
@@ -631,7 +630,7 @@
 			</div>
 
 			<!-- Info row: owner, dates, members -->
-			<div class="mt-4 flex flex-wrap items-center gap-10 text-xs text-muted">
+			<div class="mt-4 flex flex-wrap items-center gap-10 text-base text-muted">
 				<div class="flex flex-col gap-2">
 					{#if project.owner}
 						<span class="flex items-center gap-1.5">
@@ -654,12 +653,12 @@
 								<input
 									type="date"
 									value={toInputDate(project.start_at)}
-									class="border border-surface-border bg-surface px-2 py-1 text-xs text-sidebar-text outline-none hover:border-sidebar-icon/30"
+									class="rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
 									onchange={(e) => handleDateChange('start_at', (e.target as HTMLInputElement).value)}
 								/>
 							</label>
 						{:else}
-							<p class="text-xs text-sidebar-text">{formatDate(project.start_at)}</p>
+							<p class="text-base text-sidebar-text">{formatDate(project.start_at)}</p>
 						{/if}
 					</div>
 					<div>
@@ -669,36 +668,66 @@
 								<input
 									type="date"
 									value={toInputDate(project.end_at)}
-									class="border border-surface-border bg-surface px-2 py-1 text-xs text-sidebar-text outline-none hover:border-sidebar-icon/30"
+									class="rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
 									onchange={(e) => handleDateChange('end_at', (e.target as HTMLInputElement).value)}
 								/>
 							</label>
 						{:else}
-							<p class="text-xs text-sidebar-text">{formatDate(project.end_at)}</p>
+							<p class="text-base text-sidebar-text">{formatDate(project.end_at)}</p>
 						{/if}
 					</div>
 				</div>
 			</div>
 		</div>
 
+		<!-- Tab bar -->
+		<div class="flex items-center gap-0.5 border-b border-surface-border px-4 mb-2">
+			<button
+				class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {projectTab === 'tasks' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
+				onclick={() => (projectTab = 'tasks')}
+			>
+				<SquareCheckBig size={12} />
+				Tasks
+				<span class="text-2xs text-muted/40">{taskStore.items.length}</span>
+			</button>
+			<button
+				class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {projectTab === 'details' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
+				onclick={() => (projectTab = 'details')}
+			>
+				<Info size={12} />
+				Details
+			</button>
+			<button
+				class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {projectTab === 'attachments' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
+				onclick={() => (projectTab = 'attachments')}
+			>
+				<Paperclip size={12} />
+				Files
+				{#if projectAttachments.length > 0}
+					<span class="text-2xs text-muted/40">{projectAttachments.length}</span>
+				{/if}
+			</button>
+		</div>
+
+		{#if projectTab === 'details'}
 		<!-- Members -->
-		<div class="border-b border-surface-border px-4 py-4">
+		<div class="mx-3 mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
 			<div class="mb-3 flex items-center justify-between">
-				<h2 class="text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">Members</h2>
+				<h2 class="text-xs font-medium tracking-[0.08em] text-muted/50 uppercase">Members</h2>
 				{#if canManageProject}
 				<div class="relative" data-dropdown>
 					<button
-						class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
+						class="flex items-center gap-0.5 whitespace-nowrap text-sm text-muted/50 transition-colors hover:text-accent"
 						onclick={() => (openDropdown = openDropdown === 'add-member' ? null : 'add-member')}
 					>
-						<Plus size={13} /> Add
+						<Plus size={12} /> Add
 					</button>
 					{#if openDropdown === 'add-member'}
 						<div
-							class="absolute right-0 z-20 mt-1.5 w-[280px] border border-surface-border bg-surface shadow-xl"
+							class="absolute right-0 z-20 mt-1.5 w-[280px] rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20"
 						>
 							<div class="border-b border-surface-border px-3 py-2">
-								<span class="text-[10px] font-medium tracking-wider text-sidebar-icon uppercase"
+								<span class="text-xs font-medium tracking-[0.08em] text-muted/50 uppercase"
 									>Add member</span
 								>
 							</div>
@@ -720,21 +749,21 @@
 											/>
 										{:else}
 											<span
-												class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[9px] font-medium text-accent"
+												class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/20 text-2xs font-medium text-accent"
 											>
 												{om.user.full_name.charAt(0)}
 											</span>
 										{/if}
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2">
-												<span class="truncate text-xs font-medium text-sidebar-text">{om.user.full_name}</span>
-												<span class="shrink-0 rounded-sm bg-sidebar-icon/10 px-1.5 py-0.5 text-[9px] font-medium text-sidebar-icon">{om.role!.name}</span>
+												<span class="truncate text-base font-medium text-sidebar-text">{om.user.full_name}</span>
+												<span class="shrink-0 rounded-sm bg-sidebar-icon/10 px-1.5 py-0.5 text-2xs font-medium text-sidebar-icon">{om.role!.name}</span>
 											</div>
-											<p class="truncate text-[10px] text-muted">{om.user.email}</p>
+											<p class="truncate text-xs text-muted">{om.user.email}</p>
 										</div>
 									</button>
 								{:else}
-									<p class="px-3 py-3 text-xs text-muted">No more users available.</p>
+									<p class="px-3 py-3 text-base text-muted">No more users available.</p>
 								{/each}
 							</div>
 						</div>
@@ -747,7 +776,7 @@
 				<div class="flex flex-wrap gap-3">
 					{#each project.members as member (member.user_id)}
 						<div
-							class="group flex items-center gap-2 border border-surface-border bg-surface px-3 py-2"
+							class="group flex items-center gap-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2"
 						>
 							{#if member.user.avatar_url}
 								<img
@@ -757,17 +786,17 @@
 								/>
 							{:else}
 								<div
-									class="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-[10px] font-medium text-accent"
+									class="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-xs font-medium text-accent"
 								>
 									{member.user.full_name.charAt(0)}
 								</div>
 							{/if}
 							<div class="min-w-0">
-								<p class="truncate text-xs font-medium text-sidebar-text">
+								<p class="truncate text-base font-medium text-sidebar-text">
 									{member.user.full_name}
 								</p>
 								{#if member.role}
-									<p class="text-[10px] text-muted">{member.role.name}</p>
+									<p class="text-xs text-muted">{member.role.name}</p>
 								{/if}
 							</div>
 							{#if canManageProject}
@@ -783,13 +812,14 @@
 					{/each}
 				</div>
 			{:else}
-				<p class="text-xs text-muted">No members yet.</p>
+				<p class="text-base text-muted">No members yet.</p>
 			{/if}
 		</div>
 
+		{:else if projectTab === 'attachments'}
 		<!-- Attachments -->
-		<div class="border-b border-surface-border px-4 py-4">
-			<h2 class="mb-3 text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">
+		<div class="mx-3 mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+			<h2 class="mb-3 text-xs font-medium tracking-[0.08em] text-muted/50 uppercase">
 				Attachments
 				{#if projectAttachments.length > 0}
 					<span class="ml-1 text-muted">({projectAttachments.length})</span>
@@ -800,7 +830,7 @@
 				disabled={uploadingFiles}
 			/>
 			{#if uploadingFiles}
-				<p class="mt-2 text-[11px] text-muted">Uploading...</p>
+				<p class="mt-2 text-sm text-muted">Uploading...</p>
 			{/if}
 			{#if projectAttachments.length > 0}
 				<div class="mt-3">
@@ -812,14 +842,14 @@
 				</div>
 			{/if}
 		</div>
-	</div>
 
+		{:else}
 		<!-- Tasks section — fills remaining height -->
 		<div class="flex flex-1 min-h-0 flex-col">
 		<!-- Tasks header -->
-		<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-4 pt-4 pb-2">
+		<div class="flex shrink-0 items-center justify-between px-3 py-1.5">
 			<div class="flex items-center gap-2">
-				<h2 class="text-[11px] font-medium tracking-wider text-sidebar-icon uppercase">
+				<h2 class="text-xs font-medium tracking-[0.08em] text-muted/50 uppercase">
 					Tasks
 					{#if taskStore.count > 0}
 						<span class="ml-1 text-muted">({taskStore.count})</span>
@@ -827,15 +857,15 @@
 				</h2>
 
 				<!-- View toggle -->
-				<div class="flex items-center border border-surface-border">
+				<div class="flex items-center gap-0.5">
 					<button
-						class="flex h-[28px] items-center gap-1 px-2 text-[11px] transition-colors {taskViewMode === 'list' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {taskViewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 						onclick={() => setTaskView('list')}
 					>
 						<LayoutList size={12} /> List
 					</button>
 					<button
-						class="flex h-[28px] items-center gap-1 px-2 text-[11px] transition-colors {taskViewMode === 'board' ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {taskViewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 						onclick={() => setTaskView('board')}
 					>
 						<Columns3 size={12} /> Board
@@ -844,10 +874,11 @@
 
 				<!-- Group-by (list only) -->
 				{#if taskViewMode === 'list'}
-					<div class="flex items-center border border-surface-border">
+					<div class="h-4 w-px bg-surface-border"></div>
+				<div class="flex items-center gap-0.5">
 						{#each TASK_GROUP_OPTIONS as g (g)}
 							<button
-								class="flex h-[28px] items-center px-2 text-[11px] transition-colors {taskGroupBy === g ? 'bg-accent text-white' : 'bg-surface text-sidebar-text hover:bg-surface-hover'}"
+								class="flex h-7 items-center rounded-sm px-2 text-sm font-medium transition-all duration-150 {taskGroupBy === g ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 								onclick={() => setTaskGroupBy(g)}
 							>
 								{formatTaskStatus(g)}
@@ -859,13 +890,13 @@
 				<!-- Filter toggle -->
 				<div class="relative shrink-0">
 					<button
-						class="flex h-[28px] w-[28px] items-center justify-center border border-surface-border bg-surface transition-colors hover:bg-surface-hover {taskFiltersVisible ? 'text-accent' : 'text-sidebar-icon'}"
+						class="flex h-7 w-7 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover/40 {taskFiltersVisible ? 'text-accent' : 'hover:text-sidebar-text'}"
 						onclick={() => (taskFiltersVisible = !taskFiltersVisible)}
 					>
 						<ListFilter size={13} />
 					</button>
 					{#if taskFilterCount > 0}
-						<span class="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center bg-accent px-0.5 text-[9px] leading-none font-medium text-white">
+						<span class="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-2xs font-semibold leading-none text-white">
 							{taskFilterCount}
 						</span>
 					{/if}
@@ -874,17 +905,17 @@
 
 			{#if canCreateTask}
 				<button
-					class="flex items-center gap-1 text-[11px] font-medium text-accent transition-colors hover:text-accent/80"
+					class="flex items-center gap-0.5 whitespace-nowrap text-sm text-muted/50 transition-colors hover:text-accent"
 					onclick={() => (createModalOpen = true)}
 				>
-					<Plus size={13} /> Add
+					<Plus size={12} /> Add
 				</button>
 			{/if}
 		</div>
 
 		<!-- Task filters -->
 		{#if taskFiltersVisible}
-			<div class="shrink-0 border-b border-surface-border bg-surface/40 px-4 py-3">
+			<div class="shrink-0 px-3 py-1.5">
 				<div class="flex flex-wrap items-end gap-3">
 					{#if !(taskViewMode === 'board')}
 						<FilterDropdown
@@ -911,7 +942,7 @@
 					/>
 					{#if taskFilterCount > 0}
 						<button
-							class="pb-0.5 text-[11px] text-sidebar-icon transition-colors hover:text-accent"
+							class="pb-0.5 text-sm text-sidebar-icon transition-colors hover:text-accent"
 							onclick={clearTaskFilters}
 						>
 							Clear all
@@ -930,10 +961,10 @@
 			<!-- Kanban -->
 			<div class="flex flex-1 min-h-0 gap-0 overflow-x-auto">
 				{#each taskBoardColumns as col, colIndex (col.key)}
-					<div class="flex w-56 min-w-[14rem] shrink-0 flex-col border-r border-surface-border last:border-r-0 max-h-full">
-						<div class="flex items-center gap-2 px-3 py-2 border-b border-surface-border">
-							<span class="text-[10px] font-semibold uppercase tracking-wider text-muted truncate">{col.label}</span>
-							<span class="ml-auto shrink-0 text-[10px] text-muted">{col.items.length}</span>
+					<div class="flex w-64 min-w-[16rem] shrink-0 flex-col border-r border-surface-border/50 last:border-r-0 max-h-full bg-page-bg">
+						<div class="flex items-center gap-2 px-3 py-2">
+							<span class="text-sm font-medium text-muted truncate">{col.label}</span>
+							<span class="ml-auto shrink-0 text-xs text-muted">{col.items.length}</span>
 						</div>
 						<div
 							class="flex-1 overflow-y-auto p-1.5 min-h-[40px] scrollbar-none"
@@ -945,15 +976,15 @@
 							{#each col.items as task (task.id)}
 								{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
 								<button
-									class="mb-1.5 w-full cursor-pointer border border-surface-border px-2.5 py-2 text-left transition-colors hover:bg-surface-hover last:mb-0 {selectedTaskId === task.id ? 'bg-accent/8' : ''}"
+									class="mb-1.5 w-full cursor-pointer rounded border border-surface-border/50 bg-surface/50 px-3 py-2.5 text-left transition-all duration-150 hover:bg-surface/80 last:mb-0 {selectedTaskId === task.id ? '!border-accent/50 !bg-accent/15' : ''}"
 									onclick={() => selectTask(task.id)}
 								>
 									<div class="mb-1 flex items-center gap-1.5">
 										<span class="text-muted"><TypeIcon size={11} /></span>
-										<span class="text-[10px] font-medium text-accent">{task.short_id || '—'}</span>
+										<span class="font-mono text-xs text-muted/50">{task.short_id || '—'}</span>
 									</div>
-									<p class="mb-1.5 line-clamp-2 text-[11px] leading-snug text-sidebar-text">{task.title}</p>
-									<span class="inline-flex rounded-sm px-1.5 py-0.5 text-[9px] font-medium {priorityColors[task.priority] ?? priorityColors.none}">
+									<p class="mb-1.5 line-clamp-2 text-base leading-snug text-sidebar-text">{task.title}</p>
+									<span class="text-xs {task.priority === 'urgent' ? 'text-red-400' : task.priority === 'high' ? 'text-orange-400' : task.priority === 'medium' ? 'text-yellow-500' : task.priority === 'low' ? 'text-blue-400' : 'text-muted/50'}">
 										{formatPriority(task.priority)}
 									</span>
 								</button>
@@ -969,27 +1000,43 @@
 		{:else if taskGroupBy === 'status'}
 			<!-- Grouped by status list -->
 			{@const groups = TASK_STATUSES.map((s) => ({ key: s, label: formatTaskStatus(s), tasks: taskTree.filter(({ task }) => task.status === s) })).filter((g) => g.tasks.length > 0)}
-			<div>
+			<div class="space-y-1 p-3">
 				{#each groups as group (group.key)}
-					<div class="flex items-center gap-2 border-b border-surface-border bg-surface-hover/50 px-4 py-1.5">
-						<span class="text-[10px] font-semibold uppercase tracking-wider text-muted">{group.label}</span>
-						<span class="text-[10px] text-muted/60">({group.tasks.length})</span>
+					<button
+						class="flex w-full items-center gap-1.5 px-1 py-1 text-left"
+						onclick={() => {}}
+					>
+						<span class="text-sm font-medium text-muted">{group.label}</span>
+						<span class="text-xs text-muted/30">{group.tasks.length}</span>
+					</button>
+					<div class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+						{#each group.tasks as { task, depth }, i (task.id)}
+							<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
+							{#if i < group.tasks.length - 1}
+								<div class="mx-3 h-px bg-surface-border/30"></div>
+							{/if}
+						{/each}
 					</div>
-					{#each group.tasks as { task, depth } (task.id)}
-						<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
-					{/each}
 				{/each}
 			</div>
 		{:else}
 			<!-- Flat list -->
-			<div>
-				{#each taskTree as { task, depth } (task.id)}
-					<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
-				{/each}
+			<div class="p-3">
+				<div class="overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+					{#each taskTree as { task, depth }, i (task.id)}
+						<TaskRow {task} {depth} selected={task.id === selectedTaskId} onclick={() => selectTask(task.id)} />
+						{#if i < taskTree.length - 1}
+							<div class="mx-3 h-px bg-surface-border/30"></div>
+						{/if}
+					{/each}
+				</div>
 			</div>
 		{/if}
 	</div>
+{/if}
+	</div>
 	{/if}
+</div>
 </div>
 
 {#if createModalOpen && project}
@@ -999,7 +1046,6 @@
 		onCreated={(id) => selectTask(id)}
 	/>
 {/if}
-</div>
 
 {#if selectedTaskId}
 	<TaskDetailPanel
