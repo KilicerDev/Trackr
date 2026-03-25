@@ -222,6 +222,13 @@
 
 	let selectedTaskId = $state<string | null>(null);
 	let projectTab = $state<'tasks' | 'details' | 'attachments'>('tasks');
+	let boardEl = $state<HTMLDivElement | undefined>(undefined);
+
+	$effect(() => {
+		if (!boardEl) return;
+		const top = boardEl.getBoundingClientRect().top;
+		boardEl.style.setProperty('--board-top', `${top}px`);
+	});
 
 	function selectTask(id: string | null) {
 		selectedTaskId = id;
@@ -959,9 +966,9 @@
 			<p class="px-4 py-8 text-center text-sm text-red-500">{taskStore.error}</p>
 		{:else if taskViewMode === 'board'}
 			<!-- Kanban -->
-			<div class="flex flex-1 min-h-0 gap-0 overflow-x-auto">
+			<div class="flex gap-0 overflow-x-auto overflow-y-hidden" style="height: calc(100dvh - var(--board-top, 0px))" bind:this={boardEl}>
 				{#each taskBoardColumns as col, colIndex (col.key)}
-					<div class="flex w-64 min-w-[16rem] shrink-0 flex-col border-r border-surface-border/50 last:border-r-0 max-h-full bg-page-bg">
+					<div class="flex w-64 min-w-[16rem] shrink-0 flex-col border-r border-surface-border/50 last:border-r-0 h-full bg-page-bg">
 						<div class="flex items-center gap-2 px-3 py-2">
 							<span class="text-sm font-medium text-muted truncate">{col.label}</span>
 							<span class="ml-auto shrink-0 text-xs text-muted">{col.items.length}</span>
