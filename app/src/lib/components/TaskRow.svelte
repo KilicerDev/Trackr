@@ -71,7 +71,7 @@
 	<span class="h-1.5 w-1.5 shrink-0 rounded-full {statusDot[task.status] ?? 'bg-gray-400'}"></span>
 
 	<!-- ID -->
-	<span class="w-[52px] shrink-0 font-mono text-xs text-muted/50">
+	<span class="shrink-0 whitespace-nowrap font-mono text-xs text-muted/50">
 		{displayId}
 	</span>
 
