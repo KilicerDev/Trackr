@@ -2,7 +2,11 @@ module github.com/trackr/email-service
 
 go 1.25.0
 
-require github.com/jackc/pgx/v5 v5.9.1
+require (
+	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6
+	github.com/emersion/go-smtp v0.21.3
+	github.com/jackc/pgx/v5 v5.9.1
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect

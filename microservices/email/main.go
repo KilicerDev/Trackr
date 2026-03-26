@@ -1,18 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"net/smtp"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
+	"github.com/emersion/go-sasl"
+	"github.com/emersion/go-smtp"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -132,9 +133,10 @@ func listenForNotifications(ctx context.Context) {
 		}
 
 		subject := getSubjectLine(payload.Type, payload.Title, ptrStr(payload.Body))
-		html := buildEmailHTML(payload, cfg.SiteURL)
+		htmlBody := buildEmailHTML(payload, cfg.SiteURL)
+		plainBody := buildEmailPlainText(payload, cfg.SiteURL)
 
-		if err := sendEmail(payload.RecipientEmail, subject, html); err != nil {
+		if err := sendEmail(payload.RecipientEmail, subject, htmlBody, plainBody); err != nil {
 			log.Printf("Failed to send email to %s: %v", payload.RecipientEmail, err)
 			continue
 		}
@@ -143,31 +145,21 @@ func listenForNotifications(ctx context.Context) {
 	}
 }
 
-func sendEmail(to, subject, htmlBody string) error {
+func sendEmail(to, subject, htmlBody, plainBody string) error {
 	from := fmt.Sprintf("%s <%s>", cfg.SMTPSenderName, cfg.SMTPFromEmail)
 	addr := net.JoinHostPort(cfg.SMTPHost, cfg.SMTPPort)
 
-	headers := map[string]string{
-		"From":         from,
-		"To":           to,
-		"Subject":      subject,
-		"MIME-Version": "1.0",
-		"Content-Type": "text/html; charset=UTF-8",
-	}
+	msgBytes := buildMIMEMessage(from, to, subject, htmlBody, plainBody, cfg.SiteURL)
 
-	var msg strings.Builder
-	for k, v := range headers {
-		msg.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
-	}
-	msg.WriteString("\r\n")
-	msg.WriteString(htmlBody)
-
-	var auth smtp.Auth
+	var auth sasl.Client
 	if cfg.SMTPUser != "" {
-		auth = smtp.PlainAuth("", cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPHost)
+		auth = sasl.NewPlainClient("", cfg.SMTPUser, cfg.SMTPPass)
 	}
 
-	return smtp.SendMail(addr, auth, cfg.SMTPFromEmail, []string{to}, []byte(msg.String()))
+	if cfg.SMTPPort == "465" {
+		return smtp.SendMailTLS(addr, auth, cfg.SMTPFromEmail, []string{to}, bytes.NewReader(msgBytes))
+	}
+	return smtp.SendMail(addr, auth, cfg.SMTPFromEmail, []string{to}, bytes.NewReader(msgBytes))
 }
 
 func ptrStr(s *string) string {
