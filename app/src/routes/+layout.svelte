@@ -9,6 +9,7 @@
 	import { theme } from '$lib/stores/theme.svelte';
 	import { fontStore } from '$lib/stores/font.svelte';
 	import { densityStore } from '$lib/stores/density.svelte';
+	import { textSizeStore } from '$lib/stores/text-size.svelte';
 	import { getClient } from '$lib/api/client';
 	import NotificationContainer from '$lib/components/NotificationContainer.svelte';
 
@@ -37,6 +38,7 @@
 		theme.init();
 		fontStore.init();
 		densityStore.init();
+		textSizeStore.init();
 	});
 </script>
 
