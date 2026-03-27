@@ -6,8 +6,6 @@ import {
 	SquareCheckBig,
 	MessageCircle,
 	BookOpen,
-	Library,
-	GraduationCap,
 	Building2,
 	UserCog,
 	Shield,
@@ -41,9 +39,7 @@ export const sidebarSections: SidebarSection[] = [
 	{
 		title: 'Knowledge Base',
 		items: [
-			{ label: '(FAQ-Articles)', icon: BookOpen, href: '/faq-articles' },
-			{ label: '(Solutions Database)', icon: Library, href: '/solutions-database' },
-			{ label: '(Tutorials)', icon: GraduationCap, href: '/tutorials' }
+			{ label: 'Wiki', icon: BookOpen, href: '/wiki' }
 		]
 	},
 	{

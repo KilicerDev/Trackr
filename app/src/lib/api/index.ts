@@ -10,6 +10,7 @@ import { notificationsApi } from "./notifications";
 import { attachments } from "./attachments";
 import { views } from "./views";
 import { tags } from "./tags";
+import { wiki } from "./wiki";
 
 export const api = {
   tasks,
@@ -24,4 +25,5 @@ export const api = {
   attachments,
   views,
   tags,
+  wiki,
 };

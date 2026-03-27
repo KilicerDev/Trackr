@@ -45,3 +45,15 @@ export const ATTACHMENT_SELECT = `
   *,
   uploader:users!uploaded_by(id, full_name, avatar_url)
 ` as const;
+
+export const WIKI_FOLDER_SELECT = `*` as const;
+
+export const WIKI_PAGE_META_SELECT = `
+  id, title, folder_id, position, icon, created_by, updated_at
+` as const;
+
+export const WIKI_PAGE_FULL_SELECT = `
+  *,
+  created_by_user:users!created_by(id, full_name, avatar_url),
+  updated_by_user:users!updated_by(id, full_name, avatar_url)
+` as const;

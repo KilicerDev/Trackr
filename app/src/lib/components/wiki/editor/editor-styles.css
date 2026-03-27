@@ -1,0 +1,201 @@
+/* Wiki Milkdown editor styles
+   Uses CSS custom properties for multi-theme + density support.
+   Editor content uses sizes slightly above the UI chrome to feel like a document. */
+
+.wiki-editor .milkdown-editor {
+  font-family: var(--font-sans);
+  color: var(--color-sidebar-text);
+  font-size: var(--text-md);
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  outline: none;
+  min-height: 200px;
+  caret-color: var(--color-accent);
+}
+
+.wiki-editor .milkdown-editor > *:first-child {
+  margin-top: 0;
+}
+
+/* Headings */
+.wiki-editor .milkdown-editor h1 {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  margin: 1.2em 0 0.5em;
+  color: var(--color-sidebar-text);
+  line-height: 1.3;
+}
+
+.wiki-editor .milkdown-editor h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+  color: var(--color-sidebar-text);
+  line-height: 1.35;
+}
+
+.wiki-editor .milkdown-editor h3 {
+  font-size: var(--text-md);
+  font-weight: 600;
+  margin: 0.9em 0 0.3em;
+  color: var(--color-sidebar-text);
+  line-height: 1.4;
+}
+
+.wiki-editor .milkdown-editor h4,
+.wiki-editor .milkdown-editor h5,
+.wiki-editor .milkdown-editor h6 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin: 0.8em 0 0.3em;
+  color: var(--color-sidebar-text);
+}
+
+/* Paragraphs */
+.wiki-editor .milkdown-editor p {
+  margin: 0.5em 0;
+}
+
+/* Links */
+.wiki-editor .milkdown-editor a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: opacity 150ms;
+}
+
+.wiki-editor .milkdown-editor a:hover {
+  text-decoration: underline;
+}
+
+/* Bold & italic */
+.wiki-editor .milkdown-editor strong {
+  font-weight: 600;
+}
+
+.wiki-editor .milkdown-editor em {
+  font-style: italic;
+}
+
+/* Inline code */
+.wiki-editor .milkdown-editor code {
+  font-family: 'GeistMono', monospace;
+  font-size: var(--text-base);
+  background: color-mix(in srgb, var(--color-surface-hover) 40%, transparent);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+/* Code blocks */
+.wiki-editor .milkdown-editor pre {
+  font-family: 'GeistMono', monospace;
+  font-size: var(--text-base);
+  line-height: 1.6;
+  background: color-mix(in srgb, var(--color-surface-hover) 40%, transparent);
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin: 0.6em 0;
+  overflow-x: auto;
+}
+
+.wiki-editor .milkdown-editor pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Blockquotes */
+.wiki-editor .milkdown-editor blockquote {
+  border-left: 2px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+  padding-left: 12px;
+  margin: 0.6em 0;
+  color: var(--color-muted);
+}
+
+.wiki-editor .milkdown-editor blockquote p {
+  margin: 0.2em 0;
+}
+
+/* Lists */
+.wiki-editor .milkdown-editor ul,
+.wiki-editor .milkdown-editor ol {
+  padding-left: 20px;
+  margin: 0.4em 0;
+}
+
+.wiki-editor .milkdown-editor li {
+  margin: 0.2em 0;
+}
+
+.wiki-editor .milkdown-editor li p {
+  margin: 0;
+}
+
+.wiki-editor .milkdown-editor ul {
+  list-style-type: disc;
+}
+
+.wiki-editor .milkdown-editor ol {
+  list-style-type: decimal;
+}
+
+.wiki-editor .milkdown-editor ul ul {
+  list-style-type: circle;
+}
+
+/* Horizontal rule */
+.wiki-editor .milkdown-editor hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--color-surface-border) 30%, transparent);
+  margin: 1em 0;
+}
+
+/* Images */
+.wiki-editor .milkdown-editor img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 0.5em 0;
+}
+
+/* Tables */
+.wiki-editor .milkdown-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: var(--text-base);
+}
+
+.wiki-editor .milkdown-editor th,
+.wiki-editor .milkdown-editor td {
+  border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.wiki-editor .milkdown-editor th {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-surface-hover) 30%, transparent);
+}
+
+/* Task lists (checkboxes) */
+.wiki-editor .milkdown-editor li[data-checked] {
+  list-style: none;
+  position: relative;
+  margin-left: -20px;
+  padding-left: 20px;
+}
+
+/* Selection */
+.wiki-editor .milkdown-editor .ProseMirror-selectednode {
+  outline: 2px solid var(--color-accent);
+  border-radius: 2px;
+}
+
+/* Placeholder for empty editor */
+.wiki-editor .milkdown-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: "Start writing...";
+  color: color-mix(in srgb, var(--color-muted) 30%, transparent);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
