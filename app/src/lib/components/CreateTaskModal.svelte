@@ -50,6 +50,36 @@
 	let submitting = $state(false);
 	let pendingFiles = $state<File[]>([]);
 
+	// Assignees
+	type ProjectMember = { user_id: string; user: { id: string; full_name: string; avatar_url: string | null; is_active: boolean; deleted_at: string | null } };
+	let projectMembers = $state<ProjectMember[]>([]);
+	let selectedAssignees = $state<ProjectMember[]>([]);
+	let assigneeDropdownOpen = $state(false);
+
+	const availableMembers = $derived(
+		projectMembers
+			.filter((m) => m.user.is_active && !m.user.deleted_at)
+			.filter((m) => !selectedAssignees.some((a) => a.user_id === m.user_id))
+	);
+
+	$effect(() => {
+		const pid = resolvedProjectId;
+		selectedAssignees = [];
+		projectMembers = [];
+		if (pid) {
+			const proj = projects.find((p) => p.id === pid) as Record<string, unknown> | undefined;
+			if (proj?.members) {
+				projectMembers = proj.members as ProjectMember[];
+			} else {
+				// Fallback: fetch project with members if not in store
+				api.projects.getById(pid).then((p) => {
+					const data = p as Record<string, unknown> | null;
+					if (data?.members) projectMembers = data.members as ProjectMember[];
+				}).catch(() => {});
+			}
+		}
+	});
+
 	// Tags
 	const TAG_COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 	let selectedTags = $state<{ id: string; name: string; color: string }[]>([]);
@@ -110,12 +140,13 @@
 	}
 
 	$effect(() => {
-		if (openDropdown === null && !tagDropdownOpen) return;
+		if (openDropdown === null && !tagDropdownOpen && !assigneeDropdownOpen) return;
 		function onMouseDown(e: MouseEvent) {
 			const target = e.target as HTMLElement;
 			if (!target.closest('[data-dropdown]')) {
 				openDropdown = null;
 				tagDropdownOpen = false;
+				assigneeDropdownOpen = false;
 				tagSearch = '';
 			}
 		}
@@ -154,6 +185,12 @@
 							/* silent - task was created, attachment upload is best-effort */
 						}
 					}
+				}
+			}
+			// Assign users
+			if (task && selectedAssignees.length > 0) {
+				for (const member of selectedAssignees) {
+					try { await api.tasks.assign(task.id, member.user_id, auth.user!.id); } catch { /* silent */ }
 				}
 			}
 			// Assign tags
@@ -369,76 +406,148 @@
 					</div>
 				</div>
 
-				<!-- Tags -->
+				<!-- Assignees & Tags side by side -->
 				{#if resolvedProjectId}
-					<div>
-						<span class={labelClass}>Tags</span>
-						{#if selectedTags.length > 0}
-							<div class="mb-2 flex flex-wrap gap-1.5">
-								{#each selectedTags as tag (tag.id)}
-									<span
-										class="inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-sm font-medium"
-										style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
-									>
-										{tag.name}
+					<div class="grid grid-cols-2 gap-3">
+						<!-- Assignees -->
+						{#if projectMembers.length > 0}
+							<div>
+								<span class={labelClass}>Assignees</span>
+								<div class="flex flex-wrap items-center gap-2">
+									{#each selectedAssignees as member (member.user_id)}
 										<button
 											type="button"
-											class="hover:brightness-75"
-											onclick={() => { selectedTags = selectedTags.filter((t) => t.id !== tag.id); }}
+											class="group relative"
+											title={member.user.full_name}
+											onclick={() => { selectedAssignees = selectedAssignees.filter((a) => a.user_id !== member.user_id); }}
 										>
-											<X size={10} />
+											{#if member.user.avatar_url}
+												<img src={member.user.avatar_url} alt={member.user.full_name} class="h-8 w-8 rounded-full object-cover ring-2 ring-surface" />
+											{:else}
+												<span class="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent ring-2 ring-surface">
+													{member.user.full_name.charAt(0).toUpperCase()}
+												</span>
+											{/if}
+											<span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+												<X size={12} class="text-white" />
+											</span>
 										</button>
-									</span>
-								{/each}
+									{/each}
+									<div class="relative" data-dropdown>
+										<button
+											type="button"
+											class="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-muted/30 text-muted/40 transition-colors hover:border-muted/50 hover:text-muted/60"
+											title="Add assignee"
+											onclick={() => { assigneeDropdownOpen = !assigneeDropdownOpen; }}
+										>
+											<Plus size={14} />
+										</button>
+										{#if assigneeDropdownOpen}
+											<div class="absolute left-0 z-20 mt-1.5 max-h-48 w-48 overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
+												{#each projectMembers.filter((m) => m.user.is_active && !m.user.deleted_at) as member (member.user_id)}
+													{@const isSelected = selectedAssignees.some((a) => a.user_id === member.user_id)}
+													<button
+														type="button"
+														class="{dropdownItemBase} {isSelected ? 'text-accent' : 'text-sidebar-text'}"
+														onmousedown={(e) => {
+															e.preventDefault();
+															if (isSelected) {
+																selectedAssignees = selectedAssignees.filter((a) => a.user_id !== member.user_id);
+															} else {
+																selectedAssignees = [...selectedAssignees, member];
+															}
+														}}
+													>
+														{#if member.user.avatar_url}
+															<img src={member.user.avatar_url} alt="" class="mr-2 h-5 w-5 rounded-full object-cover" />
+														{:else}
+															<span class="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[10px] font-semibold text-accent">
+																{member.user.full_name.charAt(0).toUpperCase()}
+															</span>
+														{/if}
+														<span class="flex-1 truncate">{member.user.full_name}</span>
+														{#if isSelected}
+															<svg class="ml-1 h-3.5 w-3.5 shrink-0 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+														{/if}
+													</button>
+												{/each}
+											</div>
+										{/if}
+									</div>
+								</div>
 							</div>
 						{/if}
-						<div class="relative" data-dropdown>
-							<input
-								type="text"
-								bind:value={tagSearch}
-								placeholder="Search or create tag..."
-								class={inputClass}
-								onfocus={() => { tagDropdownOpen = true; }}
-								onkeydown={(e) => {
-									if (e.key === 'Escape') { tagDropdownOpen = false; tagSearch = ''; }
-									if (e.key === 'Enter' && tagSearch.trim() && !tagExactMatch) { e.preventDefault(); createTag(); }
-								}}
-							/>
-							{#if tagDropdownOpen}
-								<div class="absolute left-0 z-20 mt-1.5 max-h-40 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
-									{#each filteredTags as tag (tag.id)}
-										<button
-											type="button"
-											class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60"
-											onmousedown={(e) => {
-												e.preventDefault();
-												selectedTags = [...selectedTags, { id: tag.id, name: tag.name, color: tag.color }];
-												tagSearch = '';
-											}}
+
+						<!-- Tags -->
+						<div>
+							<span class={labelClass}>Tags</span>
+							{#if selectedTags.length > 0}
+								<div class="mb-2 flex flex-wrap gap-1.5">
+									{#each selectedTags as tag (tag.id)}
+										<span
+											class="inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-sm font-medium"
+											style="background-color: {tag.color}15; color: {tag.color}; border: 1px solid {tag.color}30"
 										>
-											<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {tag.color}"></span>
 											{tag.name}
-										</button>
-									{:else}
-										{#if !tagSearch.trim()}
-											<p class="px-3 py-2 text-base text-muted">No tags yet</p>
-										{/if}
+											<button
+												type="button"
+												class="hover:brightness-75"
+												onclick={() => { selectedTags = selectedTags.filter((t) => t.id !== tag.id); }}
+											>
+												<X size={10} />
+											</button>
+										</span>
 									{/each}
-									{#if tagSearch.trim() && !tagExactMatch}
-										<button
-											type="button"
-											class="flex w-full items-center gap-2 border-t border-surface-border/30 px-2.5 py-1.5 text-left text-sm text-accent transition-colors hover:bg-surface-hover/60"
-											onmousedown={(e) => {
-												e.preventDefault();
-												createTag();
-											}}
-										>
-											<Plus size={12} />
-											Create "{tagSearch.trim()}"
-										</button>
-									{/if}
 								</div>
 							{/if}
+							<div class="relative" data-dropdown>
+								<input
+									type="text"
+									bind:value={tagSearch}
+									placeholder="Search or create tag..."
+									class={inputClass}
+									onfocus={() => { tagDropdownOpen = true; }}
+									onkeydown={(e) => {
+										if (e.key === 'Escape') { tagDropdownOpen = false; tagSearch = ''; }
+										if (e.key === 'Enter' && tagSearch.trim() && !tagExactMatch) { e.preventDefault(); createTag(); }
+									}}
+								/>
+								{#if tagDropdownOpen}
+									<div class="absolute left-0 z-20 mt-1.5 max-h-40 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
+										{#each filteredTags as tag (tag.id)}
+											<button
+												type="button"
+												class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60"
+												onmousedown={(e) => {
+													e.preventDefault();
+													selectedTags = [...selectedTags, { id: tag.id, name: tag.name, color: tag.color }];
+													tagSearch = '';
+												}}
+											>
+												<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {tag.color}"></span>
+												{tag.name}
+											</button>
+										{:else}
+											{#if !tagSearch.trim()}
+												<p class="px-3 py-2 text-base text-muted">No tags yet</p>
+											{/if}
+										{/each}
+										{#if tagSearch.trim() && !tagExactMatch}
+											<button
+												type="button"
+												class="flex w-full items-center gap-2 border-t border-surface-border/30 px-2.5 py-1.5 text-left text-sm text-accent transition-colors hover:bg-surface-hover/60"
+												onmousedown={(e) => {
+													e.preventDefault();
+													createTag();
+												}}
+											>
+												<Plus size={12} />
+												Create "{tagSearch.trim()}"
+											</button>
+										{/if}
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 				{/if}
