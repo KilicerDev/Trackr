@@ -1,5 +1,8 @@
+<svelte:head><title>Organizations – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fly, fade } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
@@ -365,13 +368,15 @@
 {#if selectedOrg}
 	<div class="fixed inset-0 z-[60]" role="presentation">
 		<button
-			class="absolute inset-0 bg-black/30 transition-opacity"
+			transition:fade={{ duration: 150 }}
+			class="absolute inset-0 bg-black/30"
 			onclick={closePanel}
 			tabindex="-1"
 			aria-label="Close panel"
 		></button>
 
 		<div
+			transition:fly={{ x: 420, duration: 200 }}
 			class="absolute top-0 right-0 bottom-0 flex w-[420px] flex-col border-l border-surface-border bg-surface shadow-xl"
 			role="dialog"
 			aria-modal="true"
