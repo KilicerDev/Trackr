@@ -7,6 +7,8 @@
 	import logo from '$lib/assets/logo.png';
 	import { localizeHref } from '$lib/paraglide/runtime';
 
+	const profileActive = $derived(page.url.pathname === '/profile' || page.url.pathname.startsWith('/profile'));
+
 	let { pinned = $bindable(false) } = $props();
 
 	let hovered = $state(false);
@@ -121,6 +123,35 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Profile -->
+	<a
+		href={localizeHref('/profile')}
+		class="mx-2 flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 transition-all duration-150
+			{profileActive
+				? 'bg-accent/10'
+				: 'hover:bg-sidebar-hover-bg'}"
+	>
+		{#if auth.user?.avatar_url}
+			<img
+				src={auth.user.avatar_url}
+				alt={auth.user.full_name}
+				class="h-7 w-7 shrink-0 rounded-full object-cover"
+			/>
+		{:else}
+			<div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-medium text-accent">
+				{auth.user?.full_name?.charAt(0)?.toUpperCase() ?? '?'}
+			</div>
+		{/if}
+		{#if expanded}
+			<div class="min-w-0 flex-1">
+				<p class="truncate text-base font-medium {profileActive ? 'text-accent' : 'text-sidebar-text'}">
+					{auth.user?.full_name ?? 'User'}
+				</p>
+				<p class="truncate text-xs text-muted/50">{auth.user?.email ?? ''}</p>
+			</div>
+		{/if}
+	</a>
 
 	<!-- Collapse toggle -->
 	<div class="border-t border-sidebar-border px-2 py-1.5">

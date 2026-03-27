@@ -6,10 +6,6 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import type { Tier, CreateTierInput } from '$lib/api/config';
-	import { fontStore, type FontFamily } from '$lib/stores/font.svelte';
-	import { theme, COLOR_SCHEMES, type ColorScheme } from '$lib/stores/theme.svelte';
-	import { densityStore, DENSITY_OPTIONS, type Density } from '$lib/stores/density.svelte';
-
 	let loading = $state(true);
 	let saving = $state(false);
 	let error = $state<string | null>(null);
@@ -69,9 +65,6 @@
 		{ key: 'branding', label: 'Branding' },
 		{ key: 'defaults', label: 'Defaults' }
 	];
-
-	// Accent color input
-	let accentInput = $state(theme.accentColor);
 
 	// Dropdown state
 	let openDropdown = $state<string | null>(null);
@@ -503,107 +496,6 @@
 			<!-- Defaults -->
 			{#if activeTab === 'defaults'}
 				<form onsubmit={(e) => { e.preventDefault(); save(); }} class="space-y-8">
-					<section>
-						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Color Scheme</h2>
-						<div class="flex gap-3">
-							{#each COLOR_SCHEMES as scheme (scheme.key)}
-								<button
-									type="button"
-									class="flex flex-1 flex-col gap-1 rounded border px-3 py-2.5 text-left transition-all duration-150
-										{theme.mode === scheme.key
-											? 'border-accent/30 bg-accent/5'
-											: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
-									onclick={() => theme.setScheme(scheme.key)}
-								>
-									<span class="text-base font-medium text-sidebar-text">{scheme.label}</span>
-									<span class="text-sm text-muted/50">{scheme.description}</span>
-									<div class="mt-2 flex gap-1.5">
-										{#each scheme.swatches as color}
-											<span class="h-4 w-4 rounded-sm border border-surface-border/40" style="background:{color}"></span>
-										{/each}
-									</div>
-								</button>
-							{/each}
-						</div>
-					</section>
-
-					<section>
-						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Accent Color</h2>
-						<div class="flex max-w-lg items-center gap-3">
-							<input
-								type="color"
-								value={theme.accentColor}
-								oninput={(e) => {
-									const v = (e.target as HTMLInputElement).value;
-									accentInput = v;
-									theme.setAccentColor(v);
-								}}
-								class="h-7 w-7 shrink-0 cursor-pointer rounded-sm border border-surface-border/40 bg-transparent p-0.5"
-							/>
-							<input
-								type="text"
-								value={accentInput}
-								maxlength="7"
-								placeholder="#ff4867"
-								class="{inputClass} font-mono !w-28"
-								oninput={(e) => {
-									let v = (e.target as HTMLInputElement).value;
-									if (v && !v.startsWith('#')) v = '#' + v;
-									accentInput = v;
-									if (/^#[0-9a-fA-F]{6}$/.test(v)) theme.setAccentColor(v);
-								}}
-							/>
-							{#if theme.accentColor !== theme.defaultAccent}
-								<button
-									type="button"
-									class="text-sm text-muted/50 transition-all duration-150 hover:text-accent"
-									onclick={() => { theme.resetAccent(); accentInput = theme.defaultAccent; }}
-								>
-									Reset
-								</button>
-							{/if}
-						</div>
-						<p class="mt-2 text-sm text-muted">Used for buttons, active states, and highlights across the app.</p>
-					</section>
-
-					<section>
-						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Font</h2>
-						<div class="flex gap-3">
-							{#each [{ key: 'geist' as FontFamily, label: 'Geist', sample: 'The quick brown fox' }, { key: 'geist-mono' as FontFamily, label: 'Geist Mono', sample: 'The quick brown fox' }] as opt (opt.key)}
-								<button
-									type="button"
-									class="flex flex-1 flex-col gap-2 rounded border px-3 py-2.5 text-left transition-all duration-150
-										{fontStore.current === opt.key
-											? 'border-accent/30 bg-accent/5'
-											: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
-									onclick={() => fontStore.set(opt.key)}
-								>
-									<span class="text-base font-medium text-sidebar-text">{opt.label}</span>
-									<span class="text-base text-muted/50" style="font-family: {opt.key === 'geist' ? "'Geist', sans-serif" : "'GeistMono', monospace"}">{opt.sample}</span>
-								</button>
-							{/each}
-						</div>
-					</section>
-
-					<section>
-						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Density</h2>
-						<div class="flex gap-3">
-							{#each DENSITY_OPTIONS as opt (opt.key)}
-								<button
-									type="button"
-									class="flex flex-1 flex-col gap-1 rounded border px-3 py-2.5 text-left transition-all duration-150
-										{densityStore.current === opt.key
-											? 'border-accent/30 bg-accent/5'
-											: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
-									onclick={() => densityStore.set(opt.key)}
-								>
-									<span class="text-base font-medium text-sidebar-text">{opt.label}</span>
-									<span class="text-sm text-muted/50">{opt.description}</span>
-								</button>
-							{/each}
-						</div>
-					</section>
-
 					<section>
 						<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Defaults for New Organizations</h2>
 						<div class="grid max-w-lg grid-cols-3 gap-4">
