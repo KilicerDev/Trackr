@@ -1,3 +1,5 @@
+<svelte:head><title>Settings – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';

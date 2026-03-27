@@ -1,3 +1,5 @@
+<svelte:head><title>Setup – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
@@ -170,6 +172,7 @@
 								id="password"
 								name="password"
 								type={showPassword ? 'text' : 'password'}
+								autocomplete="new-password"
 								placeholder={m.auth_password()}
 								required
 								class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 pr-9 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
@@ -200,6 +203,7 @@
 							id="confirm_password"
 							name="confirm_password"
 							type="password"
+							autocomplete="new-password"
 							placeholder={m.setup_confirm_password()}
 							required
 							class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"

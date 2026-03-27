@@ -1,3 +1,5 @@
+<svelte:head><title>Login – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';

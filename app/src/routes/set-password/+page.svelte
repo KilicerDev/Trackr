@@ -1,3 +1,5 @@
+<svelte:head><title>Set Password – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
@@ -80,6 +82,7 @@
 							<input
 								id="password"
 								type={showPassword ? 'text' : 'password'}
+								autocomplete="new-password"
 								placeholder="At least 6 characters"
 								bind:value={password}
 								required
@@ -108,6 +111,7 @@
 						<input
 							id="confirm-password"
 							type={showPassword ? 'text' : 'password'}
+							autocomplete="new-password"
 							placeholder="Repeat your password"
 							bind:value={confirmPassword}
 							required

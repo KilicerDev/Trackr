@@ -41,6 +41,7 @@
 </script>
 
 <svelte:head>
+	<title>Trackr</title>
 	<link rel="icon" href={favicon} />
 	<meta name="robots" content="noindex, nofollow" />
 	<meta title="Trackr" />

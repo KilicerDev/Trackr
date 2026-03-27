@@ -1,3 +1,5 @@
+<svelte:head><title>Forgot Password – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { LoaderCircle } from '@lucide/svelte';
