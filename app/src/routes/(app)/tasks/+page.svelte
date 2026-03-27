@@ -1,5 +1,8 @@
+<svelte:head><title>Tasks – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { slide, fly } from 'svelte/transition';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
@@ -607,7 +610,7 @@
 	});
 </script>
 
-<div class="flex h-full">
+<div class="flex h-full overflow-hidden">
 <div class="flex min-w-0 flex-1 flex-col {viewMode === 'board' ? 'overflow-hidden' : 'overflow-y-auto'}">
 	<!-- ===== HEADER ===== -->
 	<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-3 py-1.5">
@@ -874,7 +877,7 @@
 					</button>
 					<!-- Task cards -->
 					{#if !isCollapsed}
-						<div class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+						<div transition:slide={{ duration: 150 }} class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
 							{#each group.tasks as task, i (task.id)}
 								<TaskRow
 									{task}
@@ -1030,12 +1033,20 @@
 </div>
 
 <!-- ===== TASK DETAIL PANEL ===== -->
-{#if selectedTaskId}
-	<TaskDetailPanel
-		taskId={selectedTaskId}
-		onClose={() => selectTask(null)}
-	/>
-{/if}
+<div
+	class="h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-out"
+	style="width: {selectedTaskId ? '420px' : '0px'}"
+>
+	{#if selectedTaskId}
+		<div class="h-full w-[420px]">
+			<TaskDetailPanel
+				taskId={selectedTaskId}
+				onClose={() => selectTask(null)}
+				onUpdate={async () => { await taskStore.loadAll(getFilters(), currentPage, perPage); if (viewMode === 'board') rebuildBoard(); }}
+			/>
+		</div>
+	{/if}
+</div>
 </div>
 
 <!-- ===== CREATE MODAL ===== -->
@@ -1050,23 +1061,25 @@
 
 <!-- ===== SAVE VIEW MODAL ===== -->
 <Modal open={saveModalOpen} onClose={() => (saveModalOpen = false)} maxWidth="max-w-sm">
-	<div class="px-4 py-3 border-b border-surface-border">
-		<h2 class="text-lg font-semibold text-sidebar-text">Save View</h2>
+	<div class="px-3 py-2.5 border-b border-surface-border">
+		<h2 class="text-md font-semibold text-sidebar-text">Save view</h2>
 	</div>
-	<form onsubmit={(e) => { e.preventDefault(); saveCurrentView(); }} class="p-4">
-		<label for="view-name" class="mb-1.5 block text-sm font-medium uppercase tracking-wider text-sidebar-icon">Name</label>
-		<input
-			id="view-name"
-			type="text"
-			bind:value={saveViewName}
-			placeholder="e.g. My active bugs"
-			class="w-full border border-surface-border bg-surface px-3 py-2 text-base text-sidebar-text outline-none transition-colors placeholder:text-sidebar-icon/70 focus:border-accent/40 hover:border-sidebar-icon/30"
-		/>
-		<p class="mt-2 text-sm text-muted">Saves the current filters, view mode, and grouping.</p>
-		<div class="mt-4 flex justify-end gap-2">
+	<form onsubmit={(e) => { e.preventDefault(); saveCurrentView(); }} class="p-3 space-y-3">
+		<div>
+			<label for="view-name" class="mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50">Name</label>
+			<input
+				id="view-name"
+				type="text"
+				bind:value={saveViewName}
+				placeholder="e.g. My active bugs"
+				class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60"
+			/>
+			<p class="mt-1.5 text-xs text-muted/40">Saves the current filters, view mode, and grouping.</p>
+		</div>
+		<div class="flex justify-end gap-2 pt-1">
 			<button
 				type="button"
-				class="border border-surface-border bg-surface px-4 py-2 text-base font-medium text-sidebar-text transition-colors hover:border-sidebar-icon/30 hover:bg-surface-hover focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
+				class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 				onclick={() => (saveModalOpen = false)}
 			>
 				Cancel
@@ -1074,9 +1087,9 @@
 			<button
 				type="submit"
 				disabled={savingView || !saveViewName.trim()}
-				class="bg-accent px-4 py-2 text-base font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50 focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
+				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 			>
-				{savingView ? 'Saving...' : 'Save view'}
+				{savingView ? 'Saving…' : 'Save view'}
 			</button>
 		</div>
 	</form>

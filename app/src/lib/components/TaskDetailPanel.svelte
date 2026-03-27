@@ -43,9 +43,10 @@
 		taskId: string;
 		members?: Member[];
 		onClose: () => void;
+		onUpdate?: () => void;
 	}
 
-	let { taskId, members: membersProp = [], onClose }: Props = $props();
+	let { taskId, members: membersProp = [], onClose, onUpdate }: Props = $props();
 
 	let fetchedMembers = $state<Member[]>([]);
 	let members = $derived(membersProp.length > 0 ? membersProp : fetchedMembers);
@@ -132,6 +133,7 @@
 		syncTagsToStore();
 		try {
 			await api.tags.addToTask(task.id, tag.id);
+			onUpdate?.();
 		} catch {
 			taskTags = taskTags.filter((t) => t.id !== tag.id);
 			syncTagsToStore();
@@ -145,6 +147,7 @@
 		syncTagsToStore();
 		try {
 			await api.tags.removeFromTask(task.id, tagId);
+			onUpdate?.();
 		} catch {
 			taskTags = prev;
 			syncTagsToStore();
@@ -355,6 +358,7 @@
 			const updated = await taskStore.update(task.id, { [field]: value });
 			if (updated) task = updated;
 			if (field === 'parent_id') await loadTask(task!.id);
+			onUpdate?.();
 		} catch {
 			task = prev;
 		}
@@ -886,6 +890,7 @@
 													try {
 														await api.tasks.assign(task.id, m.user_id, auth.user.id);
 														await loadTask(task.id);
+														onUpdate?.();
 													} catch {
 														/* */
 													}
@@ -929,6 +934,7 @@
 											try {
 												await api.tasks.unassign(task.id, a.user_id);
 												await loadTask(task.id);
+												onUpdate?.();
 											} catch {
 												/* */
 											}

@@ -1,5 +1,8 @@
+<svelte:head><title>Projects – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
@@ -344,7 +347,7 @@
 					<span class="text-xs text-muted/30">{group.projects.length}</span>
 				</button>
 				{#if !isCollapsed}
-					<div class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+					<div transition:slide={{ duration: 150 }} class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
 						{#each group.projects as project, i (project.id)}
 							{@render projectRow(project)}
 							{#if i < group.projects.length - 1}

@@ -456,7 +456,9 @@
 	});
 </script>
 
-<div class="flex h-full">
+<svelte:head><title>{project?.name ?? 'Project'} – Trackr</title></svelte:head>
+
+<div class="flex h-full overflow-hidden">
 <div class="min-w-0 flex-1 flex flex-col overflow-hidden">
 <div class="mx-auto w-full flex flex-col flex-1 min-h-0">
 	<div class="flex shrink-0 items-center gap-3 px-3 py-1.5">
@@ -989,6 +991,7 @@
 						>
 							{#each col.items as task (task.id)}
 								{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
+								{@const cardTags = ((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined)?.map((tt) => tt.tag).filter(Boolean) ?? []}
 								<button
 									class="mb-1.5 w-full cursor-pointer rounded border border-surface-border/50 bg-surface/50 px-3 py-2.5 text-left transition-all duration-150 hover:bg-surface/80 last:mb-0 {selectedTaskId === task.id ? '!border-accent/50 !bg-accent/15' : ''}"
 									onclick={() => selectTask(task.id)}
@@ -998,9 +1001,34 @@
 										<span class="font-mono text-xs text-muted/50">{task.short_id || '—'}</span>
 									</div>
 									<p class="mb-1.5 line-clamp-2 text-base leading-snug text-sidebar-text">{task.title}</p>
-									<span class="text-xs {task.priority === 'urgent' ? 'text-red-400' : task.priority === 'high' ? 'text-orange-400' : task.priority === 'medium' ? 'text-yellow-500' : task.priority === 'low' ? 'text-blue-400' : 'text-muted/50'}">
-										{formatPriority(task.priority)}
-									</span>
+									<div class="flex items-center gap-1.5">
+										<span class="text-xs {task.priority === 'urgent' ? 'text-red-400' : task.priority === 'high' ? 'text-orange-400' : task.priority === 'medium' ? 'text-yellow-500' : task.priority === 'low' ? 'text-blue-400' : 'text-muted/50'}">
+											{formatPriority(task.priority)}
+										</span>
+										{#if cardTags.length > 0}
+											<div class="flex flex-1 items-center gap-1 min-w-0">
+												{#each cardTags.slice(0, 2) as tag (tag.id)}
+													<span class="rounded px-1 py-px text-2xs font-medium truncate" style="color: {tag.color}; opacity: 0.5">{tag.name}</span>
+												{/each}
+												{#if cardTags.length > 2}
+													<span class="text-2xs text-muted/30">+{cardTags.length - 2}</span>
+												{/if}
+											</div>
+										{/if}
+										{#if task.assignments?.length}
+											<div class="ml-auto flex shrink-0 -space-x-1">
+												{#each task.assignments.slice(0, 3) as a (a.user_id)}
+													{#if a.user.avatar_url}
+														<img src={a.user.avatar_url} alt={a.user.full_name} class="h-4 w-4 rounded-full border border-page-bg object-cover" />
+													{:else}
+														<span class="flex h-4 w-4 items-center justify-center rounded-full border border-page-bg bg-accent/10 text-4xs font-semibold text-accent">
+															{a.user.full_name.charAt(0)}
+														</span>
+													{/if}
+												{/each}
+											</div>
+										{/if}
+									</div>
 								</button>
 							{/each}
 						</div>
@@ -1061,14 +1089,22 @@
 	/>
 {/if}
 
-{#if selectedTaskId}
-	<TaskDetailPanel
-		taskId={selectedTaskId}
-		members={(project?.members ?? []).map((m) => ({
-			user_id: m.user_id,
-			user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url, is_active: m.user.is_active, deleted_at: m.user.deleted_at }
-		}))}
-		onClose={() => selectTask(null)}
-	/>
-{/if}
+<div
+	class="h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-out"
+	style="width: {selectedTaskId ? '420px' : '0px'}"
+>
+	{#if selectedTaskId}
+		<div class="h-full w-[420px]">
+			<TaskDetailPanel
+				taskId={selectedTaskId}
+				members={(project?.members ?? []).map((m) => ({
+					user_id: m.user_id,
+					user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url, is_active: m.user.is_active, deleted_at: m.user.deleted_at }
+				}))}
+				onClose={() => selectTask(null)}
+				onUpdate={async () => { await taskStore.load(getTaskFilters()); if (taskViewMode === 'board') rebuildTaskBoard(); }}
+			/>
+		</div>
+	{/if}
+</div>
 </div>

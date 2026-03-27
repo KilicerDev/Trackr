@@ -1,3 +1,5 @@
+<svelte:head><title>Tickets – Trackr</title></svelte:head>
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -245,7 +247,7 @@
 	});
 </script>
 
-<div class="flex h-full">
+<div class="flex h-full overflow-hidden">
 <div class="min-w-0 flex-1 overflow-y-auto">
 <div
 	class="mx-auto w-full"
@@ -655,14 +657,21 @@
 </div>
 </div>
 
-{#if selectedTicketId}
-	<TicketDetailPanel
-		ticketId={selectedTicketId}
-		{members}
-		onClose={() => selectTicket(null)}
-		onUpdate={() => applyFilters()}
-	/>
-{/if}
+<div
+	class="h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-out"
+	style="width: {selectedTicketId ? '420px' : '0px'}"
+>
+	{#if selectedTicketId}
+		<div class="h-full w-[420px]">
+			<TicketDetailPanel
+				ticketId={selectedTicketId}
+				{members}
+				onClose={() => selectTicket(null)}
+				onUpdate={() => applyFilters()}
+			/>
+		</div>
+	{/if}
+</div>
 </div>
 
 <style>
