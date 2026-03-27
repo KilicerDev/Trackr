@@ -23,6 +23,14 @@
 				var font = localStorage.getItem('font');
 				if (font === 'geist-mono')
 					el.style.setProperty('--font-sans', "'GeistMono', monospace");
+
+				var density = localStorage.getItem('density');
+				if (density === 'compact') el.classList.add('spacing-compact');
+				else if (density === 'comfortable') el.classList.add('spacing-comfortable');
+
+				var textSize = localStorage.getItem('text-size');
+				if (textSize === 'compact') el.classList.add('text-compact');
+				else if (textSize === 'comfortable') el.classList.add('text-comfortable');
 			})();
 		</script>
 		<style>

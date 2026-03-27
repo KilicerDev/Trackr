@@ -1,24 +1,25 @@
 const STORAGE_KEY = 'density';
 
-export type Density = 'default' | 'compact' | 'comfortable' | 'cozy';
+export type Density = 'default' | 'compact' | 'comfortable';
 
 export const DENSITY_OPTIONS: { key: Density; label: string; description: string }[] = [
-	{ key: 'compact', label: 'Compact', description: 'Tighter layout, smaller text' },
-	{ key: 'default', label: 'Default', description: 'Standard spacing and font sizes' },
-	{ key: 'comfortable', label: 'Comfortable', description: 'Slightly larger text' },
-	{ key: 'cozy', label: 'Cozy', description: 'Roomier layout, largest text' }
+	{ key: 'compact', label: 'Compact', description: 'Tighter padding and gaps' },
+	{ key: 'default', label: 'Default', description: 'Standard spacing' },
+	{ key: 'comfortable', label: 'Comfortable', description: 'More breathing room' }
 ];
 
-const DENSITY_CLASSES: Density[] = ['compact', 'comfortable', 'cozy'];
+const CSS_CLASSES = ['spacing-compact', 'spacing-comfortable'] as const;
 
 function applyToDom(density: Density) {
 	if (typeof document === 'undefined') return;
 	const cl = document.documentElement.classList;
-	for (const c of DENSITY_CLASSES) cl.toggle(c, density === c);
+	for (const c of CSS_CLASSES) cl.remove(c);
+	if (density === 'compact') cl.add('spacing-compact');
+	else if (density === 'comfortable') cl.add('spacing-comfortable');
 }
 
 function isValid(v: string | null): v is Density {
-	return v === 'default' || v === 'compact' || v === 'comfortable' || v === 'cozy';
+	return v === 'default' || v === 'compact' || v === 'comfortable';
 }
 
 class DensityState {
