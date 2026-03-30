@@ -1,4 +1,4 @@
-# Trackr 
+# Trackr
 
 Project management and support ticket platform built with SvelteKit and Supabase.
 
