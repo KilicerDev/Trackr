@@ -21,6 +21,7 @@
     if (!browser || !editorEl) return;
 
     let destroyed = false;
+    let ready = false;
     currentPageContent = content;
 
     import("./use-editor").then(({ createWikiEditor }) => {
@@ -28,7 +29,7 @@
       createWikiEditor({
         target: editorEl!,
         content: currentPageContent ?? "",
-        onChange: (md) => onchange?.(md),
+        onChange: (md) => { if (ready) onchange?.(md); },
         readonly,
       }).then((ed) => {
         if (destroyed) {
@@ -36,6 +37,7 @@
           return;
         }
         instance = ed;
+        ready = true;
       });
     });
 
