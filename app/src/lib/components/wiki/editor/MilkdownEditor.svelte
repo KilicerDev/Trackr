@@ -12,7 +12,7 @@
     onchange?: (markdown: string) => void;
     readonly?: boolean;
   } = $props();
-
+ 
   let editorEl: HTMLDivElement | undefined = $state();
   let instance: WikiEditorInstance | null = null;
   let currentPageContent: string | null = null;
