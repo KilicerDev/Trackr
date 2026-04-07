@@ -85,11 +85,16 @@
 
 	<!-- Update banner -->
 	{#if showUpdateBanner}
-		<div class="mx-2 mb-2">
-			{#if expanded}
-				<div class="relative flex items-start gap-2 rounded-sm bg-accent/8 px-3 py-2.5">
-					<ArrowUpCircle size={16} class="mt-0.5 shrink-0 text-accent" />
-					<div class="min-w-0 flex-1">
+		<div class="mx-2 mb-2 overflow-hidden rounded-sm {expanded ? 'bg-accent/8' : ''} transition-colors duration-200">
+			<div class="flex items-start gap-2 {expanded ? 'px-3 py-2.5' : 'justify-center py-2'}">
+				<span class="relative mt-0.5 shrink-0">
+					<ArrowUpCircle size={16} class="text-accent" />
+					{#if !expanded}
+						<span class="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-accent"></span>
+					{/if}
+				</span>
+				{#if expanded}
+					<div class="min-w-0 flex-1 whitespace-nowrap">
 						<p class="text-sm font-medium text-sidebar-text">Update available</p>
 						<p class="mt-0.5 text-xs text-muted">
 							v{updateChecker.latestVersion}
@@ -112,22 +117,16 @@
 					>
 						<X size={12} />
 					</button>
-				</div>
-			{:else}
-				<div class="flex justify-center py-2">
-					<span class="relative">
-						<ArrowUpCircle size={16} class="text-accent" />
-						<span class="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-accent"></span>
-					</span>
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</div>
 	{/if}
 
 	<!-- Profile -->
 	<a
 		href={localizeHref('/profile')}
-		class="mx-2 flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 transition-all duration-150
+		class="mx-2 flex items-center overflow-hidden rounded-sm py-1.5 transition-all duration-150
+			{expanded ? 'gap-2.5 px-2.5' : 'justify-center'}
 			{profileActive
 				? 'bg-accent/10'
 				: 'hover:bg-sidebar-hover-bg'}"
