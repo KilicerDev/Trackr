@@ -2,8 +2,11 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { localizeHref } from "$lib/paraglide/runtime";
-  import { wikiStore, type WikiFolder, type WikiPageMeta } from "$lib/stores/wiki.svelte";
+  import { wikiStore, type WikiFolder, type WikiPageMeta, type WikiFile } from "$lib/stores/wiki.svelte";
   import { auth } from "$lib/stores/auth.svelte";
+  import { notifications } from "$lib/stores/notifications.svelte";
+  import { isAllowedMimeType, MAX_FILE_SIZE, formatFileSize } from "$lib/config/attachments";
+  import { api } from "$lib/api";
   import { Plus, FolderPlus, Search, PanelLeftClose, PanelLeftOpen } from "@lucide/svelte";
   import WikiTreeItem from "./WikiTreeItem.svelte";
   import MoveToFolderModal from "./MoveToFolderModal.svelte";
@@ -24,8 +27,9 @@
   // Delete confirm state
   let deleteConfirmOpen = $state(false);
   let deleteTargetId = $state<string | null>(null);
-  let deleteTargetType = $state<"folder" | "page">("page");
+  let deleteTargetType = $state<"folder" | "page" | "file">("page");
   let deleteTargetName = $state("");
+  let deleteTargetStoragePath = $state<string | null>(null);
   let deleteLoading = $state(false);
 
   // Share modal state
@@ -37,6 +41,7 @@
   const isAdmin = $derived(wikiStore.isWikiAdmin);
 
   const activePageId = $derived(($page.params as Record<string, string>)?.pageId ?? null);
+  const activeFileId = $derived(($page.params as Record<string, string>)?.fileId ?? null);
 
   const isSearching = $derived(searchQuery.trim().length > 0);
   const query = $derived(searchQuery.toLowerCase().trim());
@@ -55,10 +60,17 @@
       : wikiStore.pages.filter((p) => !p.folder_id)
   );
 
+  const searchFiles = $derived(
+    isSearching
+      ? wikiStore.files.filter((f) => f.file_name.toLowerCase().includes(query))
+      : []
+  );
+
   function getFolderChildren(folderId: string) {
     return {
       folders: wikiStore.folders.filter((f) => f.parent_id === folderId),
       pages: wikiStore.pages.filter((p) => p.folder_id === folderId),
+      files: wikiStore.files.filter((f) => f.folder_id === folderId),
     };
   }
 
@@ -138,13 +150,15 @@
     goto(localizeHref(`/wiki/${id}`));
   }
 
-  function handleRenameStart(id: string, _type: "folder" | "page") {
+  function handleRenameStart(id: string, _type: "folder" | "page" | "file") {
     renamingId = id;
   }
 
-  async function handleRenameCommit(id: string, value: string, itemType: "folder" | "page") {
+  async function handleRenameCommit(id: string, value: string, itemType: "folder" | "page" | "file") {
     if (itemType === "folder") {
       await wikiStore.updateFolder(id, { name: value });
+    } else if (itemType === "file") {
+      await wikiStore.renameFile(id, value);
     } else {
       await wikiStore.updatePage(id, { title: value, updated_by: auth.user?.id });
     }
@@ -171,12 +185,65 @@
     deleteConfirmOpen = true;
   }
 
+  function handleSelectFile(id: string) {
+    goto(localizeHref(`/wiki/file/${id}`));
+  }
+
+  function handleDeleteFile(id: string, storagePath: string) {
+    const file = wikiStore.files.find((f) => f.id === id);
+    deleteTargetId = id;
+    deleteTargetType = "file";
+    deleteTargetName = file?.file_name ?? "File";
+    deleteTargetStoragePath = storagePath;
+    deleteConfirmOpen = true;
+  }
+
+  async function handleDownloadFile(file: WikiFile) {
+    try {
+      const url = await api.wiki.files.getSignedUrl(file.storage_path);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.file_name;
+      a.click();
+    } catch {
+      notifications.add("error", "Failed to download file");
+    }
+  }
+
+  async function handleUploadFiles(folderId: string, droppedFiles: File[]) {
+    const orgId = auth.organizationId;
+    const userId = auth.user?.id;
+    if (!orgId || !userId) return;
+
+    for (const file of droppedFiles) {
+      if (!isAllowedMimeType(file.type)) {
+        notifications.add("error", `${file.name}: file type not allowed`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        notifications.add("error", `${file.name}: exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`);
+        continue;
+      }
+      const n = notifications.action(`Uploading ${file.name}...`);
+      try {
+        await wikiStore.uploadFile(file, folderId, orgId, userId);
+        n.success(`Uploaded ${file.name}`);
+      } catch (e) {
+        n.error(`Failed to upload ${file.name}`, e instanceof Error ? e.message : undefined);
+      }
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTargetId) return;
     deleteLoading = true;
     try {
       if (deleteTargetType === "folder") {
         await wikiStore.deleteFolder(deleteTargetId);
+      } else if (deleteTargetType === "file" && deleteTargetStoragePath) {
+        const wasActive = deleteTargetId === activeFileId;
+        await wikiStore.deleteFile(deleteTargetId, deleteTargetStoragePath);
+        if (wasActive) goto(localizeHref("/wiki"));
       } else {
         const wasActive = deleteTargetId === activePageId;
         await wikiStore.deletePage(deleteTargetId);
@@ -184,6 +251,7 @@
       }
       deleteConfirmOpen = false;
       deleteTargetId = null;
+      deleteTargetStoragePath = null;
     } catch (e) {
       console.error("[Wiki] Delete failed:", e);
       alert("Failed to delete: " + (e instanceof Error ? e.message : JSON.stringify(e)));
@@ -253,7 +321,7 @@
 
 <aside
   class="flex h-full shrink-0 flex-col border-r border-surface-border bg-surface/30 overflow-hidden transition-[width] duration-200 ease-out"
-  style="width: {collapsed ? '40px' : '240px'}"
+  style="width: {collapsed ? '40px' : '280px'}"
 >
   <!-- Collapsed: just the expand button -->
   {#if collapsed}
@@ -266,7 +334,7 @@
     </button>
   {:else}
     <!-- Header -->
-    <div class="flex h-10 items-center justify-between px-3" style="min-width: 240px;">
+    <div class="flex h-10 items-center justify-between px-3" style="min-width: 280px;">
       <span class="text-xs font-medium tracking-[0.08em] uppercase text-sidebar-label/70">Wiki</span>
       <div class="flex items-center gap-0.5">
         {#if isAdmin}
@@ -296,12 +364,12 @@
     </div>
 
     <!-- Search -->
-    <div class="px-2.5 pb-1.5" style="min-width: 240px;">
+    <div class="px-2.5 pb-1.5" style="min-width: 280px;">
       <div class="relative">
         <Search size={14} class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted/30" />
         <input
           type="text"
-          placeholder="Search pages..."
+          placeholder="Search wiki..."
           bind:value={searchQuery}
           class="w-full rounded-sm bg-surface-hover/40 py-1 pl-7 pr-2 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60"
         />
@@ -309,7 +377,7 @@
     </div>
 
     <!-- Tree -->
-    <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1" style="min-width: 240px;">
+    <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1" style="min-width: 280px;">
       {#each rootFolders as folder (folder.id)}
         {@const children = getFolderChildren(folder.id)}
         <WikiTreeItem
@@ -317,19 +385,26 @@
           item={folder}
           depth={0}
           {activePageId}
+          {activeFileId}
           childFolders={children.folders}
           childPages={children.pages}
+          childFiles={children.files}
           allFolders={wikiStore.folders}
           allPages={wikiStore.pages}
+          allFiles={wikiStore.files}
           canEdit={isAdmin || wikiStore.getEffectiveAccess(folder, "folder") === "read_write"}
           canShare={isAdmin}
           {renamingId}
           onSelectPage={handleSelectPage}
+          onSelectFile={handleSelectFile}
           onRenameStart={handleRenameStart}
           onRenameCommit={handleRenameCommit}
           onRenameCancel={handleRenameCancel}
           onDeleteFolder={handleDeleteFolder}
           onDeletePage={handleDeletePage}
+          onDeleteFile={handleDeleteFile}
+          onDownloadFile={handleDownloadFile}
+          onUploadFiles={handleUploadFiles}
           onMovePageRequest={handleMovePageRequest}
           onMoveFolderRequest={handleMoveFolderRequest}
           onNewPageInFolder={handleNewPageInFolder}
@@ -344,16 +419,22 @@
           item={p}
           depth={0}
           {activePageId}
+          {activeFileId}
           allFolders={wikiStore.folders}
           allPages={wikiStore.pages}
+          allFiles={wikiStore.files}
           canEdit={isAdmin || wikiStore.getEffectiveAccess(p, "page") === "read_write"}
           canShare={isAdmin}
           {renamingId}
           onSelectPage={handleSelectPage}
+          onSelectFile={handleSelectFile}
           onRenameStart={handleRenameStart}
           onRenameCommit={handleRenameCommit}
           onRenameCancel={handleRenameCancel}
           onDeletePage={handleDeletePage}
+          onDeleteFile={handleDeleteFile}
+          onDownloadFile={handleDownloadFile}
+          onUploadFiles={handleUploadFiles}
           onMovePageRequest={handleMovePageRequest}
           onMoveFolderRequest={handleMoveFolderRequest}
           onNewPageInFolder={handleNewPageInFolder}
@@ -362,7 +443,32 @@
         />
       {/each}
 
-      {#if !rootFolders.length && !rootPages.length && !wikiStore.loading}
+      {#each searchFiles as f (f.id)}
+        <WikiTreeItem
+          type="file"
+          item={f}
+          depth={0}
+          {activePageId}
+          {activeFileId}
+          allFolders={wikiStore.folders}
+          allPages={wikiStore.pages}
+          allFiles={wikiStore.files}
+          canEdit={isAdmin || wikiStore.getEffectiveAccess({ id: f.id, folder_id: f.folder_id }, "page") === "read_write"}
+          canShare={isAdmin}
+          {renamingId}
+          onSelectPage={handleSelectPage}
+          onSelectFile={handleSelectFile}
+          onRenameStart={handleRenameStart}
+          onRenameCommit={handleRenameCommit}
+          onRenameCancel={handleRenameCancel}
+          onDeleteFile={handleDeleteFile}
+          onDownloadFile={handleDownloadFile}
+          onUploadFiles={handleUploadFiles}
+          onShareRequest={handleShareRequest}
+        />
+      {/each}
+
+      {#if !rootFolders.length && !rootPages.length && !searchFiles.length && !wikiStore.loading}
         <div class="px-3 py-6 text-center text-xs text-muted/40">
           No pages yet
         </div>
@@ -395,9 +501,9 @@
 <!-- Delete confirm -->
 <ConfirmDialog
   open={deleteConfirmOpen}
-  title={`Delete ${deleteTargetType === 'folder' ? 'Folder' : 'Page'}`}
+  title={`Delete ${deleteTargetType === 'folder' ? 'Folder' : deleteTargetType === 'file' ? 'File' : 'Page'}`}
   message={`Are you sure you want to delete "${deleteTargetName}"? This action cannot be undone.`}
   loading={deleteLoading}
   onConfirm={confirmDelete}
-  onCancel={() => { deleteConfirmOpen = false; deleteTargetId = null; }}
+  onCancel={() => { deleteConfirmOpen = false; deleteTargetId = null; deleteTargetStoragePath = null; }}
 />

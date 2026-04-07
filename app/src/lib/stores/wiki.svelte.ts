@@ -1,5 +1,6 @@
 import { api } from "$lib/api";
-import type { WikiAccessGrant } from "$lib/api/wiki";
+import type { WikiAccessGrant, WikiFile } from "$lib/api/wiki";
+export type { WikiFile } from "$lib/api/wiki";
 
 function extractErrorMessage(e: unknown, fallback: string): string {
   if (e instanceof Error) return e.message;
@@ -43,6 +44,7 @@ type MyAccessGrant = { id: string; folder_id: string | null; page_id: string | n
 class WikiStore {
   folders = $state<WikiFolder[]>([]);
   pages = $state<WikiPageMeta[]>([]);
+  files = $state<WikiFile[]>([]);
   activePage = $state<WikiPageFull | null>(null);
   loading = $state(false);
   saving = $state(false);
@@ -197,14 +199,16 @@ class WikiStore {
     this.loading = true;
     this.error = null;
     try {
-      const [folders, pages, allGrants] = await Promise.all([
+      const [folders, pages, allGrants, files] = await Promise.all([
         api.wiki.folders.getAll(),
         api.wiki.pages.getAll(),
         api.wiki.access.getAll(),
+        api.wiki.files.getAll(),
       ]);
       this.folders = folders as WikiFolder[];
       this.pages = pages as WikiPageMeta[];
       this.allGrants = allGrants;
+      this.files = files as WikiFile[];
 
       if (!this.isWikiAdmin) {
         await this.loadMyAccess();
@@ -310,9 +314,47 @@ class WikiStore {
     }
   }
 
+  // --- File operations ---
+
+  async uploadFile(file: File, folderId: string, orgId: string, uploadedBy: string) {
+    try {
+      const wikiFile = await api.wiki.files.upload(file, folderId, orgId, uploadedBy) as WikiFile;
+      this.files = [...this.files, wikiFile];
+      return wikiFile;
+    } catch (e) {
+      this.error = extractErrorMessage(e, "Failed to upload file");
+      throw e;
+    }
+  }
+
+  async renameFile(id: string, fileName: string) {
+    try {
+      const updated = await api.wiki.files.update(id, { file_name: fileName }) as WikiFile;
+      this.files = this.files.map((f) => (f.id === id ? updated : f));
+      return updated;
+    } catch (e) {
+      this.error = extractErrorMessage(e, "Failed to rename file");
+      throw e;
+    }
+  }
+
+  async deleteFile(id: string, storagePath: string) {
+    const prev = [...this.files];
+    this.files = this.files.filter((f) => f.id !== id);
+    try {
+      await api.wiki.files.delete(id, storagePath);
+    } catch (e) {
+      console.error("[WikiStore.deleteFile]", e);
+      this.files = prev;
+      this.error = extractErrorMessage(e, "Failed to delete file");
+      throw e;
+    }
+  }
+
   clear() {
     this.folders = [];
     this.pages = [];
+    this.files = [];
     this.activePage = null;
     this.error = null;
     this.saveStatus = "saved";

@@ -1,5 +1,5 @@
 import { getClient } from "./client";
-import { WIKI_FOLDER_SELECT, WIKI_PAGE_META_SELECT, WIKI_PAGE_FULL_SELECT } from "./queries";
+import { WIKI_FOLDER_SELECT, WIKI_PAGE_META_SELECT, WIKI_PAGE_FULL_SELECT, WIKI_FILE_SELECT } from "./queries";
 
 export type CreateFolderInput = {
   name: string;
@@ -259,4 +259,107 @@ const access = {
   },
 };
 
-export const wiki = { folders, pages, access };
+export type WikiFile = {
+  id: string;
+  organization_id: string;
+  folder_id: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  storage_path: string;
+  position: number;
+  uploaded_by: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  uploader?: { id: string; full_name: string; avatar_url: string | null } | null;
+};
+
+const files = {
+  async getAll() {
+    const { data, error } = await getClient()
+      .from("wiki_files")
+      .select(WIKI_FILE_SELECT)
+      .is("deleted_at", null)
+      .order("position")
+      .order("file_name");
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async upload(
+    file: File,
+    folderId: string,
+    orgId: string,
+    uploadedBy: string
+  ): Promise<WikiFile> {
+    const supabase = getClient();
+    const fileId = crypto.randomUUID();
+    const storagePath = `${orgId}/wiki_file/${folderId}/${fileId}/${file.name}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("attachments")
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+    if (uploadError) throw uploadError;
+
+    const { error: insertError } = await supabase
+      .from("wiki_files")
+      .insert({
+        organization_id: orgId,
+        folder_id: folderId,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type,
+        storage_path: storagePath,
+        uploaded_by: uploadedBy,
+      });
+
+    if (insertError) {
+      await supabase.storage.from("attachments").remove([storagePath]);
+      throw insertError;
+    }
+
+    const { data, error } = await supabase
+      .from("wiki_files")
+      .select(WIKI_FILE_SELECT)
+      .eq("uploaded_by", uploadedBy)
+      .eq("folder_id", folderId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (error) throw error;
+    return data as WikiFile;
+  },
+
+  async update(id: string, input: { file_name?: string; folder_id?: string; position?: number }) {
+    const { data, error } = await getClient()
+      .from("wiki_files")
+      .update(input)
+      .eq("id", id)
+      .select(WIKI_FILE_SELECT)
+      .single();
+    if (error) throw error;
+    return data as WikiFile;
+  },
+
+  async delete(id: string, storagePath: string) {
+    const supabase = getClient();
+    const { error } = await supabase.rpc("wiki_soft_delete_file", { _file_id: id });
+    if (error) throw error;
+    await supabase.storage.from("attachments").remove([storagePath]);
+  },
+
+  async getSignedUrl(storagePath: string): Promise<string> {
+    const { data, error } = await getClient().storage
+      .from("attachments")
+      .createSignedUrl(storagePath, 3600);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+};
+
+export const wiki = { folders, pages, access, files };

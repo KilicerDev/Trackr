@@ -1,7 +1,8 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
-  import { ChevronRight, Folder, FolderOpen, FileText, Pencil, Trash2, FolderInput, FilePlus, FolderPlus, Share2, Users } from "@lucide/svelte";
-  import { wikiStore, type WikiFolder, type WikiPageMeta } from "$lib/stores/wiki.svelte";
+  import { ChevronRight, Folder, FolderOpen, FileText, Pencil, Trash2, FolderInput, FilePlus, FolderPlus, Share2, Users, Download, Image, Table, Presentation, File as FileIcon } from "@lucide/svelte";
+  import { wikiStore, type WikiFolder, type WikiPageMeta, type WikiFile } from "$lib/stores/wiki.svelte";
+  import { isImageType, isPdfType } from "$lib/config/attachments";
   import WikiTreeItem from "./WikiTreeItem.svelte";
 
   let {
@@ -9,42 +10,56 @@
     item,
     depth = 0,
     activePageId = null,
+    activeFileId = null,
     childFolders = [],
     childPages = [],
+    childFiles = [],
     allFolders = [],
     allPages = [],
+    allFiles = [],
     canEdit = false,
     canShare = false,
     renamingId = null,
     onSelectPage,
+    onSelectFile,
     onRenameStart,
     onRenameCommit,
     onRenameCancel,
     onDeleteFolder,
     onDeletePage,
+    onDeleteFile,
+    onDownloadFile,
+    onUploadFiles,
     onMovePageRequest,
     onMoveFolderRequest,
     onNewPageInFolder,
     onNewFolderInFolder,
     onShareRequest,
   }: {
-    type: "folder" | "page";
-    item: WikiFolder | WikiPageMeta;
+    type: "folder" | "page" | "file";
+    item: WikiFolder | WikiPageMeta | WikiFile;
     depth?: number;
     activePageId?: string | null;
+    activeFileId?: string | null;
     childFolders?: WikiFolder[];
     childPages?: WikiPageMeta[];
+    childFiles?: WikiFile[];
     allFolders?: WikiFolder[];
     allPages?: WikiPageMeta[];
+    allFiles?: WikiFile[];
     canEdit?: boolean;
     canShare?: boolean;
     renamingId?: string | null;
     onSelectPage?: (id: string) => void;
-    onRenameStart?: (id: string, type: "folder" | "page") => void;
-    onRenameCommit?: (id: string, value: string, type: "folder" | "page") => void;
+    onSelectFile?: (id: string) => void;
+    onRenameStart?: (id: string, type: "folder" | "page" | "file") => void;
+    onRenameCommit?: (id: string, value: string, type: "folder" | "page" | "file") => void;
     onRenameCancel?: () => void;
     onDeleteFolder?: (id: string) => void;
     onDeletePage?: (id: string) => void;
+    onDeleteFile?: (id: string, storagePath: string) => void;
+    onDownloadFile?: (file: WikiFile) => void;
+    onUploadFiles?: (folderId: string, files: File[]) => void;
     onMovePageRequest?: (id: string) => void;
     onMoveFolderRequest?: (id: string) => void;
     onNewPageInFolder?: (folderId: string) => void;
@@ -60,11 +75,17 @@
   let rowEl: HTMLDivElement | undefined = $state();
   let renameInputEl: HTMLInputElement | undefined = $state();
   let renameValue = $state("");
+  let dragOver = $state(false);
+  let dragCounter = 0;
 
   const isFolder = $derived(type === "folder");
-  const isActive = $derived(!isFolder && item.id === activePageId);
+  const isFile = $derived(type === "file");
+  const isActive = $derived(
+    (type === "page" && item.id === activePageId) ||
+    (type === "file" && item.id === activeFileId)
+  );
   const isRenaming = $derived(renamingId === item.id);
-  const paddingLeft = $derived(`${12 + depth * 16}px`);
+  const indentLeft = $derived(`${depth * 16}px`);
 
   const AVATAR_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
   function avatarColor(name: string): string {
@@ -73,14 +94,25 @@
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
   }
 
-  const itemGrants = $derived(wikiStore.getGrantsForItem(item.id, type));
+  const itemGrants = $derived(!isFile ? wikiStore.getGrantsForItem(item.id, type as "folder" | "page") : []);
   const sharedUsers = $derived(
     itemGrants.filter(g => g.user).map(g => ({ name: g.user!.full_name, id: g.user_id }))
   );
 
-  function handleClick() {
+  function getFileIconComponent(mime: string) {
+    if (isImageType(mime)) return Image;
+    if (isPdfType(mime)) return FileText;
+    if (mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv") return Table;
+    if (mime.includes("presentation") || mime.includes("powerpoint")) return Presentation;
+    return FileIcon;
+  }
+
+  function handleClick(e: MouseEvent) {
+    if (isRenaming) return;
     if (isFolder) {
       expanded = !expanded;
+    } else if (isFile) {
+      onSelectFile?.(item.id);
     } else {
       onSelectPage?.(item.id);
     }
@@ -96,7 +128,9 @@
 
   function handleRename() {
     showMenu = false;
-    renameValue = isFolder ? (item as WikiFolder).name : (item as WikiPageMeta).title;
+    if (isFolder) renameValue = (item as WikiFolder).name;
+    else if (isFile) renameValue = (item as WikiFile).file_name;
+    else renameValue = (item as WikiPageMeta).title;
     onRenameStart?.(item.id, type);
   }
 
@@ -109,14 +143,18 @@
   }
 
   function handleRenameKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter") commitRename();
-    if (e.key === "Escape") onRenameCancel?.();
+    if (e.key === "Enter") { e.stopPropagation(); commitRename(); return; }
+    if (e.key === "Escape") { e.stopPropagation(); onRenameCancel?.(); return; }
+    // Prevent space/other keys from triggering the parent button
+    e.stopPropagation();
   }
 
   function handleDelete() {
     showMenu = false;
     if (isFolder) {
       onDeleteFolder?.(item.id);
+    } else if (isFile) {
+      onDeleteFile?.(item.id, (item as WikiFile).storage_path);
     } else {
       onDeletePage?.(item.id);
     }
@@ -131,6 +169,11 @@
     }
   }
 
+  function handleDownload() {
+    showMenu = false;
+    if (isFile) onDownloadFile?.(item as WikiFile);
+  }
+
   function handleNewPage() {
     showMenu = false;
     onNewPageInFolder?.(item.id);
@@ -143,13 +186,14 @@
 
   function handleShare() {
     showMenu = false;
-    onShareRequest?.(item.id, type);
+    if (!isFile) onShareRequest?.(item.id, type as "folder" | "page");
   }
 
   function getFolderChildren(folderId: string) {
     return {
       folders: allFolders.filter((f) => f.parent_id === folderId),
       pages: allPages.filter((p) => p.folder_id === folderId),
+      files: allFiles.filter((f) => f.folder_id === folderId),
     };
   }
 
@@ -157,8 +201,9 @@
   let wasRenaming = false;
   $effect(() => {
     if (isRenaming && !wasRenaming) {
-      renameValue = isFolder ? (item as WikiFolder).name : (item as WikiPageMeta).title;
-      // Use tick to wait for the input to render
+      if (isFolder) renameValue = (item as WikiFolder).name;
+      else if (isFile) renameValue = (item as WikiFile).file_name;
+      else renameValue = (item as WikiPageMeta).title;
       requestAnimationFrame(() => {
         renameInputEl?.focus();
         renameInputEl?.select();
@@ -188,13 +233,27 @@
   });
 </script>
 
-<div class="relative" bind:this={rowEl}>
+<div class="relative" bind:this={rowEl} style="margin-left: {indentLeft};">
   <button
-    class="flex h-8 w-full items-center gap-1.5 rounded-sm text-md transition-all duration-150
-      {isActive ? 'bg-accent/10 text-accent font-medium' : 'text-sidebar-text hover:bg-surface-hover/60'}"
-    style="padding-left: {paddingLeft}; padding-right: 8px;"
+    class="flex h-8 w-full select-none items-center gap-1.5 rounded-sm text-md transition-all duration-150
+      {isActive ? 'text-accent' : isFolder ? 'text-sidebar-text/80 hover:bg-surface-hover/60 hover:text-sidebar-text' : 'text-sidebar-text/60 hover:bg-surface-hover/60 hover:text-sidebar-text'}
+      {dragOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''}"
+    style="padding-left: 12px; padding-right: 8px;"
     onclick={handleClick}
     oncontextmenu={handleContextMenu}
+    ondragenter={(e) => { if (isFolder) { e.preventDefault(); dragCounter++; dragOver = true; } }}
+    ondragover={(e) => { if (isFolder) e.preventDefault(); }}
+    ondragleave={() => { if (isFolder) { dragCounter--; if (dragCounter <= 0) { dragOver = false; dragCounter = 0; } } }}
+    ondrop={(e) => {
+      if (!isFolder) return;
+      e.preventDefault();
+      dragOver = false;
+      dragCounter = 0;
+      const droppedFiles = e.dataTransfer?.files;
+      if (droppedFiles && droppedFiles.length > 0) {
+        onUploadFiles?.(item.id, Array.from(droppedFiles));
+      }
+    }}
   >
     {#if isFolder}
       <span
@@ -214,6 +273,7 @@
           bind:value={renameValue}
           onblur={commitRename}
           onkeydown={handleRenameKeydown}
+          onkeyup={(e) => e.stopPropagation()}
           onclick={(e) => e.stopPropagation()}
           class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-md text-sidebar-text outline-none"
         />
@@ -225,6 +285,23 @@
           </span>
         {/if}
       {/if}
+    {:else if isFile}
+      <span class="w-[12px] shrink-0"></span>
+      <svelte:component this={getFileIconComponent((item as WikiFile).mime_type)} size={16} class="shrink-0 {isActive ? 'text-accent' : 'text-muted/50'}" />
+      {#if isRenaming}
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          bind:this={renameInputEl}
+          bind:value={renameValue}
+          onblur={commitRename}
+          onkeydown={handleRenameKeydown}
+          onkeyup={(e) => e.stopPropagation()}
+          onclick={(e) => e.stopPropagation()}
+          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-md text-sidebar-text outline-none"
+        />
+      {:else}
+        <span class="truncate">{(item as WikiFile).file_name}</span>
+      {/if}
     {:else}
       <span class="w-[12px] shrink-0"></span>
       <FileText size={16} class="shrink-0 {isActive ? 'text-accent' : 'text-muted/50'}" />
@@ -235,6 +312,7 @@
           bind:value={renameValue}
           onblur={commitRename}
           onkeydown={handleRenameKeydown}
+          onkeyup={(e) => e.stopPropagation()}
           onclick={(e) => e.stopPropagation()}
           class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-md text-sidebar-text outline-none"
         />
@@ -265,51 +343,77 @@
   {#if showMenu}
     <div
       bind:this={menuEl}
-      class="fixed z-50 min-w-[11rem] animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20 py-0.5"
+      class="fixed z-50 min-w-[11rem] animate-dropdown-in rounded-md border border-surface-border bg-surface shadow-lg shadow-black/15 ring-1 ring-white/[0.07] py-0.5"
       style="left: {menuX}px; top: {menuY}px;"
     >
-      {#if canEdit && isFolder}
+      {#if isFile}
+        <!-- File context menu -->
         <button
           class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-          onclick={handleNewPage}
+          onclick={handleDownload}
         >
-          <FilePlus size={14} /> New page here
+          <Download size={14} /> Download
         </button>
-        <button
-          class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-          onclick={handleNewFolder}
-        >
-          <FolderPlus size={14} /> New folder here
-        </button>
-      {/if}
-      {#if canShare}
-        <button
-          class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-          onclick={handleShare}
-        >
-          <Share2 size={14} /> Share...
-        </button>
-      {/if}
-      {#if canEdit}
-        <button
-          class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-          onclick={handleRename}
-        >
-          <Pencil size={14} /> Rename
-        </button>
-        <button
-          class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-          onclick={handleMove}
-        >
-          <FolderInput size={14} /> Move to...
-        </button>
-        <div class="my-0.5 h-px bg-surface-border/30"></div>
-        <button
-          class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-red-400"
-          onclick={handleDelete}
-        >
-          <Trash2 size={14} /> Delete
-        </button>
+        {#if canEdit}
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={handleRename}
+          >
+            <Pencil size={14} /> Rename
+          </button>
+          <div class="my-0.5 h-px bg-surface-border/30"></div>
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-red-400"
+            onclick={handleDelete}
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        {/if}
+      {:else}
+        <!-- Folder / Page context menu -->
+        {#if canEdit && isFolder}
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={handleNewPage}
+          >
+            <FilePlus size={14} /> New page here
+          </button>
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={handleNewFolder}
+          >
+            <FolderPlus size={14} /> New folder here
+          </button>
+        {/if}
+        {#if canShare}
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={handleShare}
+          >
+            <Share2 size={14} /> Share...
+          </button>
+        {/if}
+        {#if canEdit}
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={handleRename}
+          >
+            <Pencil size={14} /> Rename
+          </button>
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={handleMove}
+          >
+            <FolderInput size={14} /> Move to...
+          </button>
+          <div class="my-0.5 h-px bg-surface-border/30"></div>
+          <button
+            class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-base text-muted transition-colors hover:bg-surface-hover/60 hover:text-red-400"
+            onclick={handleDelete}
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        {/if}
       {/if}
     </div>
   {/if}
@@ -324,19 +428,26 @@
         item={child}
         depth={depth + 1}
         {activePageId}
+        {activeFileId}
         childFolders={nested.folders}
         childPages={nested.pages}
+        childFiles={nested.files}
         {allFolders}
         {allPages}
+        {allFiles}
         {canEdit}
         {canShare}
         {renamingId}
         {onSelectPage}
+        {onSelectFile}
         {onRenameStart}
         {onRenameCommit}
         {onRenameCancel}
         {onDeleteFolder}
         {onDeletePage}
+        {onDeleteFile}
+        {onDownloadFile}
+        {onUploadFiles}
         {onMovePageRequest}
         {onMoveFolderRequest}
         {onNewPageInFolder}
@@ -350,16 +461,52 @@
         item={child}
         depth={depth + 1}
         {activePageId}
+        {activeFileId}
         {allFolders}
         {allPages}
+        {allFiles}
         {canEdit}
         {canShare}
         {renamingId}
         {onSelectPage}
+        {onSelectFile}
         {onRenameStart}
         {onRenameCommit}
         {onRenameCancel}
         {onDeletePage}
+        {onDeleteFile}
+        {onDownloadFile}
+        {onUploadFiles}
+        {onMovePageRequest}
+        {onMoveFolderRequest}
+        {onNewPageInFolder}
+        {onNewFolderInFolder}
+        {onShareRequest}
+      />
+    {/each}
+    {#each childFiles as child (child.id)}
+      <WikiTreeItem
+        type="file"
+        item={child}
+        depth={depth + 1}
+        {activePageId}
+        {activeFileId}
+        {allFolders}
+        {allPages}
+        {allFiles}
+        {canEdit}
+        {canShare}
+        {renamingId}
+        {onSelectPage}
+        {onSelectFile}
+        {onRenameStart}
+        {onRenameCommit}
+        {onRenameCancel}
+        {onDeleteFolder}
+        {onDeletePage}
+        {onDeleteFile}
+        {onDownloadFile}
+        {onUploadFiles}
         {onMovePageRequest}
         {onMoveFolderRequest}
         {onNewPageInFolder}

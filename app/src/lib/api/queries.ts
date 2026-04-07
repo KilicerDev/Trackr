@@ -57,3 +57,8 @@ export const WIKI_PAGE_FULL_SELECT = `
   created_by_user:users!created_by(id, full_name, avatar_url),
   updated_by_user:users!updated_by(id, full_name, avatar_url)
 ` as const;
+
+export const WIKI_FILE_SELECT = `
+  *,
+  uploader:users!uploaded_by(id, full_name, avatar_url)
+` as const;
