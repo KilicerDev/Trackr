@@ -554,7 +554,7 @@
 	const propBtnClass =
 		'flex w-full cursor-pointer items-center justify-between rounded-sm px-3 py-2 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1 max-h-48 min-w-[14rem] overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in';
+		'absolute left-0 z-20 mt-1 max-h-48 min-w-[14rem] overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
 	const dropdownItemBase =
 		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
 
@@ -827,7 +827,7 @@
 									if (e.key === 'Enter' && tagSearch.trim() && !tagSearchExactMatch) { createAndAddTag(); }
 								}}
 							/>
-							<div class="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in">
+							<div class="absolute left-0 right-0 z-20 mt-1 max-h-40 overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
 								{#if loadingProjectTags}
 									<p class="px-3 py-2 text-base text-muted">Loading...</p>
 								{/if}
@@ -878,7 +878,7 @@
 								</button>
 								{#if openDropdown === 'assign'}
 									<div
-										class="absolute right-0 z-20 mt-1 max-h-48 w-[200px] overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in"
+										class="absolute right-0 z-20 mt-1 max-h-48 w-[200px] overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in"
 									>
 										{#each members.filter((m) => m.user.is_active && !m.user.deleted_at && !task?.assignments?.some((a) => a.user_id === m.user_id)) as m (m.user_id)}
 											<button
@@ -889,7 +889,14 @@
 													if (!task || !auth.user) return;
 													try {
 														await api.tasks.assign(task.id, m.user_id, auth.user.id);
-														await loadTask(task.id);
+														// Optimistic local update — avoid full reload flash
+														task = {
+															...task,
+															assignments: [
+																...(task.assignments ?? []),
+																{ user_id: m.user_id, role: 'assignee', user: { ...m.user } }
+															]
+														} as Task;
 														onUpdate?.();
 													} catch {
 														/* */
@@ -931,9 +938,14 @@
 										class="p-0.5 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500"
 										onclick={async () => {
 											if (!task) return;
+											const userId = a.user_id;
 											try {
-												await api.tasks.unassign(task.id, a.user_id);
-												await loadTask(task.id);
+												await api.tasks.unassign(task.id, userId);
+												// Optimistic local update — avoid full reload flash
+												task = {
+													...task,
+													assignments: (task.assignments ?? []).filter((x) => x.user_id !== userId)
+												} as Task;
 												onUpdate?.();
 											} catch {
 												/* */

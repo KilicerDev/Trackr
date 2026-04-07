@@ -131,6 +131,18 @@
 
 	let openDropdown = $state<string | null>(null);
 
+	// Project search combobox
+	let projectSearch = $state('');
+	let projectHighlightIndex = $state(0);
+	const filteredProjects = $derived(
+		projectSearch.trim()
+			? projects.filter((p) =>
+				p.name.toLowerCase().includes(projectSearch.trim().toLowerCase()) ||
+				(orgNameMap[p.organization_id] ?? '').toLowerCase().includes(projectSearch.trim().toLowerCase())
+			)
+			: projects
+	);
+
 	const resolvedProjectId = $derived(projectId ?? selectedProjectId);
 	const canSubmit = $derived(!!title.trim() && !!resolvedProjectId);
 	const SelectedTypeIcon = $derived(typeIcons[type] ?? defaultTypeIcon);
@@ -222,7 +234,7 @@
 	const dropdownBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1.5 max-h-48 w-full min-w-[10rem] overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20';
+		'absolute left-0 z-20 mt-1.5 max-h-48 w-full min-w-[10rem] overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
 	const dropdownItemBase =
 		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
 	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
@@ -263,21 +275,49 @@
 					<div>
 						<span class={labelClass}>Project</span>
 						<div class="relative" data-dropdown>
-							<button
-								type="button"
-								class={dropdownBtnClass}
-								onclick={() => toggleDropdown('project')}
-							>
-							<span class="truncate">{projects.find((p) => p.id === selectedProjectId)?.name ?? 'Select project'}</span>
-							{@html chevronSvg}
-							</button>
+							<div class="relative">
+								<input
+									type="text"
+									class={inputClass}
+									placeholder="Select project"
+									bind:value={projectSearch}
+									onfocus={() => { openDropdown = 'project'; projectHighlightIndex = 0; projectSearch = ''; }}
+									onkeydown={(e) => {
+										if (openDropdown !== 'project') { openDropdown = 'project'; projectHighlightIndex = 0; }
+										if (e.key === 'ArrowDown') {
+											e.preventDefault();
+											projectHighlightIndex = Math.min(projectHighlightIndex + 1, filteredProjects.length - 1);
+										} else if (e.key === 'ArrowUp') {
+											e.preventDefault();
+											projectHighlightIndex = Math.max(projectHighlightIndex - 1, 0);
+										} else if (e.key === 'Enter') {
+											e.preventDefault();
+											const p = filteredProjects[projectHighlightIndex];
+											if (p) {
+												selectedProjectId = p.id;
+												projectSearch = p.name;
+												openDropdown = null;
+											}
+										} else if (e.key === 'Escape') {
+											openDropdown = null;
+											(e.target as HTMLInputElement).blur();
+										}
+									}}
+								/>
+								{#if selectedProjectId && !projectSearch}
+									<span class="pointer-events-none absolute inset-0 flex items-center px-2.5 text-base text-sidebar-text">
+										{projects.find((p) => p.id === selectedProjectId)?.name ?? ''}
+									</span>
+								{/if}
+							</div>
 							{#if openDropdown === 'project'}
 								<div class={dropdownPanelClass}>
-									{#each projects as p (p.id)}
+									{#each filteredProjects as p, i (p.id)}
 										<button
 											type="button"
-											class="{dropdownItemBase} {selectedProjectId === p.id ? 'font-medium text-accent' : 'text-sidebar-text'}"
-											onmousedown={(e) => { e.preventDefault(); selectedProjectId = p.id; openDropdown = null; }}
+											class="{dropdownItemBase} {selectedProjectId === p.id ? 'font-medium text-accent' : 'text-sidebar-text'} {i === projectHighlightIndex ? 'bg-surface-hover/60' : ''}"
+											onmousedown={(e) => { e.preventDefault(); selectedProjectId = p.id; projectSearch = p.name; openDropdown = null; }}
+											onmouseenter={() => { projectHighlightIndex = i; }}
 										>
 											<span class="flex flex-col items-start">
 												<span>{p.name}</span>
@@ -286,6 +326,8 @@
 												{/if}
 											</span>
 										</button>
+									{:else}
+										<p class="px-2.5 py-1.5 text-sm text-muted">No projects found</p>
 									{/each}
 								</div>
 							{/if}
@@ -413,27 +455,27 @@
 						{#if projectMembers.length > 0}
 							<div>
 								<span class={labelClass}>Assignees</span>
-								<div class="flex flex-wrap items-center gap-2">
-									{#each selectedAssignees as member (member.user_id)}
-										<button
-											type="button"
-											class="group relative"
-											title={member.user.full_name}
-											onclick={() => { selectedAssignees = selectedAssignees.filter((a) => a.user_id !== member.user_id); }}
-										>
-											{#if member.user.avatar_url}
-												<img src={member.user.avatar_url} alt={member.user.full_name} class="h-8 w-8 rounded-full object-cover ring-2 ring-surface" />
-											{:else}
-												<span class="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent ring-2 ring-surface">
-													{member.user.full_name.charAt(0).toUpperCase()}
+								<div class="relative" data-dropdown>
+									<div class="flex flex-wrap items-center gap-2">
+										{#each selectedAssignees as member (member.user_id)}
+											<button
+												type="button"
+												class="group relative"
+												title={member.user.full_name}
+												onclick={() => { selectedAssignees = selectedAssignees.filter((a) => a.user_id !== member.user_id); }}
+											>
+												{#if member.user.avatar_url}
+													<img src={member.user.avatar_url} alt={member.user.full_name} class="h-8 w-8 rounded-full object-cover ring-2 ring-surface" />
+												{:else}
+													<span class="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent ring-2 ring-surface">
+														{member.user.full_name.charAt(0).toUpperCase()}
+													</span>
+												{/if}
+												<span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+													<X size={12} class="text-white" />
 												</span>
-											{/if}
-											<span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-												<X size={12} class="text-white" />
-											</span>
-										</button>
-									{/each}
-									<div class="relative" data-dropdown>
+											</button>
+										{/each}
 										<button
 											type="button"
 											class="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-muted/30 text-muted/40 transition-colors hover:border-muted/50 hover:text-muted/60"
@@ -442,38 +484,38 @@
 										>
 											<Plus size={14} />
 										</button>
-										{#if assigneeDropdownOpen}
-											<div class="absolute left-0 z-20 mt-1.5 max-h-48 w-48 overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
-												{#each projectMembers.filter((m) => m.user.is_active && !m.user.deleted_at) as member (member.user_id)}
-													{@const isSelected = selectedAssignees.some((a) => a.user_id === member.user_id)}
-													<button
-														type="button"
-														class="{dropdownItemBase} {isSelected ? 'text-accent' : 'text-sidebar-text'}"
-														onmousedown={(e) => {
-															e.preventDefault();
-															if (isSelected) {
-																selectedAssignees = selectedAssignees.filter((a) => a.user_id !== member.user_id);
-															} else {
-																selectedAssignees = [...selectedAssignees, member];
-															}
-														}}
-													>
-														{#if member.user.avatar_url}
-															<img src={member.user.avatar_url} alt="" class="mr-2 h-5 w-5 rounded-full object-cover" />
-														{:else}
-															<span class="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[10px] font-semibold text-accent">
-																{member.user.full_name.charAt(0).toUpperCase()}
-															</span>
-														{/if}
-														<span class="flex-1 truncate">{member.user.full_name}</span>
-														{#if isSelected}
-															<svg class="ml-1 h-3.5 w-3.5 shrink-0 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-														{/if}
-													</button>
-												{/each}
-											</div>
-										{/if}
 									</div>
+									{#if assigneeDropdownOpen}
+										<div class="absolute left-0 z-20 mt-1.5 max-h-48 w-48 overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
+											{#each projectMembers.filter((m) => m.user.is_active && !m.user.deleted_at) as member (member.user_id)}
+												{@const isSelected = selectedAssignees.some((a) => a.user_id === member.user_id)}
+												<button
+													type="button"
+													class="{dropdownItemBase} {isSelected ? 'text-accent' : 'text-sidebar-text'}"
+													onmousedown={(e) => {
+														e.preventDefault();
+														if (isSelected) {
+															selectedAssignees = selectedAssignees.filter((a) => a.user_id !== member.user_id);
+														} else {
+															selectedAssignees = [...selectedAssignees, member];
+														}
+													}}
+												>
+													{#if member.user.avatar_url}
+														<img src={member.user.avatar_url} alt="" class="mr-2 h-5 w-5 rounded-full object-cover" />
+													{:else}
+														<span class="mr-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[10px] font-semibold text-accent">
+															{member.user.full_name.charAt(0).toUpperCase()}
+														</span>
+													{/if}
+													<span class="flex-1 truncate">{member.user.full_name}</span>
+													{#if isSelected}
+														<svg class="ml-1 h-3.5 w-3.5 shrink-0 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+													{/if}
+												</button>
+											{/each}
+										</div>
+									{/if}
 								</div>
 							</div>
 						{/if}
@@ -513,7 +555,7 @@
 									}}
 								/>
 								{#if tagDropdownOpen}
-									<div class="absolute left-0 z-20 mt-1.5 max-h-40 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
+									<div class="absolute left-0 z-20 mt-1.5 max-h-40 w-full overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
 										{#each filteredTags as tag (tag.id)}
 											<button
 												type="button"
