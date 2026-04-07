@@ -106,7 +106,7 @@
 	const dropBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =
-		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in';
+		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
 	const dropItemBase =
 		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-all duration-150 hover:bg-surface-hover/60';
 
@@ -907,7 +907,7 @@
 															{m.role?.name ?? 'Unknown'} {@html chevronSvg}
 															</button>
 															{#if openDropdown === `role-${m.id}`}
-																<div class="absolute left-0 z-30 mt-1.5 min-w-[140px] rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20 animate-dropdown-in">
+																<div class="absolute left-0 z-30 mt-1.5 min-w-[140px] rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
 																	{#each allowedRoles(m.organization_id) as r (r.id)}
 																		<button
 																			class="{dropItemBase} {m.role_id === r.id ? 'font-medium text-accent' : 'text-muted'}"

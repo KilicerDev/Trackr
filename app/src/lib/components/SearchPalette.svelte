@@ -241,7 +241,7 @@
 		></button>
 
 		<!-- palette -->
-		<div class="relative flex w-full max-w-xl flex-col animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20">
+		<div class="relative flex w-full max-w-xl flex-col animate-dropdown-in rounded-md border border-surface-border bg-surface shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
 			<!-- search input -->
 			<div class="flex items-center gap-3 border-b border-surface-border/40 px-4 py-3">
 				{#if loading}

@@ -82,7 +82,7 @@
 		</button>
 		{#if orgDropdownOpen}
 			<div
-				class="absolute right-3 left-3 z-20 mt-1.5 max-h-56 origin-top-left animate-dropdown-in overflow-y-auto rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20"
+				class="absolute right-3 left-3 z-20 mt-1.5 max-h-56 origin-top-left animate-dropdown-in overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]"
 			>
 				{#each organizations as org (org.id)}
 					<button

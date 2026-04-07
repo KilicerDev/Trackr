@@ -186,7 +186,7 @@
 				</button>
 			{#if orgDropdownOpen}
 				<div
-					class="absolute left-0 z-20 mt-1.5 min-w-[12rem] origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20"
+					class="absolute left-0 z-20 mt-1.5 min-w-[12rem] origin-top-left animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]"
 				>
 					<button
 						class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60 {isAllOrgs

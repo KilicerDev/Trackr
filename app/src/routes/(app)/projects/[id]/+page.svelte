@@ -480,7 +480,7 @@
 		<div class="flex-1 overflow-y-auto min-h-0">
 		<div class="px-3 py-4">
 			<div class="flex items-start justify-between gap-4">
-				<div class="min-w-0 flex-1">
+				<div class="min-w-0 flex-1 flex flex-col">
 					<!-- Identifier + Status + Color -->
 					<div class="flex items-center gap-2">
 						<!-- Color picker -->
@@ -494,7 +494,7 @@
 								></button>
 								{#if openDropdown === 'color'}
 									<div
-										class="absolute left-0 z-20 mt-2 flex gap-1.5 rounded-md border border-surface-border/70 bg-surface p-2.5 shadow-lg shadow-black/20"
+										class="absolute left-0 z-20 mt-2 flex gap-1.5 rounded-md border border-surface-border bg-surface p-2.5 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in"
 									>
 										{#each PRESET_COLORS as c (c)}
 											<button
@@ -535,7 +535,7 @@
 								</button>
 								{#if openDropdown === 'status'}
 									<div
-										class="absolute top-full left-0 z-20 mt-1.5 min-w-[140px] origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20"
+										class="absolute top-full left-0 z-20 mt-1.5 min-w-[140px] origin-top-left animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]"
 									>
 										{#each PROJECT_STATUSES as s (s)}
 											<button
@@ -740,7 +740,7 @@
 					</button>
 					{#if openDropdown === 'add-member'}
 						<div
-							class="absolute right-0 z-20 mt-1.5 w-[280px] rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20"
+							class="absolute right-0 z-20 mt-1.5 w-[280px] rounded-md border border-surface-border bg-surface shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in"
 						>
 							<div class="border-b border-surface-border px-3 py-2">
 								<span class="text-xs font-medium tracking-[0.08em] text-muted/50 uppercase"

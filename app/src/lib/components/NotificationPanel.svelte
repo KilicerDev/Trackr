@@ -63,7 +63,7 @@
 	}
 </script>
 
-<div class="absolute right-0 top-full z-30 mt-1.5 w-80 origin-top-right animate-dropdown-in rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20">
+<div class="absolute right-0 top-full z-30 mt-1.5 w-80 origin-top-right animate-dropdown-in rounded-md border border-surface-border bg-surface shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
 	<div class="flex items-center justify-between px-3 py-2">
 		<h3 class="text-base font-semibold text-sidebar-text">Notifications</h3>
 		<div class="flex items-center gap-3">

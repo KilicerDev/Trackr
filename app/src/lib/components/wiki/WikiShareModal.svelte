@@ -128,7 +128,7 @@
 
       <!-- Search results dropdown -->
       {#if searchQuery.trim() && filteredUsers().length > 0}
-        <div class="absolute left-0 right-0 z-20 mt-1 max-h-[160px] overflow-y-auto rounded-md border border-surface-border/70 bg-surface shadow-lg shadow-black/20">
+        <div class="absolute left-0 right-0 z-20 mt-1 max-h-[160px] overflow-y-auto rounded-md border border-surface-border bg-surface shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
           {#each filteredUsers() as user (user.id)}
             <button
               class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"

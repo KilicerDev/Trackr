@@ -682,7 +682,7 @@
 					{/if}
 				</button>
 				{#if viewsDropdownOpen}
-					<div class="absolute left-0 top-full z-20 mt-1.5 w-52 origin-top-left animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
+					<div class="absolute left-0 top-full z-20 mt-1.5 w-52 origin-top-left animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
 						<!-- Save current view -->
 						<button
 							class="flex w-full items-center gap-2 border-b border-surface-border/40 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
@@ -726,7 +726,7 @@
 												<EllipsisVertical size={12} />
 											</button>
 											{#if viewSubMenuId === view.id}
-												<div class="absolute right-0 top-full z-30 mt-1 w-36 origin-top-right animate-dropdown-in rounded-md border border-surface-border/70 bg-surface py-1 shadow-lg shadow-black/20">
+												<div class="absolute right-0 top-full z-30 mt-1 w-36 origin-top-right animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
 													<button
 														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
 														onclick={() => { editingViewId = view.id; editingViewName = view.name; viewSubMenuId = null; }}
