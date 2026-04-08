@@ -49,7 +49,7 @@ export const sidebarSections: SidebarSection[] = [
 			{ label: 'Roles', icon: Shield, href: '/roles' },
 			{ label: 'User Management', icon: UserCog, href: '/user-management' },
 			{ label: 'System Settings', icon: Settings, href: '/system-settings' },
-			{ label: '(Logs)', icon: List, href: '/logs' }
+			{ label: 'Logs', icon: List, href: '/logs' }
 		]
 	}
 ];
