@@ -224,16 +224,15 @@ function formatAllDayEvent(
 /**
  * Converts tasks/tickets to iCal VEVENTs. Logic:
  *
- * - Task with start_at + end_at on SAME day → timed VEVENT (time block)
- * - Task with start_at + end_at on DIFFERENT days → all-day VEVENT on end_at (deadline)
- * - Task with only end_at → all-day VEVENT on end_at (deadline)
+ * - Task with end_at → all-day VEVENT on end date
+ * - Task with only start_at → all-day VEVENT on start date
  * - Task with no dates → skipped (nothing to show on calendar)
  * - Ticket with sla_deadline → all-day VEVENT on deadline
  * - Ticket without deadline → skipped
  *
- * Everything is VEVENT for maximum compatibility (Apple Calendar, Google Calendar,
- * Outlook). VTODO is intentionally avoided — it's not supported by subscribed
- * calendar feeds on most platforms.
+ * Tasks are always all-day events (no time ranges) to keep the calendar clean.
+ * VTODO is intentionally avoided — it's not supported by subscribed calendar
+ * feeds on most platforms.
  */
 export function generateIcal(options: IcalOptions): string {
   const { calendarName, calendarDescription, tasks = [], tickets = [] } = options;
@@ -241,32 +240,13 @@ export function generateIcal(options: IcalOptions): string {
   const components: string[] = [];
 
   for (const task of tasks) {
-    if (task.start_at && task.end_at && isSameDay(task.start_at, task.end_at)) {
-      // Same-day time block → timed VEVENT
-      components.push(
-        formatTimedEvent(
-          task.id, task.title, task.description,
-          task.start_at, task.end_at,
-          task.priority, task.status,
-          task.updated_at, task.created_at, task.type
-        )
-      );
-    } else if (task.end_at) {
-      // Has a deadline (multi-day range or just end_at) → all-day on deadline
+    const date = task.end_at ?? task.start_at;
+    if (date) {
+      // All-day event on end date (preferred) or start date as fallback
       components.push(
         formatAllDayEvent(
           task.id, task.title, task.description,
-          task.end_at,
-          task.priority, task.status,
-          task.updated_at, task.created_at, task.type
-        )
-      );
-    } else if (task.start_at) {
-      // Only start_at, no deadline → all-day on start date
-      components.push(
-        formatAllDayEvent(
-          task.id, task.title, task.description,
-          task.start_at,
+          date,
           task.priority, task.status,
           task.updated_at, task.created_at, task.type
         )
