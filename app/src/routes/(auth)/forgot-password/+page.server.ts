@@ -1,8 +1,9 @@
 import { fail } from "@sveltejs/kit";
+import { getAdminClient } from "$lib/server/supabase-admin";
 import type { Actions } from "./$types";
 
 export const actions: Actions = {
-  default: async ({ request, locals: { supabase }, url }) => {
+  default: async ({ request, url }) => {
     const formData = await request.formData();
     const email = formData.get("email") as string;
 
@@ -12,7 +13,12 @@ export const actions: Actions = {
 
     const redirectTo = `${url.origin}/auth/callback`;
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    // Use admin client (implicit flow) instead of the SSR server client (PKCE).
+    // PKCE stores a code_verifier cookie that is often lost by the time the user
+    // clicks the email link, causing the code exchange to fail silently.
+    // Implicit flow sends tokens directly in the URL hash, which is more reliable.
+    const adminClient = getAdminClient();
+    const { error } = await adminClient.auth.resetPasswordForEmail(email, {
       redirectTo,
     });
 
