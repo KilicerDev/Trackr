@@ -1,12 +1,16 @@
 const SCHEME_KEY = 'mode';
 const ACCENT_KEY = 'accent-color';
 
-export type ColorScheme = 'light' | 'dark' | 'midnight' | 'catppuccin';
-export const COLOR_SCHEMES: { key: ColorScheme; label: string; description: string; swatches: string[] }[] = [
-	{ key: 'light', label: 'Light', description: 'Clean and bright', swatches: ['#ffffff', '#f5f5f5', '#e4e4e4', '#000000'] },
-	{ key: 'dark', label: 'Dark', description: 'Easy on the eyes', swatches: ['#18181b', '#252525', '#2e2e2e', '#ededed'] },
-	{ key: 'midnight', label: 'Midnight', description: 'Deeper blacks, more contrast', swatches: ['#090909', '#131313', '#1e1e1e', '#e0e0e0'] },
-	{ key: 'catppuccin', label: 'Catppuccin Mocha', description: 'Warm, pastel dark palette', swatches: ['#1e1e2e', '#313244', '#45475a', '#cdd6f4'] }
+export type ColorScheme = 'light' | 'dark' | 'midnight' | 'catppuccin' | 'gruvbox' | 'github' | 'rosepine' | 'tokyonight';
+export const COLOR_SCHEMES: { key: ColorScheme; label: string }[] = [
+	{ key: 'light', label: 'Light' },
+	{ key: 'dark', label: 'Dark' },
+	{ key: 'midnight', label: 'Midnight' },
+	{ key: 'catppuccin', label: 'Catppuccin Mocha' },
+	{ key: 'gruvbox', label: 'Gruvbox Dark' },
+	{ key: 'github', label: 'GitHub Dark' },
+	{ key: 'rosepine', label: 'Rosé Pine' },
+	{ key: 'tokyonight', label: 'Tokyo Night' }
 ];
 
 const DEFAULT_ACCENT = '#ff4867';
@@ -15,7 +19,8 @@ function isDark(scheme: ColorScheme) {
 	return scheme !== 'light';
 }
 
-const SCHEME_CLASSES = ['midnight', 'catppuccin'] as const;
+
+const SCHEME_CLASSES = ['midnight', 'catppuccin', 'gruvbox', 'github', 'rosepine', 'tokyonight'] as const;
 
 function applyScheme(scheme: ColorScheme) {
 	if (typeof document === 'undefined') return;
@@ -30,7 +35,7 @@ function applyAccent(color: string) {
 }
 
 function isValidScheme(v: string | null): v is ColorScheme {
-	return v === 'light' || v === 'dark' || v === 'midnight' || v === 'catppuccin';
+	return COLOR_SCHEMES.some((s) => s.key === v);
 }
 
 function isValidHex(v: string): boolean {
