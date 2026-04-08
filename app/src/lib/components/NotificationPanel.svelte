@@ -15,12 +15,14 @@
 		notificationCenter.close();
 
 		if (n.resource_type === 'ticket' && n.resource_id) {
-			await goto(localizeHref(`/tickets?id=${n.resource_id}`));
+			const tab = n.type === 'ticket_message' ? '&tab=messages' : '';
+			await goto(localizeHref(`/tickets?id=${n.resource_id}${tab}`));
 		} else if (n.resource_type === 'task' && n.resource_id) {
 			try {
 				const task = await api.tasks.getById(n.resource_id);
 				if (task?.project_id) {
-					await goto(localizeHref(`/projects/${task.project_id}?task=${n.resource_id}`));
+					const tab = n.type === 'task_comment' ? '&tab=comments' : '';
+					await goto(localizeHref(`/projects/${task.project_id}?task=${n.resource_id}${tab}`));
 				}
 			} catch {
 				notifications.add('error', 'Could not open task');
@@ -65,7 +67,7 @@
 
 <div class="absolute right-0 top-full z-30 mt-1.5 w-80 origin-top-right animate-dropdown-in rounded-md border border-surface-border bg-surface shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
 	<div class="flex items-center justify-between px-3 py-2">
-		<h3 class="text-base font-semibold text-sidebar-text">Notifications</h3>
+		<h3 class="text-base font-semibold text-sidebar-text">Notifications{#if notificationCenter.unreadCount > 0} <span class="text-sm font-normal text-muted">({notificationCenter.unreadCount})</span>{/if}</h3>
 		<div class="flex items-center gap-3">
 			<button
 				type="button"
