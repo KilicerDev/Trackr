@@ -8,13 +8,14 @@
 	import { theme, COLOR_SCHEMES, type ColorScheme } from '$lib/stores/theme.svelte';
 	import { densityStore, DENSITY_OPTIONS, type Density } from '$lib/stores/density.svelte';
 	import { textSizeStore, TEXT_SIZE_OPTIONS, type TextSize } from '$lib/stores/text-size.svelte';
-	import { Camera } from '@lucide/svelte';
+	import { Camera, Copy, Check, RefreshCw, Trash2, CalendarSync } from '@lucide/svelte';
 
-	type Tab = 'profile' | 'style';
+	type Tab = 'profile' | 'style' | 'integrations';
 	let activeTab = $state<Tab>('profile');
 	const tabs: { key: Tab; label: string }[] = [
 		{ key: 'profile', label: 'Profile' },
-		{ key: 'style', label: 'Style' }
+		{ key: 'style', label: 'Style' },
+		{ key: 'integrations', label: 'Integrations' }
 	];
 
 	// Profile fields
@@ -23,6 +24,110 @@
 	let timezone = $state(auth.user?.timezone ?? 'UTC');
 	let locale = $state(auth.user?.locale ?? 'en');
 	let saving = $state(false);
+
+	// iCal integration state
+	let icalLoading = $state(false);
+	let icalStatusLoaded = $state(false);
+	let icalToken = $state<string | null>(null);
+	let icalExists = $state(false);
+	let icalLastUsed = $state<string | null>(null);
+	let icalCopied = $state(false);
+	let icalConfirmRegen = $state(false);
+	let icalConfirmRevoke = $state(false);
+
+	// Load stored token from localStorage on mount
+	$effect(() => {
+		if (typeof window !== 'undefined' && auth.user) {
+			const stored = localStorage.getItem(`trackr_ical_token_${auth.user.id}`);
+			if (stored) icalToken = stored;
+		}
+	});
+
+	// Check token status when integrations tab is opened
+	$effect(() => {
+		if (activeTab === 'integrations') {
+			loadIcalStatus();
+		}
+	});
+
+	async function loadIcalStatus() {
+		try {
+			const status = await api.ical.getStatus();
+			icalExists = status.exists;
+			icalLastUsed = status.last_used_at;
+			// If token was revoked externally, clear localStorage
+			if (!status.exists && icalToken && auth.user) {
+				localStorage.removeItem(`trackr_ical_token_${auth.user.id}`);
+				icalToken = null;
+			}
+		} catch {
+			// silent
+		} finally {
+			icalStatusLoaded = true;
+		}
+	}
+
+	async function generateIcalToken() {
+		if (icalLoading) return;
+		icalLoading = true;
+		try {
+			const token = await api.ical.generateToken();
+			icalToken = token;
+			icalExists = true;
+			icalConfirmRegen = false;
+			if (auth.user) {
+				localStorage.setItem(`trackr_ical_token_${auth.user.id}`, token);
+			}
+			notifications.add('success', 'Calendar URL generated');
+		} catch {
+			notifications.add('error', 'Failed to generate calendar URL');
+		} finally {
+			icalLoading = false;
+		}
+	}
+
+	async function revokeIcalToken() {
+		if (icalLoading) return;
+		icalLoading = true;
+		try {
+			await api.ical.revokeToken();
+			icalToken = null;
+			icalExists = false;
+			icalLastUsed = null;
+			icalConfirmRevoke = false;
+			if (auth.user) {
+				localStorage.removeItem(`trackr_ical_token_${auth.user.id}`);
+			}
+			notifications.add('success', 'Calendar URL revoked');
+		} catch {
+			notifications.add('error', 'Failed to revoke calendar URL');
+		} finally {
+			icalLoading = false;
+		}
+	}
+
+	function getIcalUrl(extra?: string): string {
+		if (!icalToken) return '';
+		const base = `${window.location.origin}/api/ical?token=${icalToken}`;
+		return extra ? `${base}&${extra}` : base;
+	}
+
+	async function copyToClipboard(text: string) {
+		await navigator.clipboard.writeText(text);
+		icalCopied = true;
+		setTimeout(() => (icalCopied = false), 2000);
+	}
+
+	function formatTimeAgo(iso: string): string {
+		const diff = Date.now() - new Date(iso).getTime();
+		const mins = Math.floor(diff / 60000);
+		if (mins < 1) return 'just now';
+		if (mins < 60) return `${mins}m ago`;
+		const hours = Math.floor(mins / 60);
+		if (hours < 24) return `${hours}h ago`;
+		const days = Math.floor(hours / 24);
+		return `${days}d ago`;
+	}
 
 	// Accent color input
 	let accentInput = $state(theme.accentColor);
@@ -259,6 +364,177 @@
 						</button>
 					{/each}
 				</div>
+			</section>
+		</div>
+	{/if}
+
+	<!-- Integrations Tab -->
+	{#if activeTab === 'integrations'}
+		<div class="space-y-8">
+			<section>
+				<div class="mb-4 flex items-center gap-2.5">
+					<CalendarSync size={18} class="text-muted/50" />
+					<h2 class="text-xs font-medium uppercase tracking-[0.08em] text-muted">Calendar Feed (iCal)</h2>
+				</div>
+
+				{#if !icalStatusLoaded}
+					<!-- Loading state -->
+				{:else if !icalExists && !icalToken}
+					<!-- No token state -->
+					<div class="rounded border border-surface-border/40 bg-surface/50 p-5">
+						<p class="mb-4 text-base text-muted/60">
+							Generate a secret URL to subscribe to your tickets in any calendar app
+							— Apple Calendar, Google Calendar, Outlook, and more. Only tickets assigned to you will appear.
+						</p>
+						<button
+							type="button"
+							disabled={icalLoading}
+							onclick={generateIcalToken}
+							class="flex h-7 items-center gap-1.5 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
+						>
+							{icalLoading ? 'Generating...' : 'Generate Calendar URL'}
+						</button>
+					</div>
+				{:else}
+					<!-- Token exists state -->
+					<div class="space-y-4">
+						<!-- Main URL -->
+						<div class="rounded border border-surface-border/40 bg-surface/50 p-4">
+							<label class={labelClass}>Calendar URL (Tickets only)</label>
+							{#if icalToken}
+								<div class="flex items-center gap-2">
+									<input
+										type="text"
+										readonly
+										value={getIcalUrl()}
+										class="{inputClass} font-mono !text-xs"
+									/>
+									<button
+										type="button"
+										onclick={() => copyToClipboard(getIcalUrl())}
+										class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-surface-border/40 text-muted/50 transition-all duration-150 hover:bg-surface-hover/60 hover:text-sidebar-text"
+										title="Copy URL"
+									>
+										{#if icalCopied}
+											<Check size={14} class="text-green-400" />
+										{:else}
+											<Copy size={14} />
+										{/if}
+									</button>
+								</div>
+							{:else}
+								<p class="text-sm text-muted/60">
+									Token was generated in a previous session. You can regenerate to get a new URL,
+									or revoke to disable the feed.
+								</p>
+							{/if}
+
+							{#if icalLastUsed}
+								<p class="mt-2 text-xs text-muted/40">Last synced: {formatTimeAgo(icalLastUsed)}</p>
+							{/if}
+						</div>
+
+						<!-- Filter hints -->
+						{#if icalToken}
+							<div class="rounded border border-surface-border/40 bg-surface/50 p-4">
+								<label class={labelClass}>Filtered URLs</label>
+								<p class="mb-3 text-sm text-muted/40">
+									Append these parameters to subscribe to a subset of your items.
+									Each URL shows as a separate calendar/list.
+								</p>
+								<div class="space-y-2 font-mono text-xs text-muted/50">
+									<div class="flex items-center justify-between gap-2 rounded bg-surface-hover/30 px-2.5 py-1.5">
+										<span class="truncate">&type=tasks</span>
+										<span class="shrink-0 text-muted/30">Tasks only</span>
+									</div>
+									<div class="flex items-center justify-between gap-2 rounded bg-surface-hover/30 px-2.5 py-1.5">
+										<span class="truncate">&type=tickets</span>
+										<span class="shrink-0 text-muted/30">Tickets only</span>
+									</div>
+									<div class="flex items-center justify-between gap-2 rounded bg-surface-hover/30 px-2.5 py-1.5">
+										<span class="truncate">&project=PROJECT_ID</span>
+										<span class="shrink-0 text-muted/30">Specific project</span>
+									</div>
+									<div class="flex items-center justify-between gap-2 rounded bg-surface-hover/30 px-2.5 py-1.5">
+										<span class="truncate">&project=ID&type=tasks</span>
+										<span class="shrink-0 text-muted/30">Combine filters</span>
+									</div>
+								</div>
+							</div>
+						{/if}
+
+						<!-- Actions -->
+						<div class="flex gap-3">
+							{#if !icalConfirmRegen}
+								<button
+									type="button"
+									disabled={icalLoading}
+									onclick={() => (icalConfirmRegen = true)}
+									class="flex h-7 items-center gap-1.5 rounded-sm border border-surface-border/40 px-2.5 text-sm font-medium text-muted/60 transition-all duration-150 hover:bg-surface-hover/60 hover:text-sidebar-text disabled:opacity-30"
+								>
+									<RefreshCw size={13} />
+									Regenerate
+								</button>
+							{:else}
+								<div class="flex items-center gap-2">
+									<span class="text-sm text-amber-400/80">Old URL will stop working.</span>
+									<button
+										type="button"
+										disabled={icalLoading}
+										onclick={generateIcalToken}
+										class="flex h-7 items-center gap-1 rounded-sm bg-amber-500/80 px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-amber-500 disabled:opacity-30"
+									>
+										{icalLoading ? 'Regenerating...' : 'Confirm'}
+									</button>
+									<button
+										type="button"
+										onclick={() => (icalConfirmRegen = false)}
+										class="text-sm text-muted/40 hover:text-sidebar-text"
+									>
+										Cancel
+									</button>
+								</div>
+							{/if}
+
+							{#if !icalConfirmRevoke}
+								<button
+									type="button"
+									disabled={icalLoading}
+									onclick={() => (icalConfirmRevoke = true)}
+									class="flex h-7 items-center gap-1.5 rounded-sm border border-red-500/20 px-2.5 text-sm font-medium text-red-400/60 transition-all duration-150 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-30"
+								>
+									<Trash2 size={13} />
+									Revoke
+								</button>
+							{:else}
+								<div class="flex items-center gap-2">
+									<span class="text-sm text-red-400/80">Feed will be disabled.</span>
+									<button
+										type="button"
+										disabled={icalLoading}
+										onclick={revokeIcalToken}
+										class="flex h-7 items-center gap-1 rounded-sm bg-red-500/80 px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-red-500 disabled:opacity-30"
+									>
+										{icalLoading ? 'Revoking...' : 'Confirm'}
+									</button>
+									<button
+										type="button"
+										onclick={() => (icalConfirmRevoke = false)}
+										class="text-sm text-muted/40 hover:text-sidebar-text"
+									>
+										Cancel
+									</button>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Security note -->
+						<p class="text-xs text-muted/30">
+							Treat the calendar URL like a password — anyone with the URL can view your assigned tickets.
+							Regenerate the URL if you suspect it has been compromised.
+						</p>
+					</div>
+				{/if}
 			</section>
 		</div>
 	{/if}
