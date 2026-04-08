@@ -1,6 +1,8 @@
 <svelte:head><title>Profile – Trackr</title></svelte:head>
 
 <script lang="ts">
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import { notifications } from '$lib/stores/notifications.svelte';
@@ -11,7 +13,11 @@
 	import { Camera, Copy, Check, RefreshCw, Trash2, CalendarSync } from '@lucide/svelte';
 
 	type Tab = 'profile' | 'style' | 'integrations';
-	let activeTab = $state<Tab>('profile');
+	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations'];
+	let activeTab = $derived.by(() => {
+		const param = page.url.searchParams.get('tab') as Tab;
+		return VALID_TABS.includes(param) ? param : 'profile';
+	});
 	const tabs: { key: Tab; label: string }[] = [
 		{ key: 'profile', label: 'Profile' },
 		{ key: 'style', label: 'Style' },
@@ -24,6 +30,18 @@
 	let timezone = $state(auth.user?.timezone ?? 'UTC');
 	let locale = $state(auth.user?.locale ?? 'en');
 	let saving = $state(false);
+	let profileLoaded = $state(!!auth.user);
+
+	// Sync fields when auth.user loads after refresh
+	$effect(() => {
+		if (auth.user && !profileLoaded) {
+			fullName = auth.user.full_name ?? '';
+			username = auth.user.username ?? '';
+			timezone = auth.user.timezone ?? 'UTC';
+			locale = auth.user.locale ?? 'en';
+			profileLoaded = true;
+		}
+	});
 
 	// iCal integration state
 	let icalLoading = $state(false);
@@ -164,7 +182,7 @@
 					{activeTab === tab.key
 						? 'text-sidebar-text'
 						: 'text-muted/50 hover:text-sidebar-text'}"
-				onclick={() => (activeTab = tab.key)}
+				onclick={() => goto(`/profile?tab=${tab.key}`, { replaceState: true, noScroll: true })}
 			>
 				{tab.label}
 				{#if activeTab === tab.key}
@@ -383,8 +401,8 @@
 					<!-- No token state -->
 					<div class="rounded border border-surface-border/40 bg-surface/50 p-5">
 						<p class="mb-4 text-base text-muted/60">
-							Generate a secret URL to subscribe to your tickets in any calendar app
-							— Apple Calendar, Google Calendar, Outlook, and more. Only tickets assigned to you will appear.
+							Generate a secret URL to subscribe to your tasks and tickets in any calendar app
+							— Apple Calendar, Google Calendar, Outlook, and more. Only items assigned to you with a date will appear.
 						</p>
 						<button
 							type="button"
@@ -400,7 +418,7 @@
 					<div class="space-y-4">
 						<!-- Main URL -->
 						<div class="rounded border border-surface-border/40 bg-surface/50 p-4">
-							<label class={labelClass}>Calendar URL (Tickets only)</label>
+							<label class={labelClass}>Calendar URL</label>
 							{#if icalToken}
 								<div class="flex items-center gap-2">
 									<input
@@ -530,7 +548,7 @@
 
 						<!-- Security note -->
 						<p class="text-xs text-muted/30">
-							Treat the calendar URL like a password — anyone with the URL can view your assigned tickets.
+							Treat the calendar URL like a password — anyone with the URL can view your assigned tasks and tickets.
 							Regenerate the URL if you suspect it has been compromised.
 						</p>
 					</div>
