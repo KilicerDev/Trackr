@@ -74,7 +74,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
     const adminClient = getAdminClient();
     const { data: dbUser } = await adminClient
       .from("users")
-      .select("is_active")
+      .select("is_active, last_seen_at")
       .eq("id", user.id)
       .single();
 
@@ -82,6 +82,16 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
       await event.locals.supabase.auth.signOut();
       event.locals.session = null;
       event.locals.user = null;
+    } else if (dbUser) {
+      const stale = !dbUser.last_seen_at ||
+        Date.now() - new Date(dbUser.last_seen_at).getTime() > 5 * 60 * 1000;
+      if (stale) {
+        adminClient
+          .from("users")
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq("id", user.id)
+          .then();
+      }
     }
   }
 
