@@ -92,6 +92,62 @@ body {
 		--color-muted: #a6adc8;
 	}
 
+	.gruvbox {
+		--color-sidebar-icon: #a89984;
+		--color-sidebar-label: #a89984;
+		--color-sidebar-border: #3c3836;
+		--color-sidebar-bg: #1d2021;
+		--color-sidebar-hover-bg: #3c3836;
+		--color-sidebar-text: #ebdbb2;
+		--color-page-bg: #282828;
+		--color-surface: #3c3836;
+		--color-surface-border: #504945;
+		--color-surface-hover: #504945;
+		--color-muted: #a89984;
+	}
+
+	.github {
+		--color-sidebar-icon: #8b949e;
+		--color-sidebar-label: #8b949e;
+		--color-sidebar-border: #30363d;
+		--color-sidebar-bg: #0d1117;
+		--color-sidebar-hover-bg: #161b22;
+		--color-sidebar-text: #e6edf3;
+		--color-page-bg: #0d1117;
+		--color-surface: #161b22;
+		--color-surface-border: #30363d;
+		--color-surface-hover: #1c2128;
+		--color-muted: #8b949e;
+	}
+
+	.rosepine {
+		--color-sidebar-icon: #908caa;
+		--color-sidebar-label: #908caa;
+		--color-sidebar-border: #26233a;
+		--color-sidebar-bg: #191724;
+		--color-sidebar-hover-bg: #26233a;
+		--color-sidebar-text: #e0def4;
+		--color-page-bg: #191724;
+		--color-surface: #1f1d2e;
+		--color-surface-border: #26233a;
+		--color-surface-hover: #2a2740;
+		--color-muted: #908caa;
+	}
+
+	.tokyonight {
+		--color-sidebar-icon: #565f89;
+		--color-sidebar-label: #565f89;
+		--color-sidebar-border: #292e42;
+		--color-sidebar-bg: #1a1b26;
+		--color-sidebar-hover-bg: #292e42;
+		--color-sidebar-text: #c0caf5;
+		--color-page-bg: #1a1b26;
+		--color-surface: #24283b;
+		--color-surface-border: #292e42;
+		--color-surface-hover: #2f3549;
+		--color-muted: #565f89;
+	}
+
 	/* Spacing density — apply on <html> */
 	.spacing-compact {
 		--spacing: 0.2rem;
@@ -129,6 +185,7 @@ body {
 
 	.animate-dropdown-in {
 		animation: dropdown-in 150ms ease-out;
+		user-select: none;
 	}
 
 	.text-comfortable {
