@@ -18,6 +18,7 @@
 	let organizations = $state<Organization[]>([]);
 	let tiers = $state<Tier[]>([]);
 	let activeTiers = $derived(tiers.filter((t) => t.is_active));
+	let defaultTierId = $state<string | null>(null);
 
 	// Create modal
 	let createModalOpen = $state(false);
@@ -74,7 +75,7 @@
 	const btnSecondary =
 		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
 	const btnPrimary =
-		'flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
+		'flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
 	const dropBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =
@@ -104,7 +105,7 @@
 		createDomain = '';
 		createWebsite = '';
 		createNotes = '';
-		createTierId = activeTiers[0]?.id ?? null;
+		createTierId = defaultTierId ?? activeTiers[0]?.id ?? null;
 		createError = null;
 		openDropdown = null;
 		createModalOpen = true;
@@ -268,12 +269,14 @@
 
 	onMount(async () => {
 		try {
-			const [orgs, tierList] = await Promise.all([
+			const [orgs, tierList, sysConfig] = await Promise.all([
 				api.organizations.getAll(),
-				api.config.getTiers()
+				api.config.getTiers(),
+				api.config.getSystem()
 			]);
 			organizations = orgs;
 			tiers = tierList;
+			defaultTierId = (sysConfig.default_support_tier_id as string) ?? null;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load data';
 		} finally {
