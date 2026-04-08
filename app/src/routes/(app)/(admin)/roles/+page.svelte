@@ -51,14 +51,7 @@
 
 	const canManage = $derived(auth.can('members', 'manage_roles'));
 
-	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted';
-	const sectionLabel = 'text-xs font-medium uppercase tracking-[0.08em] text-muted';
-	const inputClass =
-		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
-	const btnSecondary =
-		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
-	const btnPrimary =
-		'flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
+	import { btnPrimary, btnSecondary, labelClass, sectionLabel, inputClass } from '$lib/styles/ui';
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
 
 	const permissionGroups = $derived.by(() => {

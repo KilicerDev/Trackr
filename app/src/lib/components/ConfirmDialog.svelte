@@ -23,12 +23,7 @@
 		onCancel
 	}: Props = $props();
 
-	const btnSecondary =
-		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
-	const btnDestructive =
-		'flex h-7 items-center rounded-sm bg-red-500 px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-red-600 disabled:opacity-30';
-	const btnConfirm =
-		'flex h-7 items-center rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
+	import { btnPrimary as btnConfirm, btnSecondary, btnDestructive } from '$lib/styles/ui';
 </script>
 
 <Modal {open} onClose={onCancel} maxWidth="max-w-sm">

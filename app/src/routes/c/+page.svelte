@@ -241,9 +241,7 @@
 		'absolute left-0 z-20 mt-1.5 max-h-48 w-full origin-top-left animate-dropdown-in overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]';
 	const dropdownItemBase =
 		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
-	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
-	const inputClass =
-		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none placeholder:text-muted/30 focus:bg-surface-hover/60';
+	import { labelClass, inputClass } from '$lib/styles/ui';
 </script>
 
 {#if selectedTicketId}

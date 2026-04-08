@@ -9,6 +9,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import type { Organization } from '$lib/api/organizations';
 	import type { Tier } from '$lib/api/config';
+	import { btnPrimary, btnSecondary, labelClass, sectionLabel, inputClass } from '$lib/styles/ui';
 
 	const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
@@ -68,14 +69,6 @@
 	let settingsError = $state<string | null>(null);
 	let settingsSuccess = $state<string | null>(null);
 
-	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted';
-	const sectionLabel = 'text-xs font-medium uppercase tracking-[0.08em] text-muted';
-	const inputClass =
-		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
-	const btnSecondary =
-		'flex h-7 items-center rounded-sm px-2.5 text-sm font-medium text-muted transition-all duration-150 hover:text-sidebar-text';
-	const btnPrimary =
-		'flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30';
 	const dropBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =

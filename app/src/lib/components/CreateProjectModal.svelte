@@ -105,10 +105,7 @@
 		}
 	}
 
-	const labelClass =
-		'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
-	const inputClass =
-		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
+	import { labelClass, inputClass } from '$lib/styles/ui';
 	const dropdownBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
