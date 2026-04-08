@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
@@ -28,6 +28,9 @@
 		} = supabase.auth.onAuthStateChange((event: string) => {
 			if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
 				invalidateAll();
+			}
+			if (event === 'PASSWORD_RECOVERY') {
+				goto(localizeHref('/set-password'));
 			}
 		});
 		return () => subscription.unsubscribe();

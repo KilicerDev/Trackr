@@ -1,6 +1,7 @@
 <svelte:head><title>Set Password – Trackr</title></svelte:head>
 
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { Eye, EyeOff, LoaderCircle } from '@lucide/svelte';
 	import { getClient } from '$lib/api/client';
@@ -15,6 +16,17 @@
 	let showPassword = $state(false);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let ready = $state(false);
+
+	onMount(async () => {
+		const supabase = getClient();
+		const { data: { session } } = await supabase.auth.getSession();
+		if (!session) {
+			goto(localizeHref('/login'));
+			return;
+		}
+		ready = true;
+	});
 
 	const valid = $derived(
 		password.length >= 6 && password === confirmPassword
@@ -53,6 +65,7 @@
 	}
 </script>
 
+{#if ready}
 <div class="relative min-h-screen bg-page-bg">
 	<div class="flex min-h-screen items-center justify-center px-4">
 		<div class="w-full max-w-md rounded border border-surface-border bg-surface px-10 py-10 shadow-xl">
@@ -139,3 +152,8 @@
 		</div>
 	</div>
 </div>
+{:else}
+<div class="flex min-h-screen items-center justify-center bg-page-bg">
+	<p class="text-sm text-muted">Loading...</p>
+</div>
+{/if}
