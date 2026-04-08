@@ -12,7 +12,7 @@
 	import type { TaskFilters, FilterOp } from '$lib/api/tasks';
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { ArrowLeft, Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter, Info, Paperclip, SquareCheckBig } from '@lucide/svelte';
+	import { Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter, Info, Paperclip, SquareCheckBig } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
@@ -474,14 +474,22 @@
 <div class="flex h-full overflow-hidden">
 <div class="min-w-0 flex-1 flex flex-col overflow-hidden">
 <div class="mx-auto w-full flex flex-col flex-1 min-h-0">
-	<div class="flex shrink-0 items-center gap-3 px-3 py-1.5">
-		<button
-			onclick={() => history.back()}
-			class="flex h-7 cursor-pointer items-center gap-1 rounded-sm px-2 text-sm text-muted transition-all duration-150 hover:text-sidebar-text"
-		>
-			<ArrowLeft size={14} />
-			Projects
-		</button>
+	<div class="flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-sm">
+		<a
+			href={localizeHref('/projects')}
+			class="text-muted transition-colors hover:text-sidebar-text"
+		>Projects</a>
+		{#if project}
+			<span class="text-muted/30">/</span>
+			<span class="font-medium text-sidebar-text">{project.name}</span>
+		{/if}
+		{#if selectedTaskId}
+			{@const task = taskStore.items.find(t => t.id === selectedTaskId)}
+			{#if task}
+				<span class="text-muted/30">/</span>
+				<span class="text-muted">{task.short_id ?? task.title}</span>
+			{/if}
+		{/if}
 	</div>
 
 	{#if projectStore.loading && !project}
@@ -1049,9 +1057,18 @@
 				{/each}
 			</div>
 		{:else if taskTree.length === 0}
-			<p class="px-4 py-8 text-center text-sm text-muted">
-				{taskFilterCount > 0 ? 'No tasks match your filters.' : 'No tasks in this project yet.'}
-			</p>
+			<div class="flex flex-col items-center gap-3 px-4 py-8">
+				<p class="text-sm text-muted">{taskFilterCount > 0 ? 'No tasks match your filters.' : 'No tasks in this project yet.'}</p>
+				{#if taskFilterCount === 0 && canCreateTask}
+					<button
+						class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
+						onclick={() => (createModalOpen = true)}
+					>
+						<Plus size={14} class="shrink-0" />
+						Add task
+					</button>
+				{/if}
+			</div>
 		{:else if taskGroupBy === 'status'}
 			<!-- Grouped by status list -->
 			{@const groups = TASK_STATUSES.map((s) => ({ key: s, label: formatTaskStatus(s), tasks: taskTree.filter(({ task }) => task.status === s) })).filter((g) => g.tasks.length > 0)}
