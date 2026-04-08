@@ -48,6 +48,7 @@ export type UpdateUserInput = {
   is_active?: boolean;
   timezone?: string;
   locale?: string;
+  avatar_url?: string | null;
 };
 
 const USER_SELECT = `
