@@ -618,14 +618,14 @@
 			<!-- View toggle -->
 			<div class="flex items-center gap-0.5">
 				<button
-					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {viewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {viewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setView('list')}
 				>
 					<LayoutList size={13} />
 					List
 				</button>
 				<button
-					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {viewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {viewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setView('board')}
 				>
 					<Columns3 size={13} />
@@ -779,10 +779,10 @@
 			</div>
 
 			<button
-				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
+				class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
 				onclick={() => { createPrefill = {}; createModalOpen = true; }}
 			>
-				<Plus size={12} />
+				<Plus size={14} class="shrink-0" />
 				New
 			</button>
 		</div>

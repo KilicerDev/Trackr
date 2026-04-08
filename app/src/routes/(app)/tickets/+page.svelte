@@ -340,7 +340,7 @@
 
 		{#if auth.can('support_tickets', 'create')}
 			<button
-				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
+				class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
 				onclick={() => (createModalOpen = true)}
 			>
 				New Ticket

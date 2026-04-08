@@ -733,7 +733,7 @@
 				{#if canManageProject}
 				<div class="relative" data-dropdown>
 					<button
-						class="flex items-center gap-0.5 whitespace-nowrap text-sm text-muted/50 transition-colors hover:text-accent"
+						class="flex items-center gap-0.5 whitespace-nowrap text-sm leading-none text-muted/50 transition-colors hover:text-accent"
 						onclick={() => (openDropdown = openDropdown === 'add-member' ? null : 'add-member')}
 					>
 						<Plus size={12} /> Add
@@ -875,13 +875,13 @@
 				<!-- View toggle -->
 				<div class="flex items-center gap-0.5">
 					<button
-						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {taskViewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
+						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {taskViewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 						onclick={() => setTaskView('list')}
 					>
 						<LayoutList size={12} /> List
 					</button>
 					<button
-						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 {taskViewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
+						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {taskViewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 						onclick={() => setTaskView('board')}
 					>
 						<Columns3 size={12} /> Board
@@ -921,7 +921,7 @@
 
 			{#if canCreateTask}
 				<button
-					class="flex items-center gap-0.5 whitespace-nowrap text-sm text-muted/50 transition-colors hover:text-accent"
+					class="flex items-center gap-0.5 whitespace-nowrap text-sm leading-none text-muted/50 transition-colors hover:text-accent"
 					onclick={() => (createModalOpen = true)}
 				>
 					<Plus size={12} /> Add
