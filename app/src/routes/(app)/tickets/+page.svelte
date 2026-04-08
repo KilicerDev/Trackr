@@ -64,17 +64,20 @@
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
 	let selectedTicketId = $state<string | null>(null);
+	let selectedTicketTab = $state<'details' | 'messages' | 'time'>('details');
 
 	function selectTicket(id: string | null) {
 		filterDropdownOpen = null;
 		orgDropdownOpen = false;
 		selectedTicketId = id;
+		selectedTicketTab = 'details';
 		const url = new URL(window.location.href);
 		if (id) {
 			url.searchParams.set('id', id);
 		} else {
 			url.searchParams.delete('id');
 		}
+		url.searchParams.delete('tab');
 		replaceState(localizeHref(url.pathname + url.search), {});
 	}
 
@@ -213,12 +216,21 @@
 		}
 
 		const ticketIdParam = page.url.searchParams.get('id');
-		if (ticketIdParam) selectTicket(ticketIdParam);
+		if (ticketIdParam) {
+			selectedTicketId = ticketIdParam;
+			const tabParam = page.url.searchParams.get('tab');
+			if (tabParam === 'messages' || tabParam === 'time') selectedTicketTab = tabParam;
+		}
 	});
 
 	afterNavigate(({ to }) => {
 		const ticketIdParam = to?.url.searchParams.get('id') ?? null;
-		if (ticketIdParam) selectedTicketId = ticketIdParam;
+		if (ticketIdParam) {
+			selectedTicketId = ticketIdParam;
+			const tabParam = to?.url.searchParams.get('tab') ?? null;
+			if (tabParam === 'messages' || tabParam === 'time') selectedTicketTab = tabParam;
+			else selectedTicketTab = 'details';
+		}
 	});
 
 	$effect(() => {
@@ -666,7 +678,14 @@
 			<TicketDetailPanel
 				ticketId={selectedTicketId}
 				{members}
+				initialTab={selectedTicketTab}
 				onClose={() => selectTicket(null)}
+				onTabChange={(tab) => {
+					const url = new URL(window.location.href);
+					if (tab === 'details') url.searchParams.delete('tab');
+					else url.searchParams.set('tab', tab);
+					replaceState(localizeHref(url.pathname + url.search), {});
+				}}
 				onUpdate={() => applyFilters()}
 			/>
 		</div>

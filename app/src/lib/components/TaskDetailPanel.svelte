@@ -42,11 +42,13 @@
 	interface Props {
 		taskId: string;
 		members?: Member[];
+		initialTab?: 'details' | 'comments' | 'time';
 		onClose: () => void;
 		onUpdate?: () => void;
+		onTabChange?: (tab: 'details' | 'comments' | 'time') => void;
 	}
 
-	let { taskId, members: membersProp = [], onClose, onUpdate }: Props = $props();
+	let { taskId, members: membersProp = [], initialTab = 'details', onClose, onUpdate, onTabChange }: Props = $props();
 
 	let fetchedMembers = $state<Member[]>([]);
 	let members = $derived(membersProp.length > 0 ? membersProp : fetchedMembers);
@@ -70,7 +72,7 @@
 
 	let confirmDeleteOpen = $state(false);
 	let deleting = $state(false);
-	let activeTab = $state<'details' | 'comments' | 'time'>('details');
+	let activeTab = $state<'details' | 'comments' | 'time'>(initialTab);
 
 	let taskAttachments = $state<Attachment[]>([]);
 	let commentAttachmentIds = $state<Record<string, string[]>>({});
@@ -641,14 +643,14 @@
 			<div class="flex shrink-0 items-center gap-0.5 border-b border-surface-border px-4">
 				<button
 					class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {activeTab === 'details' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
-					onclick={() => (activeTab = 'details')}
+					onclick={() => { activeTab = 'details'; onTabChange?.('details'); }}
 				>
 					<Info size={12} />
 					Details
 				</button>
 				<button
 					class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {activeTab === 'comments' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
-					onclick={() => (activeTab = 'comments')}
+					onclick={() => { activeTab = 'comments'; onTabChange?.('comments'); }}
 				>
 					<MessageSquare size={12} />
 					Comments
@@ -658,7 +660,7 @@
 				</button>
 				<button
 					class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {activeTab === 'time' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
-					onclick={() => (activeTab = 'time')}
+					onclick={() => { activeTab = 'time'; onTabChange?.('time'); }}
 				>
 					<Clock size={12} />
 					Time

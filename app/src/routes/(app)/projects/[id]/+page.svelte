@@ -221,6 +221,7 @@
 	});
 
 	let selectedTaskId = $state<string | null>(null);
+	let selectedTaskTab = $state<'details' | 'comments' | 'time'>('details');
 	let projectTab = $state<'tasks' | 'details' | 'attachments'>('tasks');
 	let boardEl = $state<HTMLDivElement | undefined>(undefined);
 
@@ -232,12 +233,14 @@
 
 	function selectTask(id: string | null) {
 		selectedTaskId = id;
+		selectedTaskTab = 'details';
 		const url = new URL(window.location.href);
 		if (id) {
 			url.searchParams.set('task', id);
 		} else {
 			url.searchParams.delete('task');
 		}
+		url.searchParams.delete('tab');
 		replaceState(localizeHref(url.pathname + url.search), {});
 	}
 
@@ -391,8 +394,13 @@
 			orgMembers = (await api.members.getAll(orgId).catch(() => [])) as OrgMember[];
 		}
 
-		const taskParam = new URL(window.location.href).searchParams.get('task');
-		if (taskParam) selectTask(taskParam);
+		const urlParams = new URL(window.location.href).searchParams;
+		const taskParam = urlParams.get('task');
+		if (taskParam) {
+			selectedTaskId = taskParam;
+			const tabParam = urlParams.get('tab');
+			if (tabParam === 'comments' || tabParam === 'time') selectedTaskTab = tabParam;
+		}
 	});
 
 	$effect(() => {
@@ -428,7 +436,12 @@
 
 	afterNavigate(({ to }) => {
 		const taskParam = to?.url.searchParams.get('task') ?? null;
-		if (taskParam) selectedTaskId = taskParam;
+		if (taskParam) {
+			selectedTaskId = taskParam;
+			const tabParam = to?.url.searchParams.get('tab') ?? null;
+			if (tabParam === 'comments' || tabParam === 'time') selectedTaskTab = tabParam;
+			else selectedTaskTab = 'details';
+		}
 	});
 
 	$effect(() => {
@@ -1101,7 +1114,14 @@
 					user_id: m.user_id,
 					user: { id: m.user.id, full_name: m.user.full_name, avatar_url: m.user.avatar_url, is_active: m.user.is_active, deleted_at: m.user.deleted_at }
 				}))}
+				initialTab={selectedTaskTab}
 				onClose={() => selectTask(null)}
+				onTabChange={(tab) => {
+					const url = new URL(window.location.href);
+					if (tab === 'details') url.searchParams.delete('tab');
+					else url.searchParams.set('tab', tab);
+					replaceState(localizeHref(url.pathname + url.search), {});
+				}}
 				onUpdate={async () => { await taskStore.load(getTaskFilters()); if (taskViewMode === 'board') rebuildTaskBoard(); }}
 			/>
 		</div>

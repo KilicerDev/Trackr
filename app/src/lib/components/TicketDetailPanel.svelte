@@ -69,11 +69,13 @@
 	interface Props {
 		ticketId: string;
 		members: Member[];
+		initialTab?: 'details' | 'messages' | 'time';
 		onClose: () => void;
 		onUpdate: () => void;
+		onTabChange?: (tab: 'details' | 'messages' | 'time') => void;
 	}
 
-	let { ticketId, members, onClose, onUpdate }: Props = $props();
+	let { ticketId, members, initialTab = 'details', onClose, onUpdate, onTabChange }: Props = $props();
 
 	const ASSIGNABLE_ROLES = ['owner', 'admin', 'manager', 'agent'];
 	const assignableMembers = $derived(
@@ -86,7 +88,7 @@
 	let error = $state<string | null>(null);
 	let openDropdown = $state<string | null>(null);
 
-	let activeTab = $state<'details' | 'messages' | 'time'>('details');
+	let activeTab = $state<'details' | 'messages' | 'time'>(initialTab);
 
 	let editingDescription = $state(false);
 	let descriptionDraft = $state('');
@@ -475,13 +477,13 @@
 			<div class="flex items-center gap-0.5 border-b border-surface-border px-4">
 				<button
 					class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {activeTab === 'details' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
-					onclick={() => (activeTab = 'details')}
+					onclick={() => { activeTab = 'details'; onTabChange?.('details'); }}
 				>
 					<Info size={12} /> Details
 				</button>
 				<button
 					class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {activeTab === 'messages' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
-					onclick={() => (activeTab = 'messages')}
+					onclick={() => { activeTab = 'messages'; onTabChange?.('messages'); }}
 				>
 					<MessageSquare size={12} /> Messages
 					{#if messages.length > 0}
@@ -490,7 +492,7 @@
 				</button>
 				<button
 					class="flex items-center gap-1.5 border-b-2 px-2 py-1.5 text-sm font-medium transition-colors {activeTab === 'time' ? 'border-accent text-sidebar-text' : 'border-transparent text-muted hover:text-sidebar-text'}"
-					onclick={() => (activeTab = 'time')}
+					onclick={() => { activeTab = 'time'; onTabChange?.('time'); }}
 				>
 					<Clock size={12} /> Time
 					{#if totalMinutes > 0}
