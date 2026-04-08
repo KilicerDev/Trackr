@@ -331,9 +331,17 @@
 	{:else if projectStore.error}
 		<p class="px-4 py-12 text-center text-sm text-red-500">{projectStore.error}</p>
 	{:else if filteredProjects.length === 0}
-		<p class="px-4 py-12 text-center text-sm text-muted">
-			{statusFilter ? 'No projects match this filter.' : 'No projects yet.'}
-		</p>
+		<div class="flex flex-col items-center gap-3 px-4 py-12">
+			<p class="text-sm text-muted">{statusFilter ? 'No projects match this filter.' : 'No projects yet.'}</p>
+			{#if !statusFilter && selectedOrgId && !isAllOrgs}
+				<button
+					class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
+					onclick={() => (createModalOpen = true)}
+				>
+					New project
+				</button>
+			{/if}
+		</div>
 	{:else if isAllOrgs && groupedProjects}
 		<div class="space-y-1 p-3">
 			{#each groupedProjects as group (group.orgId)}

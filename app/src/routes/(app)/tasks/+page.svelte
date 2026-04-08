@@ -855,9 +855,18 @@
 	{:else if viewMode === 'list'}
 		<!-- LIST VIEW -->
 		{#if taskStore.items.length === 0}
-			<p class="px-4 py-12 text-center text-lg text-muted">
-				{hasActiveFilters ? 'No tasks match your filters.' : 'No tasks yet.'}
-			</p>
+			<div class="flex flex-col items-center gap-3 px-4 py-12">
+				<p class="text-sm text-muted">{hasActiveFilters ? 'No tasks match your filters.' : 'No tasks yet.'}</p>
+				{#if !hasActiveFilters}
+					<button
+						class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
+						onclick={() => { createPrefill = {}; createModalOpen = true; }}
+					>
+						<Plus size={14} class="shrink-0" />
+						New task
+					</button>
+				{/if}
+			</div>
 		{:else if listGroups}
 			<!-- Grouped list -->
 			<div class="space-y-1 p-3">

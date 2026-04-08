@@ -318,7 +318,12 @@
 	{:else if error}
 		<p class="px-3 py-8 text-center text-sm text-red-400">{error}</p>
 	{:else if organizations.length === 0}
-		<p class="px-3 py-8 text-center text-sm text-muted">No organizations yet.</p>
+		<div class="flex flex-col items-center gap-3 px-3 py-8">
+			<p class="text-sm text-muted">No organizations yet.</p>
+			{#if auth.isOwner}
+				<button class={btnPrimary} onclick={openCreateModal}>New organization</button>
+			{/if}
+		</div>
 	{:else}
 		<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
 			<table class="w-full text-sm">

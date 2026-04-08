@@ -634,7 +634,17 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="p-3" onclick={() => { filterDropdownOpen = null; orgDropdownOpen = false; }}>
 			{#if ticketStore.items.length === 0}
-				<p class="py-12 text-center text-sm text-muted/40">No tickets found.</p>
+				<div class="flex flex-col items-center gap-3 py-12">
+					<p class="text-sm text-muted">No tickets found.</p>
+					{#if auth.can('support_tickets', 'create')}
+						<button
+							class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
+							onclick={() => (createModalOpen = true)}
+						>
+							New Ticket
+						</button>
+					{/if}
+				</div>
 			{:else}
 				<div class="overflow-hidden rounded border border-surface-border/50 bg-surface/50">
 					{#each ticketStore.items as ticket, i (ticket.id)}
