@@ -27,6 +27,12 @@ const handleSetup: Handle = async ({ event, resolve }) => {
 };
 
 const handleSupabase: Handle = async ({ event, resolve }) => {
+  // iCal feed uses token-based auth, skip session/cookie handling entirely.
+  // Note: /api/ical/token still needs session auth so we only skip the exact path.
+  if (event.url.pathname === "/api/ical") {
+    return resolve(event);
+  }
+
   const internalUrl = env.SUPABASE_URL;
 
   event.locals.supabase = createServerClient(

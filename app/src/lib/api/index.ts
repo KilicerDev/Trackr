@@ -11,6 +11,7 @@ import { attachments } from "./attachments";
 import { views } from "./views";
 import { tags } from "./tags";
 import { wiki } from "./wiki";
+import { ical } from "./ical";
 
 export const api = {
   tasks,
@@ -26,4 +27,5 @@ export const api = {
   views,
   tags,
   wiki,
+  ical,
 };
