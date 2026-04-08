@@ -6,6 +6,7 @@
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { btnSecondary } from '$lib/styles/ui';
 	import type { ActivityLogEntry, ActivityLogFilter } from '$lib/api/activities';
+	import { formatTimeAgo, formatFullDate } from '$lib/utils/date';
 	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
 
 	const PER_PAGE = 25;
@@ -53,18 +54,6 @@
 		if (!val) return '—';
 		if (val.length > 80) return val.slice(0, 80) + '…';
 		return val.replace(/_/g, ' ');
-	}
-
-	function formatTimeAgo(iso: string): string {
-		const diff = Date.now() - new Date(iso).getTime();
-		const mins = Math.floor(diff / 60000);
-		if (mins < 1) return 'just now';
-		if (mins < 60) return `${mins}m ago`;
-		const hours = Math.floor(mins / 60);
-		if (hours < 24) return `${hours}h ago`;
-		const days = Math.floor(hours / 24);
-		if (days < 30) return `${days}d ago`;
-		return new Date(iso).toLocaleDateString('de-DE');
 	}
 
 	function getSourceHref(entry: ActivityLogEntry): string {
@@ -155,7 +144,7 @@
 					</div>
 
 					<!-- Timestamp -->
-					<span class="shrink-0 text-xs text-muted/50">{formatTimeAgo(entry.created_at)}</span>
+					<span class="shrink-0 text-xs text-muted/50" title={formatFullDate(entry.created_at)}>{formatTimeAgo(entry.created_at)}</span>
 				</div>
 			{/each}
 		</div>

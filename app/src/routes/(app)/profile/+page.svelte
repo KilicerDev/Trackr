@@ -34,6 +34,28 @@
 	let locale = $state(auth.user?.locale ?? 'en');
 	let saving = $state(false);
 	let profileLoaded = $state(!!auth.user);
+	let avatarUploading = $state(false);
+	let avatarInput: HTMLInputElement;
+
+	async function uploadAvatar(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file || !auth.user) return;
+		avatarUploading = true;
+		try {
+			const supabase = getClient();
+			const path = `avatars/${auth.user.id}/${Date.now()}_${file.name}`;
+			const { error: uploadErr } = await supabase.storage.from('attachments').upload(path, file, { upsert: true });
+			if (uploadErr) throw uploadErr;
+			const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+			await api.users.update(auth.user.id, { avatar_url: urlData.publicUrl });
+			auth.user.avatar_url = urlData.publicUrl;
+			notifications.add('success', 'Avatar updated');
+		} catch {
+			notifications.add('error', 'Failed to upload avatar');
+		} finally {
+			avatarUploading = false;
+		}
+	}
 
 	// Sync fields when auth.user loads after refresh
 	$effect(() => {
@@ -139,16 +161,7 @@
 		setTimeout(() => (icalCopied = false), 2000);
 	}
 
-	function formatTimeAgo(iso: string): string {
-		const diff = Date.now() - new Date(iso).getTime();
-		const mins = Math.floor(diff / 60000);
-		if (mins < 1) return 'just now';
-		if (mins < 60) return `${mins}m ago`;
-		const hours = Math.floor(mins / 60);
-		if (hours < 24) return `${hours}h ago`;
-		const days = Math.floor(hours / 24);
-		return `${days}d ago`;
-	}
+	import { formatTimeAgo, formatFullDate } from '$lib/utils/date';
 
 	// Style dropdowns
 	let schemeDropdownOpen = $state(false);
@@ -261,9 +274,21 @@
 							{auth.user?.full_name?.charAt(0)?.toUpperCase() ?? '?'}
 						</div>
 					{/if}
-					<div class="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+					<button
+						type="button"
+						class="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+						onclick={() => avatarInput.click()}
+						disabled={avatarUploading}
+					>
 						<Camera size={18} class="text-white" />
-					</div>
+					</button>
+					<input
+						bind:this={avatarInput}
+						type="file"
+						accept="image/*"
+						class="hidden"
+						onchange={uploadAvatar}
+					/>
 				</div>
 				<div>
 					<h1 class="text-lg font-semibold text-sidebar-text">{auth.user?.full_name ?? 'User'}</h1>

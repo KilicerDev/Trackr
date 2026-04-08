@@ -423,17 +423,7 @@
 		return new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 	}
 
-	function formatRelative(date: string | null): string {
-		if (!date) return 'Never';
-		const diff = Date.now() - new Date(date).getTime();
-		const mins = Math.floor(diff / 60000);
-		if (mins < 1) return 'Just now';
-		if (mins < 60) return `${mins}m ago`;
-		const hours = Math.floor(mins / 60);
-		if (hours < 24) return `${hours}h ago`;
-		const days = Math.floor(hours / 24);
-		return `${days}d ago`;
-	}
+	import { formatTimeAgo as formatRelative, formatFullDate } from '$lib/utils/date';
 
 	function statusBadgeClass(status: string): string {
 		switch (status) {
@@ -574,7 +564,7 @@
 										{user.is_active ? 'Active' : 'Inactive'}
 									</span>
 								</td>
-								<td class="px-3 py-2 font-mono text-muted">{formatRelative(user.last_seen_at)}</td>
+								<td class="px-3 py-2 font-mono text-muted" title={formatFullDate(user.last_seen_at)}>{formatRelative(user.last_seen_at)}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -835,7 +825,7 @@
 								</div>
 								<div>
 									<span class="text-muted/50">Last Seen</span>
-									<p class="font-mono text-sidebar-text">{formatRelative(selectedUser.last_seen_at)}</p>
+									<p class="font-mono text-sidebar-text" title={formatFullDate(selectedUser.last_seen_at)}>{formatRelative(selectedUser.last_seen_at)}</p>
 								</div>
 							</div>
 						</div>
