@@ -43,12 +43,19 @@
 		avatarUploading = true;
 		try {
 			const supabase = getClient();
-			const path = `avatars/${auth.user.id}/${Date.now()}_${file.name}`;
-			const { error: uploadErr } = await supabase.storage.from('attachments').upload(path, file, { upsert: true });
+			const orgId = auth.user.organization_id ?? 'shared';
+			const path = `${orgId}/avatar/${auth.user.id}/${Date.now()}_${file.name}`;
+			const { error: uploadErr } = await supabase.storage
+				.from('attachments')
+				.upload(path, file, { contentType: file.type, upsert: true });
 			if (uploadErr) throw uploadErr;
-			const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
-			await api.users.update(auth.user.id, { avatar_url: urlData.publicUrl });
-			auth.user.avatar_url = urlData.publicUrl;
+			// Generate a long-lived signed URL (1 year)
+			const { data: signedData, error: signErr } = await supabase.storage
+				.from('attachments')
+				.createSignedUrl(path, 60 * 60 * 24 * 365);
+			if (signErr) throw signErr;
+			await api.users.update(auth.user.id, { avatar_url: signedData.signedUrl });
+			auth.user.avatar_url = signedData.signedUrl;
 			notifications.add('success', 'Avatar updated');
 		} catch {
 			notifications.add('error', 'Failed to upload avatar');
