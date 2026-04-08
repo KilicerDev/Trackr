@@ -10,10 +10,12 @@
 	import { theme, COLOR_SCHEMES, type ColorScheme } from '$lib/stores/theme.svelte';
 	import { densityStore, DENSITY_OPTIONS, type Density } from '$lib/stores/density.svelte';
 	import { textSizeStore, TEXT_SIZE_OPTIONS, type TextSize } from '$lib/stores/text-size.svelte';
-	import { Camera, Copy, Check, RefreshCw, Trash2, CalendarSync } from '@lucide/svelte';
+	import { Camera, Copy, Check, RefreshCw, Trash2, CalendarSync, Eye, EyeOff, ChevronDown } from '@lucide/svelte';
+	import { getClient } from '$lib/api/client';
+	import { clickOutside } from '$lib/actions/clickOutside';
 
-	type Tab = 'profile' | 'style' | 'integrations';
-	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations'];
+	type Tab = 'profile' | 'style' | 'integrations' | 'security';
+	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations', 'security'];
 	let activeTab = $derived.by(() => {
 		const param = page.url.searchParams.get('tab') as Tab;
 		return VALID_TABS.includes(param) ? param : 'profile';
@@ -21,7 +23,8 @@
 	const tabs: { key: Tab; label: string }[] = [
 		{ key: 'profile', label: 'Profile' },
 		{ key: 'style', label: 'Style' },
-		{ key: 'integrations', label: 'Integrations' }
+		{ key: 'integrations', label: 'Integrations' },
+		{ key: 'security', label: 'Security' }
 	];
 
 	// Profile fields
@@ -147,12 +150,61 @@
 		return `${days}d ago`;
 	}
 
+	// Style dropdowns
+	let schemeDropdownOpen = $state(false);
+
 	// Accent color input
 	let accentInput = $state(theme.accentColor);
 
-	const labelClass = 'mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
-	const inputClass =
-		'w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60';
+	import { labelClass, inputClass, btnPrimary } from '$lib/styles/ui';
+
+	// Security / password change
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let showPassword = $state(false);
+	let passwordSaving = $state(false);
+	let passwordError = $state<string | null>(null);
+	let passwordSuccess = $state<string | null>(null);
+
+	const passwordValid = $derived(
+		currentPassword.length > 0 && newPassword.length >= 6 && newPassword === confirmPassword
+	);
+
+	async function changePassword() {
+		if (!passwordValid || !auth.user) return;
+		passwordSaving = true;
+		passwordError = null;
+		passwordSuccess = null;
+		try {
+			const supabase = getClient();
+			// Verify current password
+			const { error: signInErr } = await supabase.auth.signInWithPassword({
+				email: auth.user.email,
+				password: currentPassword
+			});
+			if (signInErr) {
+				passwordError = 'Current password is incorrect';
+				return;
+			}
+			// Update to new password
+			const { error: updateErr } = await supabase.auth.updateUser({
+				password: newPassword
+			});
+			if (updateErr) {
+				passwordError = updateErr.message;
+				return;
+			}
+			passwordSuccess = 'Password updated successfully';
+			currentPassword = '';
+			newPassword = '';
+			confirmPassword = '';
+		} catch (e) {
+			passwordError = e instanceof Error ? e.message : 'Failed to change password';
+		} finally {
+			passwordSaving = false;
+		}
+	}
 
 	async function saveProfile() {
 		if (!auth.user || saving) return;
@@ -266,25 +318,31 @@
 		<div class="space-y-8">
 			<section>
 				<h2 class="mb-4 text-xs font-medium uppercase tracking-[0.08em] text-muted">Color Scheme</h2>
-				<div class="flex gap-3">
-					{#each COLOR_SCHEMES as scheme (scheme.key)}
-						<button
-							type="button"
-							class="flex flex-1 flex-col gap-1 rounded border px-3 py-2.5 text-left transition-all duration-150
-								{theme.mode === scheme.key
-									? 'border-accent/30 bg-accent/5'
-									: 'border-surface-border/40 bg-surface/50 hover:bg-surface-hover/60'}"
-							onclick={() => theme.setScheme(scheme.key)}
-						>
-							<span class="text-base font-medium text-sidebar-text">{scheme.label}</span>
-							<span class="text-sm text-muted/50">{scheme.description}</span>
-							<div class="mt-2 flex gap-1.5">
-								{#each scheme.swatches as color}
-									<span class="h-4 w-4 rounded-sm border border-surface-border/40" style="background:{color}"></span>
-								{/each}
-							</div>
-						</button>
-					{/each}
+				<div
+					class="relative max-w-xs"
+					use:clickOutside={{ onClickOutside: () => schemeDropdownOpen = false, enabled: schemeDropdownOpen }}
+				>
+					<button
+						type="button"
+						class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
+						onclick={() => schemeDropdownOpen = !schemeDropdownOpen}
+					>
+						{COLOR_SCHEMES.find((s) => s.key === theme.mode)?.label ?? 'Dark'}
+						<ChevronDown size={14} class="shrink-0 text-muted/40" />
+					</button>
+					{#if schemeDropdownOpen}
+						<div class="absolute left-0 z-30 mt-1.5 w-full rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
+							{#each COLOR_SCHEMES as scheme (scheme.key)}
+								<button
+									type="button"
+									class="flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-all duration-150 hover:bg-surface-hover/60 {theme.mode === scheme.key ? 'font-medium text-accent' : 'text-muted'}"
+									onclick={() => { theme.setScheme(scheme.key); schemeDropdownOpen = false; }}
+								>
+									{scheme.label}
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</section>
 
@@ -553,6 +611,84 @@
 						</p>
 					</div>
 				{/if}
+			</section>
+		</div>
+	{/if}
+
+	<!-- Security Tab -->
+	{#if activeTab === 'security'}
+		<div class="space-y-8">
+			<section>
+				<h2 class="mb-4 text-base font-semibold text-sidebar-text">Change Password</h2>
+
+				<form onsubmit={(e) => { e.preventDefault(); changePassword(); }} class="max-w-md space-y-4">
+					<div>
+						<label for="current-password" class={labelClass}>Current Password</label>
+						<div class="relative">
+							<input
+								id="current-password"
+								type={showPassword ? 'text' : 'password'}
+								autocomplete="current-password"
+								bind:value={currentPassword}
+								class="{inputClass} pr-9"
+							/>
+							<button
+								type="button"
+								class="absolute top-1/2 right-2.5 -translate-y-1/2 cursor-pointer text-muted/40 transition-all duration-150 hover:text-sidebar-text"
+								onclick={() => (showPassword = !showPassword)}
+								tabindex={-1}
+							>
+								{#if showPassword}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
+							</button>
+						</div>
+					</div>
+
+					<div>
+						<label for="new-password" class={labelClass}>New Password</label>
+						<input
+							id="new-password"
+							type={showPassword ? 'text' : 'password'}
+							autocomplete="new-password"
+							placeholder="At least 6 characters"
+							bind:value={newPassword}
+							minlength={6}
+							class={inputClass}
+						/>
+					</div>
+
+					<div>
+						<label for="confirm-new-password" class={labelClass}>Confirm New Password</label>
+						<input
+							id="confirm-new-password"
+							type={showPassword ? 'text' : 'password'}
+							autocomplete="new-password"
+							placeholder="Repeat new password"
+							bind:value={confirmPassword}
+							minlength={6}
+							class={inputClass}
+						/>
+						{#if confirmPassword && newPassword !== confirmPassword}
+							<p class="mt-1.5 text-xs text-red-400">Passwords do not match.</p>
+						{/if}
+					</div>
+
+					{#if passwordError}
+						<p class="text-sm text-red-400">{passwordError}</p>
+					{/if}
+					{#if passwordSuccess}
+						<p class="text-sm text-green-400">{passwordSuccess}</p>
+					{/if}
+
+					<div class="flex justify-end border-t border-surface-border/40 pt-4">
+						<button
+							type="submit"
+							disabled={passwordSaving || !passwordValid}
+							class={btnPrimary}
+						>
+							{passwordSaving ? 'Saving...' : 'Update password'}
+						</button>
+					</div>
+				</form>
 			</section>
 		</div>
 	{/if}
