@@ -41,7 +41,7 @@
 		{#if expanded}
 			<span
 				style="font-family: 'GeistMono', monospace"
-				class="whitespace-nowrap text-md font-bold tracking-[0.2em] text-sidebar-text"
+				class="whitespace-nowrap text-sm font-bold tracking-[0.2em] text-sidebar-text"
 			>
 				TRACKR
 			</span>
@@ -49,34 +49,24 @@
 	</div>
 
 	<!-- Navigation -->
-	<nav class="flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-2 py-2">
-		{#each filteredSections as section (section.title)}
-			<div>
-				<div class="mb-1 flex h-5 items-center px-2">
-					{#if expanded}
-						<span class="whitespace-nowrap text-xs font-medium tracking-[0.08em] text-sidebar-label/70 uppercase">{section.title}</span>
-					{:else}
-						<span class="h-px w-full bg-sidebar-border"></span>
-					{/if}
-				</div>
-
-				<div class="space-y-0.5">
-					{#each section.items as item (item.href)}
-						{@const isActive = page.url.pathname === item.href || (item.href !== '/' && page.url.pathname.startsWith(item.href))}
-						<a
-							href={localizeHref(item.href)}
-							class="group relative flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-md transition-all duration-150
-								{isActive
-									? 'bg-accent/10 font-medium text-accent'
-									: 'text-sidebar-icon hover:bg-sidebar-hover-bg hover:text-sidebar-text'}"
-						>
-							<item.icon size={16} class="shrink-0" />
-							{#if expanded}
-								<span class="truncate whitespace-nowrap">{item.label}</span>
-							{/if}
-						</a>
-					{/each}
-				</div>
+	<nav class="flex-1 overflow-y-auto overflow-x-hidden py-2">
+		{#each filteredSections as section, i (section.title)}
+			<div class={i > 0 ? 'mt-3 pt-3 border-t border-sidebar-border/60' : ''}>
+				{#each section.items as item (item.href)}
+					{@const isActive = page.url.pathname === item.href || (item.href !== '/' && page.url.pathname.startsWith(item.href))}
+					<a
+						href={localizeHref(item.href)}
+						class="group relative flex h-9 items-center gap-2.5 px-4 text-[15px] transition-all duration-150
+							{isActive
+								? 'bg-accent/10 text-accent'
+								: 'text-sidebar-icon hover:bg-sidebar-hover-bg hover:text-sidebar-text'}"
+					>
+						<item.icon size={18} class="shrink-0" />
+						{#if expanded}
+							<span class="truncate whitespace-nowrap">{item.label}</span>
+						{/if}
+					</a>
+				{/each}
 			</div>
 		{/each}
 	</nav>
@@ -124,12 +114,12 @@
 	<div class="border-t border-sidebar-border px-2 py-1.5">
 		<button
 			onclick={() => { pinned = !pinned; hovered = false; }}
-			class="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-md text-sidebar-icon transition-all duration-150 hover:bg-sidebar-hover-bg hover:text-sidebar-text"
+			class="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-[15px] text-sidebar-icon transition-all duration-150 hover:bg-sidebar-hover-bg hover:text-sidebar-text"
 		>
 			{#if pinned}
-				<PanelLeftClose size={16} class="shrink-0" />
+				<PanelLeftClose size={18} class="shrink-0" />
 			{:else}
-				<PanelLeftOpen size={16} class="shrink-0" />
+				<PanelLeftOpen size={18} class="shrink-0" />
 			{/if}
 			{#if expanded}
 				<span class="truncate whitespace-nowrap">{pinned ? 'Collapse' : 'Expand'}</span>
