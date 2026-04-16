@@ -11,7 +11,14 @@ export type PluginConfig = {
   onChange?: (markdown: string) => void;
 };
 
+function normalize(md: string | null | undefined): string {
+  return (md ?? '').replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n+$/, '');
+}
+
 export function configurePlugins(editor: Editor, config: PluginConfig): Editor {
+  let baseline: string | null = null;
+  let lastEmitted: string | null = null;
+
   return editor
     .use(commonmark)
     .use(history)
@@ -23,10 +30,17 @@ export function configurePlugins(editor: Editor, config: PluginConfig): Editor {
     .config((ctx) => {
       const l = ctx.get(listenerCtx);
       if (config.onChange) {
-        l.markdownUpdated((_ctx, markdown, prevMarkdown) => {
-          if (markdown !== prevMarkdown) {
-            config.onChange!(markdown);
+        l.markdownUpdated((_ctx, markdown) => {
+          const normalized = normalize(markdown);
+          if (baseline === null) {
+            baseline = normalized;
+            lastEmitted = normalized;
+            return;
           }
+          if (normalized === baseline) return;
+          if (normalized === lastEmitted) return;
+          lastEmitted = normalized;
+          config.onChange!(markdown);
         });
       }
     });
