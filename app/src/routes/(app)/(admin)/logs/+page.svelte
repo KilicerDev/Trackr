@@ -13,8 +13,17 @@
 	const FILTERS: { key: ActivityLogFilter; label: string }[] = [
 		{ key: 'all', label: 'All' },
 		{ key: 'task', label: 'Tasks' },
-		{ key: 'ticket', label: 'Tickets' }
+		{ key: 'ticket', label: 'Tickets' },
+		{ key: 'wiki', label: 'Wiki' }
 	];
+
+	const SOURCE_LABELS: Record<ActivityLogEntry['source_type'], string> = {
+		task: 'task',
+		ticket: 'ticket',
+		wiki_page: 'wiki page',
+		wiki_folder: 'wiki folder',
+		wiki_file: 'wiki file'
+	};
 
 	let items = $state<ActivityLogEntry[]>([]);
 	let totalCount = $state(0);
@@ -58,6 +67,9 @@
 
 	function getSourceHref(entry: ActivityLogEntry): string {
 		if (entry.source_type === 'ticket') return localizeHref(`/tickets?id=${entry.source_id}`);
+		if (entry.source_type === 'wiki_page') return localizeHref(`/wiki/${entry.source_id}`);
+		if (entry.source_type === 'wiki_file') return localizeHref(`/wiki/file/${entry.source_id}`);
+		if (entry.source_type === 'wiki_folder') return localizeHref(`/wiki`);
 		if (entry.source_project_id) return localizeHref(`/projects/${entry.source_project_id}?task=${entry.source_id}`);
 		return localizeHref(`/tasks`);
 	}
@@ -119,6 +131,8 @@
 								<span class="text-muted"> commented on </span>
 							{:else if entry.action === 'messaged'}
 								<span class="text-muted"> sent a message on </span>
+							{:else if entry.field_name === 'content'}
+								<span class="text-muted"> edited the content of </span>
 							{:else}
 								<span class="text-muted"> changed </span>
 								<span class="text-sidebar-text">{formatField(entry.field_name)}</span>
@@ -131,7 +145,7 @@
 								<span class="text-muted"> on </span>
 							{/if}
 							<span class="inline-flex items-center gap-1">
-								<span class="text-2xs uppercase tracking-wider text-muted/50">{entry.source_type}</span>
+								<span class="text-2xs uppercase tracking-wider text-muted/50">{SOURCE_LABELS[entry.source_type] ?? entry.source_type}</span>
 								<a
 									href={getSourceHref(entry)}
 									class="text-accent hover:underline"

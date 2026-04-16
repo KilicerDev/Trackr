@@ -1,8 +1,15 @@
 import { getClient } from "./client";
 
+export type ActivityLogSourceType =
+  | "task"
+  | "ticket"
+  | "wiki_page"
+  | "wiki_folder"
+  | "wiki_file";
+
 export type ActivityLogEntry = {
   id: string;
-  source_type: "task" | "ticket";
+  source_type: ActivityLogSourceType;
   source_id: string;
   source_label: string;
   source_project_id: string | null;
@@ -16,7 +23,7 @@ export type ActivityLogEntry = {
   created_at: string;
 };
 
-export type ActivityLogFilter = "all" | "task" | "ticket";
+export type ActivityLogFilter = "all" | "task" | "ticket" | "wiki";
 
 export const activities = {
   async getLogs(type: ActivityLogFilter = "all", page = 1, perPage = 25) {
