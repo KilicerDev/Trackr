@@ -6,6 +6,7 @@
 	import { clientPortal } from '$lib/stores/clientPortal.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { Send, ArrowLeft, Circle, LoaderCircle } from '@lucide/svelte';
+	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import type { LayoutData } from './$types';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { localizeHref } from '$lib/paraglide/runtime';
@@ -24,6 +25,8 @@
 	let subject = $state('');
 	let description = $state('');
 	let priority = $state('medium');
+	const selectedPortalPriority = $derived(priorityIcons[priority] ?? defaultPriorityIcon);
+	const SelectedPortalPriorityIcon = $derived(selectedPortalPriority.icon);
 	let category = $state('general');
 	let creating = $state(false);
 	let openDropdown = $state<string | null>(null);
@@ -442,12 +445,17 @@
 								onclick={() =>
 									(openDropdown = openDropdown === 'priority' ? null : 'priority')}
 							>
-								<span class="truncate">{displayName(priority)}</span>
+								<span class="flex items-center gap-1.5 truncate">
+									<SelectedPortalPriorityIcon size={16} class={selectedPortalPriority.className} />
+									{displayName(priority)}
+								</span>
 								{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'priority'}
 								<div class={dropdownPanelClass}>
 									{#each PRIORITIES as p (p)}
+										{@const info = priorityIcons[p] ?? defaultPriorityIcon}
+										{@const PriorityIcon = info.icon}
 										<button
 											type="button"
 											class="{dropdownItemBase} {priority === p
@@ -457,7 +465,7 @@
 												e.preventDefault();
 												priority = p;
 												openDropdown = null;
-											}}>{displayName(p)}</button
+											}}><span class="mr-2"><PriorityIcon size={16} class={info.className} /></span>{displayName(p)}</button
 										>
 									{/each}
 								</div>

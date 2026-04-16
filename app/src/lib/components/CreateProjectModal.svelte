@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import { X, Paperclip } from '@lucide/svelte';
+	import { projectStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
 
 	interface Props {
@@ -26,6 +27,8 @@
 	let identifier = $state('');
 	let description = $state('');
 	let status = $state<string>('planning');
+	const selectedProjectStatus = $derived(projectStatusIcons[status] ?? defaultStatusIcon);
+	const SelectedProjectStatusIcon = $derived(selectedProjectStatus.icon);
 	let color = $state(PRESET_COLORS[0]);
 	let startAt = $state('');
 	let endAt = $state('');
@@ -171,7 +174,10 @@
 									class={dropdownBtnClass}
 									onclick={() => toggleDropdown('status')}
 								>
-									<span class="truncate">{formatStatus(status)}</span>
+									<span class="flex items-center gap-1.5 truncate">
+										<SelectedProjectStatusIcon size={16} class={selectedProjectStatus.className} />
+										{formatStatus(status)}
+									</span>
 									<svg
 										class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown ===
 										'status'
@@ -192,6 +198,8 @@
 								{#if openDropdown === 'status'}
 									<div class={dropdownPanelClass}>
 										{#each PROJECT_STATUSES as s (s)}
+											{@const info = projectStatusIcons[s] ?? defaultStatusIcon}
+											{@const StatusIcon = info.icon}
 											<button
 												type="button"
 												class="{dropdownItemBase} {status === s
@@ -203,6 +211,7 @@
 													openDropdown = null;
 												}}
 											>
+												<span class="mr-2"><StatusIcon size={16} class={info.className} /></span>
 												{formatStatus(s)}
 											</button>
 										{/each}

@@ -5,6 +5,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import { X, Paperclip } from '@lucide/svelte';
+	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
 
 	interface CustomerOption {
@@ -38,6 +39,8 @@
 	let description = $state('');
 	let customerId = $state('');
 	let priority = $state<string>('medium');
+	const selectedTicketPriority = $derived(priorityIcons[priority] ?? defaultPriorityIcon);
+	const SelectedTicketPriorityIcon = $derived(selectedTicketPriority.icon);
 	let category = $state<string>('');
 	let channel = $state<string>('web_form');
 	let submitting = $state(false);
@@ -223,7 +226,12 @@
 									class={dropdownBtnClass}
 									onclick={() => toggleDropdown('priority')}
 								>
-									<span class="truncate">{priority || '—'}</span>
+									<span class="flex items-center gap-1.5 truncate">
+										{#if priority}
+											<SelectedTicketPriorityIcon size={16} class={selectedTicketPriority.className} />
+										{/if}
+										{priority || '—'}
+									</span>
 									<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'priority' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 									</svg>
@@ -231,11 +239,14 @@
 								{#if openDropdown === 'priority'}
 									<div class={dropdownPanelUpClass}>
 										{#each TICKET_PRIORITIES as p (p)}
+											{@const info = priorityIcons[p] ?? defaultPriorityIcon}
+											{@const PriorityIcon = info.icon}
 											<button
 												type="button"
 												class="{dropdownItemBase} {priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
 												onmousedown={(e) => { e.preventDefault(); priority = p; openDropdown = null; }}
 											>
+												<span class="mr-2"><PriorityIcon size={16} class={info.className} /></span>
 												{p}
 											</button>
 										{/each}

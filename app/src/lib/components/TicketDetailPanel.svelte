@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { X, Send, Lock, Trash2, Plus, Clock, ArrowRightFromLine, Paperclip, MessageSquare, Info } from '@lucide/svelte';
+	import { ticketStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
+	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/stores/auth.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
@@ -83,6 +85,11 @@
 	);
 
 	let ticket = $state<TicketDetail | null>(null);
+
+	const currentTicketStatus = $derived(ticket ? (ticketStatusIcons[ticket.status] ?? defaultStatusIcon) : defaultStatusIcon);
+	const CurrentTicketStatusIcon = $derived(currentTicketStatus.icon);
+	const currentTicketPriority = $derived(ticket ? (priorityIcons[ticket.priority] ?? defaultPriorityIcon) : defaultPriorityIcon);
+	const CurrentTicketPriorityIcon = $derived(currentTicketPriority.icon);
 	let messages = $state<Message[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -517,12 +524,17 @@
 											class={propBtnClass}
 											onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
 										>
-										<span class="truncate">{displayName(ticket.status)}</span>
+										<span class="flex items-center gap-1.5 truncate">
+											<CurrentTicketStatusIcon size={15} class={currentTicketStatus.className} />
+											{displayName(ticket.status)}
+										</span>
 										{@html chevronSvg}
 									</button>
 									{#if openDropdown === 'status'}
 										<div class={dropdownPanelClass}>
 											{#each TICKET_STATUSES as s (s)}
+													{@const info = ticketStatusIcons[s] ?? defaultStatusIcon}
+													{@const StatusIcon = info.icon}
 													<button
 														class="{dropdownItemBase} {ticket.status === s
 															? 'font-medium text-accent'
@@ -530,7 +542,7 @@
 														onmousedown={(e) => {
 															e.preventDefault();
 															updateField('status', s);
-														}}>{displayName(s)}</button
+														}}><span class="mr-1.5"><StatusIcon size={15} class={info.className} /></span>{displayName(s)}</button
 													>
 												{/each}
 											</div>
@@ -538,7 +550,10 @@
 									</div>
 								{:else}
 									<div class={propBtnReadonlyClass}>
-										<span class="truncate">{displayName(ticket.status)}</span>
+										<span class="flex items-center gap-1.5 truncate">
+											<CurrentTicketStatusIcon size={15} class={currentTicketStatus.className} />
+											{displayName(ticket.status)}
+										</span>
 									</div>
 								{/if}
 							</div>
@@ -553,12 +568,17 @@
 											onclick={() =>
 												(openDropdown = openDropdown === 'priority' ? null : 'priority')}
 										>
-										<span class="truncate">{displayName(ticket.priority)}</span>
+										<span class="flex items-center gap-1.5 truncate">
+											<CurrentTicketPriorityIcon size={15} class={currentTicketPriority.className} />
+											{displayName(ticket.priority)}
+										</span>
 										{@html chevronSvg}
 									</button>
 									{#if openDropdown === 'priority'}
 										<div class={dropdownPanelClass}>
 											{#each TICKET_PRIORITIES as p (p)}
+													{@const info = priorityIcons[p] ?? defaultPriorityIcon}
+													{@const PriorityIcon = info.icon}
 													<button
 														class="{dropdownItemBase} {ticket.priority === p
 															? 'font-medium text-accent'
@@ -566,7 +586,7 @@
 														onmousedown={(e) => {
 															e.preventDefault();
 															updateField('priority', p);
-														}}>{displayName(p)}</button
+														}}><span class="mr-1.5"><PriorityIcon size={15} class={info.className} /></span>{displayName(p)}</button
 													>
 												{/each}
 											</div>
@@ -574,7 +594,10 @@
 									</div>
 								{:else}
 									<div class={propBtnReadonlyClass}>
-										<span class="truncate">{displayName(ticket.priority)}</span>
+										<span class="flex items-center gap-1.5 truncate">
+											<CurrentTicketPriorityIcon size={15} class={currentTicketPriority.className} />
+											{displayName(ticket.priority)}
+										</span>
 									</div>
 								{/if}
 							</div>

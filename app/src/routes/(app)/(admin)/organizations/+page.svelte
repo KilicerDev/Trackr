@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
+	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import Modal from '$lib/components/Modal.svelte';
@@ -54,6 +55,8 @@
 	// Organization settings state
 	let autoAssign = $state(false);
 	let defaultPriority = $state<string>('medium');
+	const selectedDefaultPriority = $derived(priorityIcons[defaultPriority] ?? defaultPriorityIcon);
+	const SelectedDefaultPriorityIcon = $derived(selectedDefaultPriority.icon);
 	let requireCategory = $state(false);
 	let notifyTicketCreated = $state(true);
 	let notifyTicketAssigned = $state(true);
@@ -543,16 +546,21 @@
 									<span class={labelClass}>Default priority</span>
 									<div class="relative" data-dropdown>
 										<button type="button" class={dropBtnClass} onclick={() => toggleDropdown('settings-priority')}>
-								<span class="truncate">{defaultPriority}</span>
+								<span class="flex items-center gap-1.5 truncate">
+									<SelectedDefaultPriorityIcon size={16} class={selectedDefaultPriority.className} />
+									{defaultPriority}
+								</span>
 								{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'settings-priority'}
 											<div class={dropPanelClass}>
 												{#each PRIORITIES as p (p)}
+													{@const info = priorityIcons[p] ?? defaultPriorityIcon}
+													{@const PriorityIcon = info.icon}
 													<button type="button"
 														class="{dropItemBase} {defaultPriority === p ? 'font-medium text-accent' : 'text-muted'}"
 														onmousedown={(e) => { e.preventDefault(); defaultPriority = p; openDropdown = null; }}
-													>{p}</button>
+													><span class="mr-2"><PriorityIcon size={16} class={info.className} /></span>{p}</button>
 												{/each}
 											</div>
 										{/if}

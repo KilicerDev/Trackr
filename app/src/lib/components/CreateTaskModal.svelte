@@ -4,6 +4,8 @@
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
+	import { taskStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
+	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import { projectStore, type Project } from '$lib/stores/projects.svelte';
 	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
@@ -146,6 +148,10 @@
 	const resolvedProjectId = $derived(projectId ?? selectedProjectId);
 	const canSubmit = $derived(!!title.trim() && !!resolvedProjectId);
 	const SelectedTypeIcon = $derived(typeIcons[type] ?? defaultTypeIcon);
+	const selectedStatus = $derived(taskStatusIcons[status] ?? defaultStatusIcon);
+	const SelectedStatusIcon = $derived(selectedStatus.icon);
+	const selectedPriority = $derived(priorityIcons[priority] ?? defaultPriorityIcon);
+	const SelectedPriorityIcon = $derived(selectedPriority.icon);
 
 	function toggleDropdown(key: string) {
 		openDropdown = openDropdown === key ? null : key;
@@ -377,17 +383,23 @@
 								class={dropdownBtnClass}
 								onclick={() => toggleDropdown('priority')}
 							>
-							<span class="truncate">{displayName(priority)}</span>
+							<span class="flex items-center gap-1.5 truncate">
+								<SelectedPriorityIcon size={16} class={selectedPriority.className} />
+								{displayName(priority)}
+							</span>
 							{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'priority'}
 								<div class={dropdownPanelClass}>
 									{#each TASK_PRIORITIES as p (p)}
+										{@const info = priorityIcons[p] ?? defaultPriorityIcon}
+										{@const PriorityIcon = info.icon}
 										<button
 											type="button"
 											class="{dropdownItemBase} {priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}"
 											onmousedown={(e) => { e.preventDefault(); priority = p; openDropdown = null; }}
 										>
+											<span class="mr-2"><PriorityIcon size={16} class={info.className} /></span>
 											{displayName(p)}
 										</button>
 									{/each}
@@ -405,17 +417,23 @@
 								class={dropdownBtnClass}
 								onclick={() => toggleDropdown('status')}
 							>
-							<span class="truncate">{displayName(status)}</span>
+							<span class="flex items-center gap-1.5 truncate">
+								<SelectedStatusIcon size={16} class={selectedStatus.className} />
+								{displayName(status)}
+							</span>
 							{@html chevronSvg}
 							</button>
 							{#if openDropdown === 'status'}
 								<div class={dropdownPanelClass}>
 									{#each TASK_STATUSES as s (s)}
+										{@const info = taskStatusIcons[s] ?? defaultStatusIcon}
+										{@const StatusIcon = info.icon}
 										<button
 											type="button"
 											class="{dropdownItemBase} {status === s ? 'font-medium text-accent' : 'text-sidebar-text'}"
 											onmousedown={(e) => { e.preventDefault(); status = s; openDropdown = null; }}
 										>
+											<span class="mr-2"><StatusIcon size={16} class={info.className} /></span>
 											{displayName(s)}
 										</button>
 									{/each}
