@@ -6,6 +6,8 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
+	import { taskStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
+	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import type { Attachment } from '$lib/api/attachments';
 	import type { Tag } from '$lib/api/tags';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
@@ -98,6 +100,11 @@
 	let tagSearch = $state('');
 	let loadingProjectTags = $state(false);
 
+	const currentTaskStatus = $derived(task ? (taskStatusIcons[task.status] ?? defaultStatusIcon) : defaultStatusIcon);
+	const CurrentTaskStatusIcon = $derived(currentTaskStatus.icon);
+	const currentTaskPriority = $derived(task ? (priorityIcons[task.priority] ?? defaultPriorityIcon) : defaultPriorityIcon);
+	const CurrentTaskPriorityIcon = $derived(currentTaskPriority.icon);
+
 	const filteredProjectTags = $derived(
 		projectTags
 			.filter((t) => !taskTags.some((tt) => tt.id === t.id))
@@ -123,9 +130,8 @@
 	function syncTagsToStore() {
 		if (!task) return;
 		const tagsPayload = taskTags.map((t) => ({ id: crypto.randomUUID(), tag: { id: t.id, name: t.name, color: t.color } }));
-		taskStore.items = taskStore.items.map((item) =>
-			item.id === task!.id ? { ...item, tags: tagsPayload } : item
-		);
+		const existing = taskStore.items.find((i) => i.id === task!.id) as Record<string, unknown> | undefined;
+		if (existing) existing.tags = tagsPayload;
 	}
 
 	async function addTagToTask(tag: { id: string; name: string; color: string }) {
@@ -135,7 +141,6 @@
 		syncTagsToStore();
 		try {
 			await api.tags.addToTask(task.id, tag.id);
-			onUpdate?.();
 		} catch {
 			taskTags = taskTags.filter((t) => t.id !== tag.id);
 			syncTagsToStore();
@@ -149,7 +154,6 @@
 		syncTagsToStore();
 		try {
 			await api.tags.removeFromTask(task.id, tagId);
-			onUpdate?.();
 		} catch {
 			taskTags = prev;
 			syncTagsToStore();
@@ -680,13 +684,13 @@
 						<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}>
 							<span class="text-sm text-muted/50">Status</span>
 							<span class="flex items-center gap-1.5">
-								<span class="h-2 w-2 rounded-full {statusColors[task.status]?.split(' ')[0] ?? 'bg-gray-100'}"></span>
+								<CurrentTaskStatusIcon size={15} class={currentTaskStatus.className} />
 								<span>{displayName(task.status)}</span>
 								{@html chevronSvg}
 							</span>
 						</button>
 						{#if openDropdown === 'status'}
-							<div class={dropdownPanelClass}>{#each TASK_STATUSES as s (s)}<button class="{dropdownItemBase} {task.status === s ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('status', s); }}>{displayName(s)}</button>{/each}</div>
+							<div class={dropdownPanelClass}>{#each TASK_STATUSES as s (s)}{@const info = taskStatusIcons[s] ?? defaultStatusIcon}{@const StatusIcon = info.icon}<button class="{dropdownItemBase} {task.status === s ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('status', s); }}><span class="mr-1.5"><StatusIcon size={15} class={info.className} /></span>{displayName(s)}</button>{/each}</div>
 						{/if}
 					</div>
 
@@ -695,12 +699,13 @@
 						<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'priority' ? null : 'priority')}>
 							<span class="text-sm text-muted/50">Priority</span>
 							<span class="flex items-center gap-1.5">
+								<CurrentTaskPriorityIcon size={15} class={currentTaskPriority.className} />
 								<span>{displayName(task.priority)}</span>
 								{@html chevronSvg}
 							</span>
 						</button>
 						{#if openDropdown === 'priority'}
-							<div class={dropdownPanelClass}>{#each TASK_PRIORITIES as p (p)}<button class="{dropdownItemBase} {task.priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('priority', p); }}>{displayName(p)}</button>{/each}</div>
+							<div class={dropdownPanelClass}>{#each TASK_PRIORITIES as p (p)}{@const info = priorityIcons[p] ?? defaultPriorityIcon}{@const PriorityIcon = info.icon}<button class="{dropdownItemBase} {task.priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('priority', p); }}><span class="mr-1.5"><PriorityIcon size={15} class={info.className} /></span>{displayName(p)}</button>{/each}</div>
 						{/if}
 					</div>
 
