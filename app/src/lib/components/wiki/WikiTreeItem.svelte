@@ -235,8 +235,8 @@
 
 <div class="relative" bind:this={rowEl} style="margin-left: {indentLeft};">
   <button
-    class="flex h-8 w-full select-none items-center gap-1.5 rounded-sm text-md transition-all duration-150
-      {isActive ? 'text-accent' : isFolder ? 'text-sidebar-text/80 hover:bg-surface-hover/60 hover:text-sidebar-text' : 'text-sidebar-text/60 hover:bg-surface-hover/60 hover:text-sidebar-text'}
+    class="flex h-8 w-full select-none items-center gap-1.5 rounded-sm text-[15px] transition-all duration-150
+      {isActive ? 'text-accent hover:bg-accent/10' : isFolder ? 'text-sidebar-text/80 hover:bg-surface-hover/60 hover:text-sidebar-text' : 'text-sidebar-text/60 hover:bg-surface-hover/60 hover:text-sidebar-text'}
       {dragOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''}"
     style="padding-left: 12px; padding-right: 8px;"
     onclick={handleClick}
@@ -262,9 +262,9 @@
         <ChevronRight size={12} class="text-muted/30" />
       </span>
       {#if expanded}
-        <FolderOpen size={16} class="shrink-0 text-muted/50" />
+        <FolderOpen size={18} class="shrink-0 text-muted/50" />
       {:else}
-        <Folder size={16} class="shrink-0 text-muted/50" />
+        <Folder size={18} class="shrink-0 text-muted/50" />
       {/if}
       {#if isRenaming}
         <!-- svelte-ignore a11y_autofocus -->
@@ -275,7 +275,7 @@
           onkeydown={handleRenameKeydown}
           onkeyup={(e) => e.stopPropagation()}
           onclick={(e) => e.stopPropagation()}
-          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-md text-sidebar-text outline-none"
+          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-[15px] text-sidebar-text outline-none"
         />
       {:else}
         <span class="truncate">{(item as WikiFolder).name}</span>
@@ -287,7 +287,7 @@
       {/if}
     {:else if isFile}
       <span class="w-[12px] shrink-0"></span>
-      <svelte:component this={getFileIconComponent((item as WikiFile).mime_type)} size={16} class="shrink-0 {isActive ? 'text-accent' : 'text-muted/50'}" />
+      <svelte:component this={getFileIconComponent((item as WikiFile).mime_type)} size={18} class="shrink-0 {isActive ? 'text-accent' : 'text-muted/50'}" />
       {#if isRenaming}
         <!-- svelte-ignore a11y_autofocus -->
         <input
@@ -297,14 +297,14 @@
           onkeydown={handleRenameKeydown}
           onkeyup={(e) => e.stopPropagation()}
           onclick={(e) => e.stopPropagation()}
-          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-md text-sidebar-text outline-none"
+          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-[15px] text-sidebar-text outline-none"
         />
       {:else}
         <span class="truncate">{(item as WikiFile).file_name}</span>
       {/if}
     {:else}
       <span class="w-[12px] shrink-0"></span>
-      <FileText size={16} class="shrink-0 {isActive ? 'text-accent' : 'text-muted/50'}" />
+      <FileText size={18} class="shrink-0 {isActive ? 'text-accent' : 'text-muted/50'}" />
       {#if isRenaming}
         <!-- svelte-ignore a11y_autofocus -->
         <input
@@ -314,7 +314,7 @@
           onkeydown={handleRenameKeydown}
           onkeyup={(e) => e.stopPropagation()}
           onclick={(e) => e.stopPropagation()}
-          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-md text-sidebar-text outline-none"
+          class="min-w-0 flex-1 rounded-sm bg-surface-hover/60 px-1 py-0.5 text-[15px] text-sidebar-text outline-none"
         />
       {:else}
         <span class="truncate">{(item as WikiPageMeta).title}</span>
