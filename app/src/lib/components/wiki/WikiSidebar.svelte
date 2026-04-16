@@ -377,7 +377,7 @@
     </div>
 
     <!-- Tree -->
-    <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1" style="min-width: 280px;">
+    <div class="min-h-0 flex-1 overflow-y-auto py-1" style="min-width: 280px;">
       {#each rootFolders as folder (folder.id)}
         {@const children = getFolderChildren(folder.id)}
         <WikiTreeItem

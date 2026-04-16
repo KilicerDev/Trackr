@@ -235,7 +235,7 @@
 
 <div class="relative" bind:this={rowEl} style="margin-left: {indentLeft};">
   <button
-    class="flex h-8 w-full select-none items-center gap-1.5 rounded-sm text-[15px] transition-all duration-150
+    class="flex h-8 w-full select-none items-center gap-1.5 text-[15px] transition-all duration-150
       {isActive ? 'text-accent hover:bg-accent/10' : isFolder ? 'text-sidebar-text/80 hover:bg-surface-hover/60 hover:text-sidebar-text' : 'text-sidebar-text/60 hover:bg-surface-hover/60 hover:text-sidebar-text'}
       {dragOver ? 'ring-1 ring-accent/50 bg-accent/5' : ''}"
     style="padding-left: 12px; padding-right: 8px;"
