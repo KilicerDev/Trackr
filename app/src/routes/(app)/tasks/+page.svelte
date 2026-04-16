@@ -21,6 +21,7 @@
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
+	import TaskBoardCard from '$lib/components/TaskBoardCard.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
 		ListFilter,
@@ -962,64 +963,13 @@
 						onfinalize={(e) => handleFinalize(colIndex, col.key, e)}
 					>
 						{#each col.items as task (task.id)}
-							{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
-							{@const cardTags = ((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined)?.map((tt) => tt.tag).filter(Boolean) ?? []}
-							<button
-								class="mb-1.5 w-full cursor-pointer rounded border border-surface-border/50 bg-surface/50 px-3 py-2 text-left transition-all duration-150 hover:bg-surface/80 last:mb-0 {selectedTaskId === task.id ? '!border-accent/50 !bg-accent/15' : ''}"
+							<TaskBoardCard
+								{task}
+								selected={selectedTaskId === task.id}
+								showProjectIdentifier={groupBy === 'status'}
+								showStatus={groupBy === 'project'}
 								onclick={() => selectTask(task.id)}
-							>
-								<!-- ID + priority -->
-								<div class="mb-1 flex items-center justify-between">
-									<span class="font-mono text-xs text-muted/50">{task.short_id || '—'}</span>
-									<span class="text-xs {task.priority === 'urgent' ? 'text-red-400' : task.priority === 'high' ? 'text-orange-400' : task.priority === 'medium' ? 'text-yellow-500' : 'text-muted/30'}">
-										{formatPriority(task.priority)}
-									</span>
-								</div>
-
-								<!-- Title -->
-								<p class="line-clamp-2 text-base leading-snug text-sidebar-text">{task.title}</p>
-
-								<!-- Bottom row -->
-								{#if cardTags.length > 0 || task.assignments?.length || (groupBy === 'status' && task.project) || (groupBy === 'project')}
-									<div class="mt-2 flex items-center gap-1.5">
-										{#if groupBy === 'status' && task.project}
-											<span class="flex items-center gap-1 text-xs text-muted/40">
-												<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {task.project.color ?? 'var(--color-accent)'}"></span>
-												{task.project.identifier}
-											</span>
-										{:else if groupBy === 'project'}
-											<span class="text-xs text-muted/40">{formatStatus(task.status)}</span>
-										{/if}
-
-										{#if cardTags.length > 0}
-											<div class="flex flex-1 items-center gap-1 min-w-0">
-												{#each cardTags.slice(0, 2) as tag (tag.id)}
-													<span class="rounded px-1 py-px text-2xs font-medium truncate" style="color: {tag.color}; opacity: 0.5">{tag.name}</span>
-												{/each}
-												{#if cardTags.length > 2}
-													<span class="text-2xs text-muted/30">+{cardTags.length - 2}</span>
-												{/if}
-											</div>
-										{:else}
-											<div class="flex-1"></div>
-										{/if}
-
-										{#if task.assignments?.length}
-											<div class="flex shrink-0 -space-x-1">
-												{#each task.assignments.slice(0, 3) as a (a.user_id)}
-													{#if a.user.avatar_url}
-														<img src={a.user.avatar_url} alt={a.user.full_name} class="h-4 w-4 rounded-full border border-page-bg object-cover" />
-													{:else}
-														<span class="flex h-4 w-4 items-center justify-center rounded-full border border-page-bg bg-accent/10 text-4xs font-semibold text-accent">
-															{a.user.full_name.charAt(0)}
-														</span>
-													{/if}
-												{/each}
-											</div>
-										{/if}
-									</div>
-								{/if}
-							</button>
+							/>
 						{/each}
 
 						<!-- Create task inline -->

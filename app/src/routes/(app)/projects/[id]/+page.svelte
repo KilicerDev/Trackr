@@ -14,9 +14,11 @@
 	import TaskRow from '$lib/components/TaskRow.svelte';
 	import { Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter, Info, Paperclip, SquareCheckBig } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
+	import TaskBoardCard from '$lib/components/TaskBoardCard.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
+	import { projectStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { SvelteMap } from 'svelte/reactivity';
 	import type { Attachment } from '$lib/api/attachments';
@@ -144,7 +146,7 @@
 		taskBoardColumns = TASK_STATUSES.map((s) => ({
 			key: s,
 			label: formatTaskStatus(s),
-			items: taskStore.items.filter((t) => t.status === s).map((t) => ({ ...t, id: t.id }))
+			items: taskStore.items.filter((t) => t.status === s) as (Task & { id: string })[]
 		}));
 	}
 
@@ -179,6 +181,8 @@
 	};
 
 	const project = $derived(projectStore.activeProject);
+	const currentProjectStatus = $derived(project ? (projectStatusIcons[project.status] ?? defaultStatusIcon) : defaultStatusIcon);
+	const CurrentProjectStatusIcon = $derived(currentProjectStatus.icon);
 	const canUpdateProject = $derived(auth.can('projects', 'update'));
 	const canManageProject = $derived(auth.can('projects', 'manage'));
 	const canCreateTask = $derived(auth.can('tasks', 'create'));
@@ -403,9 +407,13 @@
 		}
 	});
 
+	const taskBoardSignature = $derived(
+		taskStore.items.map((t) => `${t.id}:${t.status}`).join('|')
+	);
+
 	$effect(() => {
 		if (taskViewMode === 'board' && !taskStore.loading) {
-			taskStore.items;
+			taskBoardSignature;
 			rebuildTaskBoard();
 		}
 	});
@@ -549,9 +557,10 @@
 						{#if canUpdateProject}
 							<div class="relative flex items-center" data-dropdown>
 								<button
-									class="inline-flex cursor-pointer items-center rounded-sm px-2 py-1 text-xs font-medium leading-none text-muted/50 transition-all duration-150 hover:text-sidebar-text"
+									class="inline-flex cursor-pointer items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium leading-none text-muted/50 transition-all duration-150 hover:text-sidebar-text"
 									onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}
 								>
+									<CurrentProjectStatusIcon size={14} class={currentProjectStatus.className} />
 									{formatStatus(project.status)}
 								</button>
 								{#if openDropdown === 'status'}
@@ -559,6 +568,8 @@
 										class="absolute top-full left-0 z-20 mt-1.5 min-w-[140px] origin-top-left animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]"
 									>
 										{#each PROJECT_STATUSES as s (s)}
+											{@const info = projectStatusIcons[s] ?? defaultStatusIcon}
+											{@const StatusIcon = info.icon}
 											<button
 												class="flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60 {project.status ===
 												s
@@ -569,6 +580,7 @@
 													updateField('status', s);
 												}}
 											>
+												<span class="mr-1.5"><StatusIcon size={14} class={info.className} /></span>
 												{formatStatus(s)}
 											</button>
 										{/each}
@@ -577,8 +589,9 @@
 							</div>
 						{:else}
 							<span
-								class="inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium leading-none text-muted/50"
+								class="inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium leading-none text-muted/50"
 							>
+								<CurrentProjectStatusIcon size={14} class={currentProjectStatus.className} />
 								{formatStatus(project.status)}
 							</span>
 						{/if}
@@ -1011,46 +1024,11 @@
 							onfinalize={(e) => handleTaskFinalize(colIndex, col.key, e)}
 						>
 							{#each col.items as task (task.id)}
-								{@const TypeIcon = typeIcons[task.type] ?? defaultTypeIcon}
-								{@const cardTags = ((task as Record<string, unknown>).tags as { id: string; tag: { id: string; name: string; color: string } }[] | undefined)?.map((tt) => tt.tag).filter(Boolean) ?? []}
-								<button
-									class="mb-1.5 w-full cursor-pointer rounded border border-surface-border/50 bg-surface/50 px-3 py-2.5 text-left transition-all duration-150 hover:bg-surface/80 last:mb-0 {selectedTaskId === task.id ? '!border-accent/50 !bg-accent/15' : ''}"
+								<TaskBoardCard
+									{task}
+									selected={selectedTaskId === task.id}
 									onclick={() => selectTask(task.id)}
-								>
-									<div class="mb-1 flex items-center gap-1.5">
-										<span class="text-muted"><TypeIcon size={11} /></span>
-										<span class="font-mono text-xs text-muted/50">{task.short_id || '—'}</span>
-									</div>
-									<p class="mb-1.5 line-clamp-2 text-base leading-snug text-sidebar-text">{task.title}</p>
-									<div class="flex items-center gap-1.5">
-										<span class="text-xs {task.priority === 'urgent' ? 'text-red-400' : task.priority === 'high' ? 'text-orange-400' : task.priority === 'medium' ? 'text-yellow-500' : task.priority === 'low' ? 'text-blue-400' : 'text-muted/50'}">
-											{formatPriority(task.priority)}
-										</span>
-										{#if cardTags.length > 0}
-											<div class="flex flex-1 items-center gap-1 min-w-0">
-												{#each cardTags.slice(0, 2) as tag (tag.id)}
-													<span class="rounded px-1 py-px text-2xs font-medium truncate" style="color: {tag.color}; opacity: 0.5">{tag.name}</span>
-												{/each}
-												{#if cardTags.length > 2}
-													<span class="text-2xs text-muted/30">+{cardTags.length - 2}</span>
-												{/if}
-											</div>
-										{/if}
-										{#if task.assignments?.length}
-											<div class="ml-auto flex shrink-0 -space-x-1">
-												{#each task.assignments.slice(0, 3) as a (a.user_id)}
-													{#if a.user.avatar_url}
-														<img src={a.user.avatar_url} alt={a.user.full_name} class="h-4 w-4 rounded-full border border-page-bg object-cover" />
-													{:else}
-														<span class="flex h-4 w-4 items-center justify-center rounded-full border border-page-bg bg-accent/10 text-4xs font-semibold text-accent">
-															{a.user.full_name.charAt(0)}
-														</span>
-													{/if}
-												{/each}
-											</div>
-										{/if}
-									</div>
-								</button>
+								/>
 							{/each}
 						</div>
 					</div>
