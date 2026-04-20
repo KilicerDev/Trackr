@@ -18,6 +18,7 @@ export type WikiEditorInstance = {
 
 export async function createWikiEditor(options: WikiEditorOptions): Promise<WikiEditorInstance> {
   const pluginConfig: PluginConfig = {
+    initialContent: options.content,
     onChange: options.onChange,
   };
 

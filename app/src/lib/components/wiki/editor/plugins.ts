@@ -8,6 +8,7 @@ import { indent } from "@milkdown/kit/plugin/indent";
 import { cursor } from "@milkdown/kit/plugin/cursor";
 
 export type PluginConfig = {
+  initialContent: string;
   onChange?: (markdown: string) => void;
 };
 
@@ -16,8 +17,8 @@ function normalize(md: string | null | undefined): string {
 }
 
 export function configurePlugins(editor: Editor, config: PluginConfig): Editor {
-  let baseline: string | null = null;
-  let lastEmitted: string | null = null;
+  const baseline = normalize(config.initialContent);
+  let lastEmitted = baseline;
 
   return editor
     .use(commonmark)
@@ -32,11 +33,6 @@ export function configurePlugins(editor: Editor, config: PluginConfig): Editor {
       if (config.onChange) {
         l.markdownUpdated((_ctx, markdown) => {
           const normalized = normalize(markdown);
-          if (baseline === null) {
-            baseline = normalized;
-            lastEmitted = normalized;
-            return;
-          }
           if (normalized === baseline) return;
           if (normalized === lastEmitted) return;
           lastEmitted = normalized;
