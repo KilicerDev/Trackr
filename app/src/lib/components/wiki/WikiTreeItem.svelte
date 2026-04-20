@@ -2,6 +2,7 @@
   import { slide } from "svelte/transition";
   import { ChevronRight, Folder, FolderOpen, FileText, Pencil, Trash2, FolderInput, FilePlus, FolderPlus, Share2, Users, Download, Image, Table, Presentation, File as FileIcon } from "@lucide/svelte";
   import { wikiStore, type WikiFolder, type WikiPageMeta, type WikiFile } from "$lib/stores/wiki.svelte";
+  import { wikiUi } from "$lib/stores/wiki-ui.svelte";
   import { isImageType, isPdfType } from "$lib/config/attachments";
   import WikiTreeItem from "./WikiTreeItem.svelte";
 
@@ -20,6 +21,7 @@
     canEdit = false,
     canShare = false,
     renamingId = null,
+    forceExpanded = false,
     onSelectPage,
     onSelectFile,
     onRenameStart,
@@ -50,6 +52,7 @@
     canEdit?: boolean;
     canShare?: boolean;
     renamingId?: string | null;
+    forceExpanded?: boolean;
     onSelectPage?: (id: string) => void;
     onSelectFile?: (id: string) => void;
     onRenameStart?: (id: string, type: "folder" | "page" | "file") => void;
@@ -67,7 +70,7 @@
     onShareRequest?: (id: string, type: "folder" | "page") => void;
   } = $props();
 
-  let expanded = $state(true);
+  const expanded = $derived(forceExpanded || wikiUi.isExpanded(item.id));
   let showMenu = $state(false);
   let menuX = $state(0);
   let menuY = $state(0);
@@ -110,7 +113,7 @@
   function handleClick(e: MouseEvent) {
     if (isRenaming) return;
     if (isFolder) {
-      expanded = !expanded;
+      wikiUi.toggleFolder(item.id);
     } else if (isFile) {
       onSelectFile?.(item.id);
     } else {
@@ -438,6 +441,7 @@
         {canEdit}
         {canShare}
         {renamingId}
+        {forceExpanded}
         {onSelectPage}
         {onSelectFile}
         {onRenameStart}

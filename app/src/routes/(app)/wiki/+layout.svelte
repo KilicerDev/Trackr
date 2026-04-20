@@ -3,10 +3,17 @@
   import WikiSidebar from "$lib/components/wiki/WikiSidebar.svelte";
   import UnsavedChangesModal from "$lib/components/wiki/UnsavedChangesModal.svelte";
   import { wikiStore } from "$lib/stores/wiki.svelte";
+  import { wikiUi } from "$lib/stores/wiki-ui.svelte";
   import { auth } from "$lib/stores/auth.svelte";
 
   let { children } = $props();
-  let sidebarCollapsed = $state(false);
+
+  wikiUi.initLocal();
+  let sidebarCollapsed = $state(wikiUi.sidebarCollapsed);
+
+  $effect(() => {
+    wikiUi.setSidebarCollapsed(sidebarCollapsed);
+  });
 
   // Unsaved changes navigation guard
   let showUnsavedModal = $state(false);
@@ -19,6 +26,11 @@
       wikiStore.setWikiAdmin(auth.isPlatformMember && (auth.isOwner || auth.isAdmin));
       wikiStore.loadTree(orgId);
     }
+  });
+
+  $effect(() => {
+    const userId = auth.user?.id;
+    if (userId) void wikiUi.loadFolderState(userId);
   });
 
   beforeNavigate(({ cancel, to }) => {

@@ -395,6 +395,7 @@
           canEdit={isAdmin || wikiStore.getEffectiveAccess(folder, "folder") === "read_write"}
           canShare={isAdmin}
           {renamingId}
+          forceExpanded={isSearching}
           onSelectPage={handleSelectPage}
           onSelectFile={handleSelectFile}
           onRenameStart={handleRenameStart}
