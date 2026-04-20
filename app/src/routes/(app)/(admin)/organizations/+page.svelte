@@ -72,6 +72,11 @@
 	let settingsError = $state<string | null>(null);
 	let settingsSuccess = $state<string | null>(null);
 
+	// Search index
+	let reindexRunning = $state(false);
+	let reindexError = $state<string | null>(null);
+	let reindexMessage = $state<string | null>(null);
+
 	const dropBtnClass =
 		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
 	const dropPanelClass =
@@ -147,6 +152,8 @@
 		editSuccess = null;
 		settingsError = null;
 		settingsSuccess = null;
+		reindexError = null;
+		reindexMessage = null;
 		applyOrgFields(org);
 		loadOrgSettings(org.id);
 	}
@@ -216,6 +223,32 @@
 			applySettings(settings);
 		} catch {
 			// defaults
+		}
+	}
+
+	async function runReindex() {
+		if (!selectedOrg || reindexRunning) return;
+		reindexRunning = true;
+		reindexError = null;
+		reindexMessage = null;
+		try {
+			const res = await fetch('/api/reindex', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ organization_id: selectedOrg.id })
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				throw new Error(body?.message ?? `Reindex failed (${res.status})`);
+			}
+			const { counts } = await res.json();
+			const total =
+				counts.ticket + counts.task + counts.ticket_message + counts.task_comment + counts.attachment;
+			reindexMessage = `Indexed ${total} documents: ${counts.ticket} tickets, ${counts.task} tasks, ${counts.ticket_message} messages, ${counts.task_comment} comments, ${counts.attachment} files.`;
+		} catch (e) {
+			reindexError = e instanceof Error ? e.message : 'Reindex failed';
+		} finally {
+			reindexRunning = false;
 		}
 	}
 
@@ -620,6 +653,24 @@
 									</div>
 								</div>
 							</div>
+						</div>
+
+						<div class="mb-2 rounded border border-surface-border/40 bg-surface/50 px-3 py-2.5">
+							<span class="{sectionLabel} mb-3 block">Search Index</span>
+							<p class="mb-3 text-sm text-muted/50">
+								Rebuilds the full-text search index for this organization's tickets, tasks, messages, comments and attachments. Run this if search results are missing recent or historical content.
+							</p>
+							<div class="flex items-center gap-3">
+								<button type="button" onclick={runReindex} disabled={reindexRunning} class={btnSecondary}>
+									{reindexRunning ? 'Rebuilding...' : 'Rebuild search index'}
+								</button>
+							</div>
+							{#if reindexError}
+								<p class="pt-2 text-sm text-red-400">{reindexError}</p>
+							{/if}
+							{#if reindexMessage}
+								<p class="pt-2 text-sm text-green-400">{reindexMessage}</p>
+							{/if}
 						</div>
 
 						{#if settingsError}
