@@ -334,6 +334,7 @@ services:
       ORIGIN: ${SITE_URL}
       SUPABASE_URL: http://kong:8000
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      JWT_SECRET: ${JWT_SECRET}
 
   # ──────────────────────────────────────────────
   # Caddy (reverse proxy + automatic TLS)
