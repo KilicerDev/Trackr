@@ -13,6 +13,7 @@ import { tags } from "./tags";
 import { wiki } from "./wiki";
 import { ical } from "./ical";
 import { activities } from "./activities";
+import { userPreferences } from "./userPreferences";
 
 export const api = {
   tasks,
@@ -30,4 +31,5 @@ export const api = {
   wiki,
   ical,
   activities,
+  userPreferences,
 };
