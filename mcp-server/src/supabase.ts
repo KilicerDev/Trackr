@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createFileStorage } from "./storage.js";
 
 function required(name: string): string {
   const v = process.env[name];
@@ -7,43 +6,67 @@ function required(name: string): string {
   return v;
 }
 
+let jwt = "";
+let cachedUserId = "";
+let exchangeInFlight: Promise<void> | null = null;
+
+async function exchange(): Promise<void> {
+  if (exchangeInFlight) return exchangeInFlight;
+  const trackrUrl = required("TRACKR_URL");
+  const apiKey = required("TRACKR_API_KEY");
+  exchangeInFlight = (async () => {
+    const res = await fetch(`${trackrUrl.replace(/\/$/, "")}/api/auth/exchange`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Auth exchange failed (${res.status}): ${body || res.statusText}`);
+    }
+    const data = (await res.json()) as { access_token: string; user_id: string };
+    jwt = data.access_token;
+    cachedUserId = data.user_id;
+  })();
+  try {
+    await exchangeInFlight;
+  } finally {
+    exchangeInFlight = null;
+  }
+}
+
+const fetchWithAuth: typeof fetch = async (input, init = {}) => {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${jwt}`);
+  let res = await fetch(input, { ...init, headers });
+  if (res.status === 401) {
+    await exchange();
+    headers.set("Authorization", `Bearer ${jwt}`);
+    res = await fetch(input, { ...init, headers });
+  }
+  return res;
+};
+
 export async function buildClient(): Promise<SupabaseClient> {
   const url = required("TRACKR_SUPABASE_URL");
   const anonKey = required("TRACKR_SUPABASE_ANON_KEY");
-  const storage = createFileStorage();
+  required("TRACKR_URL");
+  required("TRACKR_API_KEY");
 
-  const client = createClient(url, anonKey, {
+  await exchange();
+
+  return createClient(url, anonKey, {
     auth: {
-      storage,
-      storageKey: "trackr-mcp-auth",
-      autoRefreshToken: true,
-      persistSession: true,
+      persistSession: false,
+      autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    global: { fetch: fetchWithAuth },
   });
-
-  const { data: existing } = await client.auth.getSession();
-  if (existing.session) return client;
-
-  const bootstrap = process.env.TRACKR_REFRESH_TOKEN;
-  if (!bootstrap) {
-    throw new Error(
-      "No saved session and TRACKR_REFRESH_TOKEN not set. " +
-        "Grab the refresh_token from your browser's Local Storage " +
-        "(key sb-<ref>-auth-token on the Trackr web UI) and set it once.",
-    );
-  }
-
-  const { error } = await client.auth.refreshSession({
-    refresh_token: bootstrap,
-  });
-  if (error) throw new Error(`Failed to exchange refresh token: ${error.message}`);
-
-  return client;
 }
 
-export async function currentUserId(client: SupabaseClient): Promise<string> {
-  const { data, error } = await client.auth.getUser();
-  if (error || !data.user) throw new Error("Not authenticated");
-  return data.user.id;
+export async function currentUserId(): Promise<string> {
+  if (!cachedUserId) {
+    throw new Error("Not authenticated — call buildClient() first");
+  }
+  return cachedUserId;
 }

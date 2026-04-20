@@ -184,14 +184,14 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     "Return the current authenticated user's id, email and username.",
     {},
     async () => {
-      const { data: auth, error } = await db.auth.getUser();
-      if (error || !auth.user) return err(error?.message ?? "Not authenticated");
-      const { data: profile } = await db
+      const userId = await currentUserId();
+      const { data: profile, error } = await db
         .from("users")
-        .select("id, email, username, organization_id")
-        .eq("id", auth.user.id)
+        .select("id, email, username, full_name, organization_id")
+        .eq("id", userId)
         .maybeSingle();
-      return json({ auth: auth.user, profile });
+      if (error) return err(error.message);
+      return json({ user_id: userId, profile });
     },
   );
 
@@ -278,7 +278,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ name, identifier, description, status, organization_id }) => {
       try {
         const org = requireOrgId(organization_id);
-        const owner = await currentUserId(db);
+        const owner = await currentUserId();
         const { data, error } = await db
           .from("projects")
           .insert({
@@ -418,7 +418,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ assignee_ids, ...fields }) => {
       let createdBy: string;
       try {
-        createdBy = await currentUserId(db);
+        createdBy = await currentUserId();
       } catch (e) {
         return err((e as Error).message);
       }
@@ -490,7 +490,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ task_id, content }) => {
       let userId: string;
       try {
-        userId = await currentUserId(db);
+        userId = await currentUserId();
       } catch (e) {
         return err((e as Error).message);
       }
@@ -519,7 +519,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ task_id, minutes, description, logged_at }) => {
       let userId: string;
       try {
-        userId = await currentUserId(db);
+        userId = await currentUserId();
       } catch (e) {
         return err((e as Error).message);
       }
@@ -616,7 +616,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ organization_id, customer_id, ...fields }) => {
       try {
         const org = requireOrgId(organization_id);
-        const customer = customer_id ?? (await currentUserId(db));
+        const customer = customer_id ?? (await currentUserId());
         const { data, error } = await db
           .from("support_tickets")
           .insert({ ...fields, organization_id: org, customer_id: customer })
@@ -664,7 +664,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ ticket_id, content }) => {
       let senderId: string;
       try {
-        senderId = await currentUserId(db);
+        senderId = await currentUserId();
       } catch (e) {
         return err((e as Error).message);
       }
@@ -712,7 +712,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ organization_id, ...fields }) => {
       try {
         const org = requireOrgId(organization_id);
-        const createdBy = await currentUserId(db);
+        const createdBy = await currentUserId();
         const { data, error } = await db
           .from("wiki_folders")
           .insert({ ...fields, organization_id: org, created_by: createdBy })
@@ -785,7 +785,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ organization_id, ...fields }) => {
       try {
         const org = requireOrgId(organization_id);
-        const createdBy = await currentUserId(db);
+        const createdBy = await currentUserId();
         const { data, error } = await db
           .from("wiki_pages")
           .insert({ ...fields, organization_id: org, created_by: createdBy })
@@ -867,7 +867,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
         if ((filePath && url) || (!filePath && !url)) {
           return err("provide exactly one of path or url");
         }
-        const uploadedBy = await currentUserId(db);
+        const uploadedBy = await currentUserId();
         const orgId = await resolveEntityOrgId(db, entity_type, entity_id);
 
         let bytes: Uint8Array;

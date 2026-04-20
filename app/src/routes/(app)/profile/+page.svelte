@@ -10,12 +10,13 @@
 	import { theme, COLOR_SCHEMES, type ColorScheme } from '$lib/stores/theme.svelte';
 	import { densityStore, DENSITY_OPTIONS, type Density } from '$lib/stores/density.svelte';
 	import { textSizeStore, TEXT_SIZE_OPTIONS, type TextSize } from '$lib/stores/text-size.svelte';
-	import { Camera, Copy, Check, RefreshCw, Trash2, CalendarSync, Eye, EyeOff, ChevronDown } from '@lucide/svelte';
+	import { Camera, Copy, Check, RefreshCw, Trash2, CalendarSync, Eye, EyeOff, ChevronDown, KeyRound, Plus } from '@lucide/svelte';
 	import { getClient } from '$lib/api/client';
 	import { clickOutside } from '$lib/actions/clickOutside';
+	import type { ApiKey } from '$lib/api/keys';
 
-	type Tab = 'profile' | 'style' | 'integrations' | 'security';
-	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations', 'security'];
+	type Tab = 'profile' | 'style' | 'integrations' | 'security' | 'apiKeys';
+	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations', 'security', 'apiKeys'];
 	let activeTab = $derived.by(() => {
 		const param = page.url.searchParams.get('tab') as Tab;
 		return VALID_TABS.includes(param) ? param : 'profile';
@@ -24,6 +25,7 @@
 		{ key: 'profile', label: 'Profile' },
 		{ key: 'style', label: 'Style' },
 		{ key: 'integrations', label: 'Integrations' },
+		{ key: 'apiKeys', label: 'API Keys' },
 		{ key: 'security', label: 'Security' }
 	];
 
@@ -166,6 +168,87 @@
 		await navigator.clipboard.writeText(text);
 		icalCopied = true;
 		setTimeout(() => (icalCopied = false), 2000);
+	}
+
+	// API keys state
+	let apiKeys = $state<ApiKey[]>([]);
+	let apiKeysLoaded = $state(false);
+	let apiKeysLoading = $state(false);
+	let showCreateForm = $state(false);
+	let newKeyName = $state('');
+	let newKeyExpiry = $state<'7' | '30' | '90' | '365' | 'never'>('90');
+	let creatingKey = $state(false);
+	let createdPlaintext = $state<string | null>(null);
+	let createdCopied = $state(false);
+	let confirmRevokeId = $state<string | null>(null);
+	let revokingId = $state<string | null>(null);
+
+	$effect(() => {
+		if (activeTab === 'apiKeys' && !apiKeysLoaded) {
+			loadApiKeys();
+		}
+	});
+
+	async function loadApiKeys() {
+		apiKeysLoading = true;
+		try {
+			apiKeys = await api.keys.list();
+		} catch {
+			notifications.add('error', 'Failed to load API keys');
+		} finally {
+			apiKeysLoading = false;
+			apiKeysLoaded = true;
+		}
+	}
+
+	async function createApiKey() {
+		const name = newKeyName.trim();
+		if (!name || creatingKey) return;
+		creatingKey = true;
+		try {
+			const expiresInDays =
+				newKeyExpiry === 'never' ? null : (Number(newKeyExpiry) as 7 | 30 | 90 | 365);
+			const { key, plaintext } = await api.keys.create(name, expiresInDays);
+			apiKeys = [key, ...apiKeys];
+			createdPlaintext = plaintext;
+			newKeyName = '';
+			newKeyExpiry = '90';
+			showCreateForm = false;
+			notifications.add('success', 'API key created');
+		} catch (e) {
+			notifications.add('error', e instanceof Error ? e.message : 'Failed to create API key');
+		} finally {
+			creatingKey = false;
+		}
+	}
+
+	async function revokeApiKey(id: string) {
+		if (revokingId) return;
+		revokingId = id;
+		try {
+			await api.keys.revoke(id);
+			apiKeys = apiKeys.map((k) =>
+				k.id === id ? { ...k, revoked_at: new Date().toISOString() } : k
+			);
+			confirmRevokeId = null;
+			notifications.add('success', 'API key revoked');
+		} catch {
+			notifications.add('error', 'Failed to revoke API key');
+		} finally {
+			revokingId = null;
+		}
+	}
+
+	async function copyPlaintextKey() {
+		if (!createdPlaintext) return;
+		await navigator.clipboard.writeText(createdPlaintext);
+		createdCopied = true;
+		setTimeout(() => (createdCopied = false), 2000);
+	}
+
+	function dismissCreatedKey() {
+		createdPlaintext = null;
+		createdCopied = false;
 	}
 
 	import { formatTimeAgo, formatFullDate } from '$lib/utils/date';
@@ -643,6 +726,216 @@
 						</p>
 					</div>
 				{/if}
+			</section>
+		</div>
+	{/if}
+
+	<!-- API Keys Tab -->
+	{#if activeTab === 'apiKeys'}
+		<div class="space-y-6">
+			<section>
+				<div class="mb-4 flex items-center justify-between">
+					<div class="flex items-center gap-2.5">
+						<KeyRound size={18} class="text-muted/50" />
+						<h2 class="text-xs font-medium uppercase tracking-[0.08em] text-muted">API Keys</h2>
+					</div>
+					{#if !showCreateForm && !createdPlaintext}
+						<button
+							type="button"
+							onclick={() => (showCreateForm = true)}
+							class="flex h-7 items-center gap-1.5 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
+						>
+							<Plus size={13} />
+							New key
+						</button>
+					{/if}
+				</div>
+
+				<p class="mb-4 text-base text-muted/60">
+					Long-lived tokens for the Trackr MCP server and future public API integrations. Keys
+					inherit your permissions and can be revoked at any time.
+				</p>
+
+				<!-- Freshly created key: shown once -->
+				{#if createdPlaintext}
+					<div class="mb-4 rounded border border-amber-500/30 bg-amber-500/5 p-4">
+						<p class="mb-2 text-sm font-medium text-amber-400">
+							Copy this key now — you won't be able to see it again.
+						</p>
+						<div class="flex items-center gap-2">
+							<input
+								type="text"
+								readonly
+								value={createdPlaintext}
+								class="{inputClass} font-mono !text-xs"
+							/>
+							<button
+								type="button"
+								onclick={copyPlaintextKey}
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-surface-border/40 text-muted/50 transition-all duration-150 hover:bg-surface-hover/60 hover:text-sidebar-text"
+								title="Copy key"
+							>
+								{#if createdCopied}
+									<Check size={14} class="text-green-400" />
+								{:else}
+									<Copy size={14} />
+								{/if}
+							</button>
+						</div>
+						<button
+							type="button"
+							onclick={dismissCreatedKey}
+							class="mt-3 text-sm text-muted/50 hover:text-sidebar-text"
+						>
+							I saved it, dismiss
+						</button>
+					</div>
+				{/if}
+
+				<!-- Create form -->
+				{#if showCreateForm}
+					<div class="mb-4 rounded border border-surface-border/40 bg-surface/50 p-4">
+						<form
+							onsubmit={(e) => {
+								e.preventDefault();
+								createApiKey();
+							}}
+							class="space-y-3"
+						>
+							<div>
+								<label for="api-key-name" class={labelClass}>Name</label>
+								<input
+									id="api-key-name"
+									type="text"
+									placeholder="e.g. MCP on laptop"
+									bind:value={newKeyName}
+									maxlength="100"
+									class={inputClass}
+									autofocus
+								/>
+							</div>
+							<div>
+								<label for="api-key-expiry" class={labelClass}>Expires</label>
+								<select
+									id="api-key-expiry"
+									bind:value={newKeyExpiry}
+									class={inputClass}
+								>
+									<option value="7">7 days</option>
+									<option value="30">30 days</option>
+									<option value="90">90 days</option>
+									<option value="365">1 year</option>
+									<option value="never">Never</option>
+								</select>
+							</div>
+							<div class="flex justify-end gap-2 pt-2">
+								<button
+									type="button"
+									onclick={() => {
+										showCreateForm = false;
+										newKeyName = '';
+										newKeyExpiry = '90';
+									}}
+									class="text-sm text-muted/50 hover:text-sidebar-text"
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									disabled={creatingKey || !newKeyName.trim()}
+									class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
+								>
+									{creatingKey ? 'Creating...' : 'Create key'}
+								</button>
+							</div>
+						</form>
+					</div>
+				{/if}
+
+				<!-- List -->
+				{#if !apiKeysLoaded}
+					<p class="text-sm text-muted/40">Loading…</p>
+				{:else if apiKeys.length === 0}
+					<div class="rounded border border-surface-border/40 bg-surface/50 p-5 text-center">
+						<p class="text-sm text-muted/60">No API keys yet.</p>
+					</div>
+				{:else}
+					<div class="space-y-2">
+						{#each apiKeys as key (key.id)}
+							{@const isRevoked = !!key.revoked_at}
+							{@const isExpired =
+								!!key.expires_at && new Date(key.expires_at).getTime() < Date.now()}
+							<div
+								class="flex items-center gap-3 rounded border border-surface-border/40 bg-surface/50 p-3 {isRevoked ||
+								isExpired
+									? 'opacity-50'
+									: ''}"
+							>
+								<div class="min-w-0 flex-1">
+									<div class="flex items-center gap-2">
+										<span class="truncate text-base font-medium text-sidebar-text">{key.name}</span>
+										{#if isRevoked}
+											<span class="shrink-0 rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-400/80">Revoked</span>
+										{:else if isExpired}
+											<span class="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-400/80">Expired</span>
+										{/if}
+									</div>
+									<div class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-xs text-muted/40">
+										<span>{key.prefix}…</span>
+										<span class="font-sans">
+											{#if key.expires_at}
+												Expires {formatFullDate(key.expires_at)}
+											{:else}
+												No expiry
+											{/if}
+										</span>
+										<span class="font-sans">
+											{#if key.last_used_at}
+												Last used {formatTimeAgo(key.last_used_at)}
+											{:else}
+												Never used
+											{/if}
+										</span>
+									</div>
+								</div>
+								{#if !isRevoked}
+									{#if confirmRevokeId === key.id}
+										<div class="flex shrink-0 items-center gap-2">
+											<button
+												type="button"
+												disabled={revokingId === key.id}
+												onclick={() => revokeApiKey(key.id)}
+												class="flex h-7 items-center gap-1 rounded-sm bg-red-500/80 px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-red-500 disabled:opacity-30"
+											>
+												{revokingId === key.id ? 'Revoking...' : 'Confirm'}
+											</button>
+											<button
+												type="button"
+												onclick={() => (confirmRevokeId = null)}
+												class="text-sm text-muted/40 hover:text-sidebar-text"
+											>
+												Cancel
+											</button>
+										</div>
+									{:else}
+										<button
+											type="button"
+											onclick={() => (confirmRevokeId = key.id)}
+											class="flex h-7 shrink-0 items-center gap-1.5 rounded-sm border border-red-500/20 px-2.5 text-sm font-medium text-red-400/60 transition-all duration-150 hover:bg-red-500/10 hover:text-red-400"
+										>
+											<Trash2 size={13} />
+											Revoke
+										</button>
+									{/if}
+								{/if}
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				<p class="mt-6 text-xs text-muted/30">
+					Treat API keys like passwords. Revoke immediately if a key is lost or exposed.
+				</p>
 			</section>
 		</div>
 	{/if}

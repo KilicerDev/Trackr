@@ -12,6 +12,7 @@ import { views } from "./views";
 import { tags } from "./tags";
 import { wiki } from "./wiki";
 import { ical } from "./ical";
+import { keys } from "./keys";
 import { activities } from "./activities";
 import { userPreferences } from "./userPreferences";
 
@@ -30,6 +31,7 @@ export const api = {
   tags,
   wiki,
   ical,
+  keys,
   activities,
   userPreferences,
 };
