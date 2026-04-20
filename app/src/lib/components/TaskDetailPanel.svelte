@@ -556,15 +556,17 @@
 		return ids;
 	});
 
-	const labelClass = 'text-xs font-medium uppercase tracking-[0.08em] text-muted';
+	const labelClass = 'text-xs font-medium uppercase tracking-[0.08em] text-muted/50';
 	const propBtnClass =
-		'flex w-full cursor-pointer items-center justify-between rounded-sm px-3 py-2 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
+		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
+	const dateInputClass =
+		'date-clean w-full cursor-pointer rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1 max-h-48 min-w-[14rem] overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
+		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
 	const dropdownItemBase =
 		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
 
-	const chevronSvg = `<svg class="h-2.5 w-2.5 shrink-0 text-muted/30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
 </script>
 
 <div class="flex h-full w-[420px] shrink-0 flex-col border-l border-surface-border bg-surface">
@@ -678,111 +680,117 @@
 			<div class="flex-1 overflow-y-auto pt-2">
 			  {#if activeTab === 'details'}
 				<!-- Properties -->
-				<div class="mx-3 mb-2 rounded border border-surface-border/40 bg-surface/40 px-1 py-1">
-					<!-- Status -->
-					<div class="relative" data-dropdown>
-						<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}>
-							<span class="text-sm text-muted/50">Status</span>
-							<span class="flex items-center gap-1.5">
-								<CurrentTaskStatusIcon size={15} class={currentTaskStatus.className} />
-								<span>{displayName(task.status)}</span>
-								{@html chevronSvg}
-							</span>
-						</button>
-						{#if openDropdown === 'status'}
-							<div class={dropdownPanelClass}>{#each TASK_STATUSES as s (s)}{@const info = taskStatusIcons[s] ?? defaultStatusIcon}{@const StatusIcon = info.icon}<button class="{dropdownItemBase} {task.status === s ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('status', s); }}><span class="mr-1.5"><StatusIcon size={15} class={info.className} /></span>{displayName(s)}</button>{/each}</div>
-						{/if}
-					</div>
-
-					<!-- Priority -->
-					<div class="relative" data-dropdown>
-						<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'priority' ? null : 'priority')}>
-							<span class="text-sm text-muted/50">Priority</span>
-							<span class="flex items-center gap-1.5">
-								<CurrentTaskPriorityIcon size={15} class={currentTaskPriority.className} />
-								<span>{displayName(task.priority)}</span>
-								{@html chevronSvg}
-							</span>
-						</button>
-						{#if openDropdown === 'priority'}
-							<div class={dropdownPanelClass}>{#each TASK_PRIORITIES as p (p)}{@const info = priorityIcons[p] ?? defaultPriorityIcon}{@const PriorityIcon = info.icon}<button class="{dropdownItemBase} {task.priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('priority', p); }}><span class="mr-1.5"><PriorityIcon size={15} class={info.className} /></span>{displayName(p)}</button>{/each}</div>
-						{/if}
-					</div>
-
-					<!-- Type -->
-					<div class="relative" data-dropdown>
-						<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'type' ? null : 'type')}>
-							<span class="text-sm text-muted/50">Type</span>
-							<span class="flex items-center gap-1.5">
-								<CurrentTypeIcon size={13} />
-								<span>{displayName(task.type)}</span>
-								{@html chevronSvg}
-							</span>
-						</button>
-						{#if openDropdown === 'type'}
-							<div class={dropdownPanelClass}>{#each TASK_TYPES as t (t)}{@const TypeIcon = typeIcons[t] ?? defaultTypeIcon}<button class="{dropdownItemBase} {task.type === t ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('type', t); }}><span class="mr-1.5"><TypeIcon size={12} /></span>{displayName(t)}</button>{/each}</div>
-						{/if}
-					</div>
-
-					<!-- Start date -->
-					{#key task.start_at}
-					<div class="flex items-center justify-between rounded-sm px-3 py-2 transition-all duration-150 hover:bg-surface-hover/60">
-						<span class="text-sm text-muted/50">Start date</span>
-						<input
-							type="date"
-							value={toInputDate(task.start_at)}
-							class="date-clean cursor-pointer bg-transparent text-right text-base text-sidebar-text outline-none"
-							onchange={(e) => handleDateChange('start_at', (e.target as HTMLInputElement).value)}
-						/>
-					</div>
-					{/key}
-
-					<!-- End date -->
-					{#key task.end_at}
-					<div class="flex items-center justify-between rounded-sm px-3 py-2 transition-all duration-150 hover:bg-surface-hover/60">
-						<span class="text-sm text-muted/50">End date</span>
-						<input
-							type="date"
-							value={toInputDate(task.end_at)}
-							class="date-clean cursor-pointer bg-transparent text-right text-base text-sidebar-text outline-none"
-							onchange={(e) => handleDateChange('end_at', (e.target as HTMLInputElement).value)}
-						/>
-					</div>
-					{/key}
-
-					<!-- Parent -->
-					<div class="relative" data-dropdown>
-						{#if parentTask}
-							<div class="group flex items-center justify-between rounded-sm px-3 py-2">
-								<span class="text-sm text-muted/50">Parent</span>
-								<div class="flex items-center gap-1.5">
-									<button class="flex items-center gap-1.5 text-base transition-colors hover:text-accent" onclick={() => { const next = openDropdown === 'parent' ? null : 'parent'; openDropdown = next; if (next) loadParentCandidates(); }}>
-										<span class="font-mono text-xs text-accent">{parentTask.short_id}</span>
-										<span class="max-w-[160px] truncate text-sidebar-text">{parentTask.title}</span>
-									</button>
-									<button class="text-muted/20 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400" onclick={() => updateField('parent_id', null)}><X size={10} /></button>
-								</div>
-							</div>
-						{:else}
-							<button class={propBtnClass} onclick={() => { const next = openDropdown === 'parent' ? null : 'parent'; openDropdown = next; if (next) loadParentCandidates(); }}>
-								<span class="text-sm text-muted/50">Parent</span>
-								<span class="flex items-center gap-1.5">
-									<span class="text-muted/30">None</span>
+				<div class="mx-3 mt-2 mb-2 rounded border border-surface-border/40 bg-surface/40 px-3 py-2.5">
+					<span class="{labelClass} mb-3 block">Properties</span>
+					<div class="grid grid-cols-2 gap-x-3 gap-y-2.5">
+						<!-- Status -->
+						<div>
+							<span class="mb-1 block text-xs text-muted/50">Status</span>
+							<div class="relative" data-dropdown>
+								<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'status' ? null : 'status')}>
+									<span class="flex items-center gap-1.5 truncate">
+										<CurrentTaskStatusIcon size={15} class={currentTaskStatus.className} />
+										<span class="truncate">{displayName(task.status)}</span>
+									</span>
 									{@html chevronSvg}
-								</span>
-							</button>
-						{/if}
-						{#if openDropdown === 'parent'}
-							<div class={dropdownPanelClass}>
-								{#if loadingParents}<p class="px-3 py-2 text-sm text-muted">Loading...</p>{/if}
-								{#each parentCandidates.filter((t) => t.id !== task?.id && !descendantIds.has(t.id)) as t (t.id)}
-									<button class="{dropdownItemBase} text-sidebar-text" onmousedown={(e) => { e.preventDefault(); updateField('parent_id', t.id); }}>
-										<span class="mr-2 shrink-0 font-mono text-xs text-accent">{t.short_id}</span>
-										<span class="truncate">{t.title}</span>
-									</button>
-								{:else}<p class="px-3 py-2 text-sm text-muted">No tasks</p>{/each}
+								</button>
+								{#if openDropdown === 'status'}
+									<div class={dropdownPanelClass}>{#each TASK_STATUSES as s (s)}{@const info = taskStatusIcons[s] ?? defaultStatusIcon}{@const StatusIcon = info.icon}<button class="{dropdownItemBase} {task.status === s ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('status', s); }}><span class="mr-1.5"><StatusIcon size={15} class={info.className} /></span>{displayName(s)}</button>{/each}</div>
+								{/if}
 							</div>
-						{/if}
+						</div>
+
+						<!-- Priority -->
+						<div>
+							<span class="mb-1 block text-xs text-muted/50">Priority</span>
+							<div class="relative" data-dropdown>
+								<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'priority' ? null : 'priority')}>
+									<span class="flex items-center gap-1.5 truncate">
+										<CurrentTaskPriorityIcon size={15} class={currentTaskPriority.className} />
+										<span class="truncate">{displayName(task.priority)}</span>
+									</span>
+									{@html chevronSvg}
+								</button>
+								{#if openDropdown === 'priority'}
+									<div class={dropdownPanelClass}>{#each TASK_PRIORITIES as p (p)}{@const info = priorityIcons[p] ?? defaultPriorityIcon}{@const PriorityIcon = info.icon}<button class="{dropdownItemBase} {task.priority === p ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('priority', p); }}><span class="mr-1.5"><PriorityIcon size={15} class={info.className} /></span>{displayName(p)}</button>{/each}</div>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Type -->
+						<div>
+							<span class="mb-1 block text-xs text-muted/50">Type</span>
+							<div class="relative" data-dropdown>
+								<button class={propBtnClass} onclick={() => (openDropdown = openDropdown === 'type' ? null : 'type')}>
+									<span class="flex items-center gap-1.5 truncate">
+										<CurrentTypeIcon size={13} />
+										<span class="truncate">{displayName(task.type)}</span>
+									</span>
+									{@html chevronSvg}
+								</button>
+								{#if openDropdown === 'type'}
+									<div class={dropdownPanelClass}>{#each TASK_TYPES as t (t)}{@const TypeIcon = typeIcons[t] ?? defaultTypeIcon}<button class="{dropdownItemBase} {task.type === t ? 'font-medium text-accent' : 'text-sidebar-text'}" onmousedown={(e) => { e.preventDefault(); updateField('type', t); }}><span class="mr-1.5"><TypeIcon size={12} /></span>{displayName(t)}</button>{/each}</div>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Parent -->
+						<div>
+							<span class="mb-1 block text-xs text-muted/50">Parent</span>
+							<div class="relative" data-dropdown>
+								{#if parentTask}
+									<div class="group flex w-full items-center justify-between gap-1.5 rounded-sm bg-surface-hover/40 px-2.5 py-1.5">
+										<button class="flex min-w-0 flex-1 items-center gap-1.5 text-base transition-colors hover:text-accent" onclick={() => { const next = openDropdown === 'parent' ? null : 'parent'; openDropdown = next; if (next) loadParentCandidates(); }}>
+											<span class="shrink-0 font-mono text-xs text-accent">{parentTask.short_id}</span>
+											<span class="truncate text-sidebar-text">{parentTask.title}</span>
+										</button>
+										<button class="shrink-0 text-muted/20 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400" onclick={() => updateField('parent_id', null)} aria-label="Remove parent"><X size={10} /></button>
+									</div>
+								{:else}
+									<button class={propBtnClass} onclick={() => { const next = openDropdown === 'parent' ? null : 'parent'; openDropdown = next; if (next) loadParentCandidates(); }}>
+										<span class="truncate text-muted/30">None</span>
+										{@html chevronSvg}
+									</button>
+								{/if}
+								{#if openDropdown === 'parent'}
+									<div class={dropdownPanelClass}>
+										{#if loadingParents}<p class="px-3 py-2 text-sm text-muted">Loading...</p>{/if}
+										{#each parentCandidates.filter((t) => t.id !== task?.id && !descendantIds.has(t.id)) as t (t.id)}
+											<button class="{dropdownItemBase} text-sidebar-text" onmousedown={(e) => { e.preventDefault(); updateField('parent_id', t.id); }}>
+												<span class="mr-2 shrink-0 font-mono text-xs text-accent">{t.short_id}</span>
+												<span class="truncate">{t.title}</span>
+											</button>
+										{:else}<p class="px-3 py-2 text-sm text-muted">No tasks</p>{/each}
+									</div>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Start date -->
+						<div>
+							<span class="mb-1 block text-xs text-muted/50">Start date</span>
+							{#key task.start_at}
+								<input
+									type="date"
+									value={toInputDate(task.start_at)}
+									class={dateInputClass}
+									onchange={(e) => handleDateChange('start_at', (e.target as HTMLInputElement).value)}
+								/>
+							{/key}
+						</div>
+
+						<!-- End date -->
+						<div>
+							<span class="mb-1 block text-xs text-muted/50">End date</span>
+							{#key task.end_at}
+								<input
+									type="date"
+									value={toInputDate(task.end_at)}
+									class={dateInputClass}
+									onchange={(e) => handleDateChange('end_at', (e.target as HTMLInputElement).value)}
+								/>
+							{/key}
+						</div>
 					</div>
 				</div>
 
