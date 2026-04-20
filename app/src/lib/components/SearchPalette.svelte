@@ -12,7 +12,7 @@
 		title: string;
 		preview: string | null;
 		metadata: Record<string, unknown>;
-		similarity: number;
+		rank: number;
 	};
 
 	type FilterTab = { label: string; value: SourceType | null };
@@ -39,7 +39,7 @@
 		activeTab ? results.filter((r) => r.source_type === activeTab) : results
 	);
 
-	const groupedResults = $derived(() => {
+	const groupedResults = $derived.by(() => {
 		const groups: Record<string, SearchResult[]> = {};
 		for (const r of filteredResults) {
 			(groups[r.source_type] ??= []).push(r);
@@ -47,21 +47,18 @@
 		return groups;
 	});
 
-	const flatResults = $derived(
-		(() => {
-			if (!activeTab) {
-				// "All" tab: sort by similarity descending
-				return [...filteredResults].sort((a, b) => b.similarity - a.similarity);
-			}
-			const g = groupedResults();
-			const order: SourceType[] = ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'];
-			const flat: SearchResult[] = [];
-			for (const type of order) {
-				if (g[type]) flat.push(...g[type]);
-			}
-			return flat;
-		})()
-	);
+	const flatResults = $derived.by(() => {
+		if (!activeTab) {
+			// "All" tab: sort by rank descending
+			return [...filteredResults].sort((a, b) => b.rank - a.rank);
+		}
+		const order: SourceType[] = ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'];
+		const flat: SearchResult[] = [];
+		for (const type of order) {
+			if (groupedResults[type]) flat.push(...groupedResults[type]);
+		}
+		return flat;
+	});
 
 	function toggle() {
 		open = !open;
@@ -161,21 +158,26 @@
 			goto(localizeHref(`/projects/${result.parent_id}?task=${result.source_id}`));
 			break;
 		case 'ticket_message':
-			goto(localizeHref(`/tickets?id=${result.parent_id}`));
+			goto(localizeHref(`/tickets?id=${result.parent_id}&tab=messages`));
 			break;
 		case 'task_comment': {
 			const projectId = meta.project_id as string;
-			goto(localizeHref(`/projects/${projectId}?task=${result.parent_id}`));
+			goto(localizeHref(`/projects/${projectId}?task=${result.parent_id}&tab=comments`));
 			break;
 		}
 		case 'attachment': {
 			const entityType = meta.entity_type as string;
 			const entityId = meta.entity_id as string;
-			if (entityType === 'task' || entityType === 'task_comment') {
+			if (entityType === 'task') {
 				const pid = meta.project_id as string;
 				goto(localizeHref(`/projects/${pid}?task=${entityId}`));
-			} else if (entityType === 'support_ticket' || entityType === 'ticket_message') {
+			} else if (entityType === 'task_comment') {
+				const pid = meta.project_id as string;
+				goto(localizeHref(`/projects/${pid}?task=${entityId}&tab=comments`));
+			} else if (entityType === 'support_ticket') {
 				goto(localizeHref(`/tickets?id=${entityId}`));
+			} else if (entityType === 'ticket_message') {
+				goto(localizeHref(`/tickets?id=${entityId}&tab=messages`));
 			} else if (entityType === 'project') {
 				goto(localizeHref(`/projects/${entityId}`));
 			}
@@ -283,7 +285,7 @@
 						Type to search across all content...
 					</div>
 				{:else if !activeTab}
-					<!-- All tab: flat list sorted by similarity -->
+					<!-- All tab: flat list sorted by rank -->
 					{#each flatResults as result, idx (result.source_id)}
 						{@const Icon = groupIcon(result.source_type)}
 						{@const status = String(result.metadata?.status ?? '')}
@@ -304,9 +306,6 @@
 											{status.replace('_', ' ')}
 										</span>
 									{/if}
-									<span class="ml-auto shrink-0 font-mono text-xs text-muted/40">
-										{Math.round(result.similarity * 100)}%
-									</span>
 								</div>
 								{#if result.preview}
 									<p class="mt-0.5 truncate text-sm leading-relaxed text-muted/50">
@@ -318,7 +317,7 @@
 					{/each}
 				{:else}
 					<!-- Specific tab: grouped by type -->
-					{@const groups = groupedResults()}
+					{@const groups = groupedResults}
 					{#each ['ticket', 'task', 'ticket_message', 'task_comment', 'attachment'] as type (type)}
 						{#if groups[type]?.length}
 							<div class="px-4 pt-3 pb-1">
@@ -347,9 +346,6 @@
 													{status.replace('_', ' ')}
 												</span>
 											{/if}
-											<span class="ml-auto shrink-0 font-mono text-xs text-muted/40">
-												{Math.round(result.similarity * 100)}%
-											</span>
 										</div>
 										{#if result.preview}
 											<p class="mt-0.5 truncate text-sm leading-relaxed text-muted/50">

@@ -60,7 +60,6 @@ LOGFLARE_PUBLIC_VAL=""
 LOGFLARE_PRIVATE_VAL=""
 S3_KEY_ID_VAL=""
 S3_KEY_SECRET_VAL=""
-EMBED_TOKEN_VAL=""
 POOLER_TENANT_ID_VAL=""
 
 # ── Trap ──────────────────────────────────────────────────────────────────────
@@ -432,7 +431,6 @@ generate_secrets() {
   LOGFLARE_PRIVATE_VAL=$(openssl rand -hex 24)
   S3_KEY_ID_VAL=$(openssl rand -hex 16)
   S3_KEY_SECRET_VAL=$(openssl rand -hex 32)
-  EMBED_TOKEN_VAL=$(openssl rand -hex 24)
   POOLER_TENANT_ID_VAL=$(generate_uuid)
 
   ok "Secrets generated."
@@ -589,13 +587,6 @@ IMGPROXY_ENABLE_WEBP_DETECTION=true
 ############
 
 DOCKER_SOCKET_LOCATION=/var/run/docker.sock
-
-
-############
-# Embedding / Vector Search
-############
-
-EMBED_SERVICE_TOKEN=${EMBED_TOKEN_VAL}
 ENVEOF
 
   mv "$PROJECT_DIR/.env.tmp" "$PROJECT_DIR/.env"

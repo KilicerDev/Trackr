@@ -1,5 +1,5 @@
 import { json, error } from "@sveltejs/kit";
-import { env } from "$env/dynamic/private";
+import { getAdminClient } from "$lib/server/supabase-admin";
 import type { RequestHandler } from "./$types";
 
 export const DELETE: RequestHandler = async ({ request, locals }) => {
@@ -10,23 +10,14 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
     throw error(400, "source_type and source_id are required");
   }
 
-  const embedUrl = env.EMBED_SERVICE_URL;
-  const embedToken = env.EMBED_SERVICE_TOKEN;
-  if (!embedUrl || !embedToken) {
-    throw error(503, "Search service not configured");
-  }
+  const admin = getAdminClient();
+  const { error: deleteError } = await admin
+    .from("search_documents")
+    .delete()
+    .match({ source_type, source_id });
 
-  const res = await fetch(
-    `${embedUrl}/index/${encodeURIComponent(source_type)}/${encodeURIComponent(source_id)}`,
-    {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${embedToken}` },
-    }
-  );
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("embed-service delete error:", res.status, text);
+  if (deleteError) {
+    console.error("search_documents delete error:", deleteError);
     throw error(502, "Delete failed");
   }
 

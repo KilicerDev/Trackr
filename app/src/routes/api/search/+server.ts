@@ -1,5 +1,4 @@
 import { json, error } from "@sveltejs/kit";
-import { env } from "$env/dynamic/private";
 import { getAdminClient } from "$lib/server/supabase-admin";
 import type { RequestHandler } from "./$types";
 
@@ -21,31 +20,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const orgIds = (members ?? []).map((m) => m.organization_id);
   if (orgIds.length === 0) throw error(400, "User has no organization");
 
-  const embedUrl = env.EMBED_SERVICE_URL;
-  const embedToken = env.EMBED_SERVICE_TOKEN;
-  if (!embedUrl || !embedToken) {
-    throw error(503, "Search service not configured");
-  }
-
-  const res = await fetch(`${embedUrl}/search`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${embedToken}`,
-    },
-    body: JSON.stringify({
-      query,
-      org_ids: orgIds,
-      types: types ?? null,
-      limit: limit ?? 20,
-    }),
+  const { data, error: rpcError } = await admin.rpc("universal_search", {
+    query_text: query,
+    filter_org_ids: orgIds,
+    filter_types: Array.isArray(types) && types.length > 0 ? types : null,
+    match_count: typeof limit === "number" && limit > 0 ? limit : 20,
   });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("embed-service /search error:", res.status, text);
-    throw error(502, "Search service error");
+  if (rpcError) {
+    console.error("universal_search error:", rpcError);
+    throw error(502, "Search failed");
   }
 
-  return json(await res.json());
+  return json({ results: data ?? [] });
 };
