@@ -1,14 +1,9 @@
 <svelte:head><title>Authorize — Trackr</title></svelte:head>
 
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
-
-	// If the user already granted this client the requested scopes, we would
-	// ideally auto-submit. For safety we still show the page with a one-click
-	// "Continue" button so the user stays in control.
 </script>
 
 <div class="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6">
@@ -53,7 +48,7 @@
 			</p>
 		{/if}
 
-		<form method="POST" use:enhance class="mt-6 flex flex-col gap-2">
+		<form method="POST" class="mt-6 flex flex-col gap-2">
 			<input type="hidden" name="csrf" value={data.csrf} />
 			<input type="hidden" name="client_id" value={data.params.clientId} />
 			<input type="hidden" name="redirect_uri" value={data.params.redirectUri} />
