@@ -62,8 +62,18 @@ function parseParams(
   }
 
   const resource = source.get("resource");
-  if (resource && resource !== mcpResourceUrl()) {
-    throw error(400, "resource does not match this MCP server");
+  if (resource) {
+    // Accept any URL whose origin matches the MCP server's origin — Claude.ai
+    // and other clients may or may not include the /mcp path suffix.
+    try {
+      const mcpOrigin = new URL(mcpResourceUrl()).origin;
+      const requested = new URL(resource).origin;
+      if (requested !== mcpOrigin) {
+        throw error(400, "resource does not match this MCP server");
+      }
+    } catch {
+      throw error(400, "malformed resource parameter");
+    }
   }
 
   return {

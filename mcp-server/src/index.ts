@@ -23,10 +23,10 @@ async function runStdio(): Promise<void> {
 }
 
 function resourceMetadata() {
-  const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "") + "/";
+  const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "");
   const authServer = (process.env.TRACKR_URL ?? "").replace(/\/$/, "");
   return {
-    resource,
+    resource: resource || "",
     authorization_servers: authServer ? [authServer] : [],
     scopes_supported: ["mcp"],
     bearer_methods_supported: ["header"],
@@ -35,9 +35,18 @@ function resourceMetadata() {
 
 function wwwAuthenticateHeader(): string {
   const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "");
-  const metaUrl = resource
-    ? `${resource}/.well-known/oauth-protected-resource`
-    : `/.well-known/oauth-protected-resource`;
+  // RFC 9728 §3.1: insert /.well-known/oauth-protected-resource between host and path.
+  let metaUrl: string;
+  if (resource) {
+    try {
+      const u = new URL(resource);
+      metaUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname || ""}`;
+    } catch {
+      metaUrl = `${resource}/.well-known/oauth-protected-resource`;
+    }
+  } else {
+    metaUrl = "/.well-known/oauth-protected-resource";
+  }
   return `Bearer realm="trackr", resource_metadata="${metaUrl}"`;
 }
 
@@ -51,10 +60,14 @@ async function runHttp(): Promise<void> {
     res.json({ ok: true });
   });
 
-  app.get("/.well-known/oauth-protected-resource", (_req, res) => {
+  const serveProtectedResource = (_req: Request, res: Response) => {
     res.set("Cache-Control", "public, max-age=3600");
     res.json(resourceMetadata());
-  });
+  };
+  // Serve at both the RFC 9728 path (with resource pathname suffix) and the
+  // bare well-known so naïve clients that don't preserve the suffix also work.
+  app.get("/.well-known/oauth-protected-resource", serveProtectedResource);
+  app.get("/.well-known/oauth-protected-resource/*", serveProtectedResource);
 
   type SessionEntry = { server: McpServer; transport: StreamableHTTPServerTransport };
   const sessions = new Map<string, SessionEntry>();
