@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import express, { type Request, type Response } from "express";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -95,6 +97,18 @@ async function runHttp(): Promise<void> {
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
   });
+
+  // Serve the Trackr logo so clients that surface a connector icon (Claude.ai
+  // displays the host's favicon next to the connector name) pick up the app
+  // logo from the MCP origin itself instead of falling back to the apex.
+  const publicDir = resolve(dirname(fileURLToPath(import.meta.url)), "../public");
+  const faviconSvg = resolve(publicDir, "favicon.svg");
+  const serveFavicon = (_req: Request, res: Response) => {
+    res.set("Cache-Control", "public, max-age=3600");
+    res.type("image/svg+xml").sendFile(faviconSvg);
+  };
+  app.get("/favicon.ico", serveFavicon);
+  app.get("/favicon.svg", serveFavicon);
 
   const serveProtectedResource = (req: Request, res: Response) => {
     console.error(`[trackr-mcp] ${req.method} ${req.originalUrl} -> resource-metadata`);
