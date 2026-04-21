@@ -231,6 +231,9 @@ export const actions: Actions = {
       ...(params.state ? { state: params.state } : {}),
     });
 
+    console.log(
+      `[oauth] approve: client=${params.clientId} user=${locals.user.id} redirect=${redirectTo}`
+    );
     cookies.delete("oauth_csrf", { path: "/oauth" });
     throw redirect(303, redirectTo);
   },

@@ -22,6 +22,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, setHeade
   }
 
   const contentType = request.headers.get("content-type") ?? "";
+  console.log(`[oauth] token: ip=${ip} ct=${contentType}`);
   if (!contentType.includes("application/x-www-form-urlencoded")) {
     throw error(400, "Content-Type must be application/x-www-form-urlencoded");
   }
