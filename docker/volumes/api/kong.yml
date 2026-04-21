@@ -171,12 +171,12 @@ services:
             - Content-Type
           max_age: 3600
   - name: auth-v1-open-oauth-register
-    url: http://auth:9999/oauth/register
+    url: http://auth:9999/oauth/clients/register
     routes:
       - name: auth-v1-open-oauth-register
         strip_path: true
         paths:
-          - /auth/v1/oauth/register
+          - /auth/v1/oauth/clients/register
     plugins:
       - name: cors
         config:

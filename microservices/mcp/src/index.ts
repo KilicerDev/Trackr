@@ -23,13 +23,49 @@ async function runStdio(): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
+function mcpOrigin(): string {
+  const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "");
+  if (!resource) return "";
+  try {
+    return new URL(resource).origin;
+  } catch {
+    return "";
+  }
+}
+
 function resourceMetadata() {
   const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "");
+  // Point clients at this MCP server as the authorization server so they
+  // fetch our hand-rolled AS metadata (with absolute URLs) instead of
+  // GoTrue's self-served document, which currently returns an empty issuer
+  // and relative endpoint paths that MCP clients can't resolve.
+  const origin = mcpOrigin();
   return {
     resource: resource || "",
-    authorization_servers: [supabaseAuthIssuer],
+    authorization_servers: [origin || supabaseAuthIssuer],
     scopes_supported: ["mcp"],
     bearer_methods_supported: ["header"],
+  };
+}
+
+function authorizationServerMetadata() {
+  const origin = mcpOrigin();
+  const asBase = supabaseAuthIssuer;
+  return {
+    issuer: origin,
+    authorization_endpoint: `${asBase}/oauth/authorize`,
+    token_endpoint: `${asBase}/oauth/token`,
+    registration_endpoint: `${asBase}/oauth/clients/register`,
+    revocation_endpoint: `${asBase}/oauth/revoke`,
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    code_challenge_methods_supported: ["S256"],
+    token_endpoint_auth_methods_supported: [
+      "client_secret_basic",
+      "client_secret_post",
+      "none",
+    ],
+    scopes_supported: ["mcp"],
   };
 }
 
@@ -69,6 +105,14 @@ async function runHttp(): Promise<void> {
   // bare well-known so naïve clients that don't preserve the suffix also work.
   app.get("/.well-known/oauth-protected-resource", serveProtectedResource);
   app.get("/.well-known/oauth-protected-resource/*", serveProtectedResource);
+
+  const serveAuthorizationServer = (req: Request, res: Response) => {
+    console.error(`[trackr-mcp] ${req.method} ${req.originalUrl} -> as-metadata`);
+    res.set("Cache-Control", "public, max-age=3600");
+    res.json(authorizationServerMetadata());
+  };
+  app.get("/.well-known/oauth-authorization-server", serveAuthorizationServer);
+  app.get("/.well-known/oauth-authorization-server/*", serveAuthorizationServer);
 
   type SessionEntry = { server: McpServer; transport: StreamableHTTPServerTransport; auth: ValidatedAuth };
   const sessions = new Map<string, SessionEntry>();
