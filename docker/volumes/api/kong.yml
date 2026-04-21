@@ -87,6 +87,126 @@ services:
             - X-Supabase-Api-Version
           max_age: 3600
 
+  ## Open OAuth 2.1 Server routes (Supabase Auth / GoTrue OAuth Server).
+  ## Must be reachable without an apikey so third-party OAuth clients
+  ## (e.g. Claude.ai MCP connector) can complete discovery and the code/token
+  ## exchange. Each carves a specific path out ahead of the /auth/v1/
+  ## catch-all below (which requires key-auth).
+  - name: auth-v1-open-oauth-as-metadata
+    url: http://auth:9999/.well-known/oauth-authorization-server
+    routes:
+      - name: auth-v1-open-oauth-as-metadata
+        strip_path: true
+        paths:
+          - /auth/v1/.well-known/oauth-authorization-server
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - '*'
+          credentials: false
+          headers:
+            - Accept
+            - Content-Type
+          max_age: 3600
+  ## RFC 8414 discovery: for an issuer https://api.../auth/v1 the client
+  ## fetches https://api.../.well-known/oauth-authorization-server/auth/v1.
+  ## Route that to the same GoTrue endpoint.
+  - name: auth-v1-open-oauth-as-metadata-rfc8414
+    url: http://auth:9999/.well-known/oauth-authorization-server
+    routes:
+      - name: auth-v1-open-oauth-as-metadata-rfc8414
+        strip_path: true
+        paths:
+          - /.well-known/oauth-authorization-server/auth/v1
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - '*'
+          credentials: false
+          headers:
+            - Accept
+            - Content-Type
+          max_age: 3600
+  - name: auth-v1-open-oauth-authorize
+    url: http://auth:9999/oauth/authorize
+    routes:
+      - name: auth-v1-open-oauth-authorize
+        strip_path: true
+        paths:
+          - /auth/v1/oauth/authorize
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - $CORS_ALLOWED_ORIGIN
+          credentials: true
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+            - apikey
+            - x-client-info
+          exposed_headers:
+            - Content-Range
+            - X-Supabase-Api-Version
+          max_age: 3600
+  - name: auth-v1-open-oauth-token
+    url: http://auth:9999/oauth/token
+    routes:
+      - name: auth-v1-open-oauth-token
+        strip_path: true
+        paths:
+          - /auth/v1/oauth/token
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - '*'
+          credentials: false
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          max_age: 3600
+  - name: auth-v1-open-oauth-register
+    url: http://auth:9999/oauth/register
+    routes:
+      - name: auth-v1-open-oauth-register
+        strip_path: true
+        paths:
+          - /auth/v1/oauth/register
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - '*'
+          credentials: false
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          max_age: 3600
+  - name: auth-v1-open-oauth-revoke
+    url: http://auth:9999/oauth/revoke
+    routes:
+      - name: auth-v1-open-oauth-revoke
+        strip_path: true
+        paths:
+          - /auth/v1/oauth/revoke
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - '*'
+          credentials: false
+          headers:
+            - Accept
+            - Authorization
+            - Content-Type
+          max_age: 3600
+
   ## Secure Auth routes
   - name: auth-v1
     _comment: 'GoTrue: /auth/v1/* -> http://auth:9999/*'
