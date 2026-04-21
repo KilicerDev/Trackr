@@ -2,6 +2,12 @@ example.com {
 	reverse_proxy app:3000
 }
 
+mcp.example.com {
+	reverse_proxy mcp:3100 {
+		flush_interval -1
+	}
+}
+
 api.example.com {
 	@preflight method OPTIONS
 	handle @preflight {

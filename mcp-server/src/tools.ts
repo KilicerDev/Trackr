@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { readFile } from "node:fs/promises";
 import { basename, isAbsolute } from "node:path";
-import { currentUserId } from "./supabase.js";
 
 const TASK_STATUS = [
   "backlog",
@@ -180,13 +179,12 @@ function requireOrgId(explicit?: string | null): string {
   return id;
 }
 
-export function registerTools(server: McpServer, db: SupabaseClient): void {
+export function registerTools(server: McpServer, db: SupabaseClient, userId: string): void {
   server.tool(
     "trackr_whoami",
     "Return the current authenticated user's id, email and username.",
     {},
     async () => {
-      const userId = await currentUserId();
       const { data: profile, error } = await db
         .from("users")
         .select("id, email, username, full_name, organization_id")
@@ -280,7 +278,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ name, identifier, description, status, organization_id }) => {
       try {
         const org = requireOrgId(organization_id);
-        const owner = await currentUserId();
+        const owner = userId;
         const { data, error } = await db
           .from("projects")
           .insert({
@@ -418,12 +416,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
       assignee_ids: z.array(z.string().uuid()).optional(),
     },
     async ({ assignee_ids, ...fields }) => {
-      let createdBy: string;
-      try {
-        createdBy = await currentUserId();
-      } catch (e) {
-        return err((e as Error).message);
-      }
+      const createdBy = userId;
       const { data: task, error } = await db
         .from("tasks")
         .insert({ ...fields, created_by: createdBy })
@@ -490,12 +483,6 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
       content: z.string().min(1),
     },
     async ({ task_id, content }) => {
-      let userId: string;
-      try {
-        userId = await currentUserId();
-      } catch (e) {
-        return err((e as Error).message);
-      }
       const { data, error } = await db
         .from("task_comments")
         .insert({ task_id, content, user_id: userId })
@@ -519,12 +506,6 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
         .optional(),
     },
     async ({ task_id, minutes, description, logged_at }) => {
-      let userId: string;
-      try {
-        userId = await currentUserId();
-      } catch (e) {
-        return err((e as Error).message);
-      }
       const row: Record<string, unknown> = { task_id, user_id: userId, minutes };
       if (description) row.description = description;
       if (logged_at) row.logged_at = logged_at;
@@ -618,7 +599,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ organization_id, customer_id, ...fields }) => {
       try {
         const org = requireOrgId(organization_id);
-        const customer = customer_id ?? (await currentUserId());
+        const customer = customer_id ?? userId;
         const { data, error } = await db
           .from("support_tickets")
           .insert({ ...fields, organization_id: org, customer_id: customer })
@@ -664,12 +645,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
       content: z.string().min(1),
     },
     async ({ ticket_id, content }) => {
-      let senderId: string;
-      try {
-        senderId = await currentUserId();
-      } catch (e) {
-        return err((e as Error).message);
-      }
+      const senderId = userId;
       const { data, error } = await db
         .from("support_ticket_messages")
         .insert({ ticket_id, body: content, sender_id: senderId })
@@ -714,7 +690,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ organization_id, ...fields }) => {
       try {
         const org = requireOrgId(organization_id);
-        const createdBy = await currentUserId();
+        const createdBy = userId;
         const { data, error } = await db
           .from("wiki_folders")
           .insert({ ...fields, organization_id: org, created_by: createdBy })
@@ -787,7 +763,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
     async ({ organization_id, ...fields }) => {
       try {
         const org = requireOrgId(organization_id);
-        const createdBy = await currentUserId();
+        const createdBy = userId;
         const { data, error } = await db
           .from("wiki_pages")
           .insert({ ...fields, organization_id: org, created_by: createdBy })
@@ -869,7 +845,7 @@ export function registerTools(server: McpServer, db: SupabaseClient): void {
         if ((filePath && url) || (!filePath && !url)) {
           return err("provide exactly one of path or url");
         }
-        const uploadedBy = await currentUserId();
+        const uploadedBy = userId;
         const orgId = await resolveEntityOrgId(db, entity_type, entity_id);
 
         let bytes: Uint8Array;

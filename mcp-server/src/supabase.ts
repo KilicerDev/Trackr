@@ -6,53 +6,53 @@ function required(name: string): string {
   return v;
 }
 
-let jwt = "";
-let cachedUserId = "";
-let exchangeInFlight: Promise<void> | null = null;
-
-async function exchange(): Promise<void> {
-  if (exchangeInFlight) return exchangeInFlight;
-  const trackrUrl = required("TRACKR_URL");
-  const apiKey = required("TRACKR_API_KEY");
-  exchangeInFlight = (async () => {
-    const res = await fetch(`${trackrUrl.replace(/\/$/, "")}/api/auth/exchange`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Auth exchange failed (${res.status}): ${body || res.statusText}`);
-    }
-    const data = (await res.json()) as { access_token: string; user_id: string };
-    jwt = data.access_token;
-    cachedUserId = data.user_id;
-  })();
-  try {
-    await exchangeInFlight;
-  } finally {
-    exchangeInFlight = null;
-  }
-}
-
-const fetchWithAuth: typeof fetch = async (input, init = {}) => {
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${jwt}`);
-  let res = await fetch(input, { ...init, headers });
-  if (res.status === 401) {
-    await exchange();
-    headers.set("Authorization", `Bearer ${jwt}`);
-    res = await fetch(input, { ...init, headers });
-  }
-  return res;
+export type SessionAuth = {
+  jwt: string;
+  userId: string;
+  expiresAt: number;
 };
 
-export async function buildClient(): Promise<SupabaseClient> {
+export async function exchangeApiKey(apiKey: string): Promise<SessionAuth> {
+  const trackrUrl = required("TRACKR_URL");
+  const res = await fetch(`${trackrUrl.replace(/\/$/, "")}/api/auth/exchange`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Auth exchange failed (${res.status}): ${body || res.statusText}`);
+  }
+  const data = (await res.json()) as {
+    access_token: string;
+    user_id: string;
+    expires_in: number;
+  };
+  return {
+    jwt: data.access_token,
+    userId: data.user_id,
+    expiresAt: Date.now() + Math.max(0, data.expires_in - 30) * 1000,
+  };
+}
+
+export function buildClient(apiKey: string, initial: SessionAuth): SupabaseClient {
   const url = required("TRACKR_SUPABASE_URL");
   const anonKey = required("TRACKR_SUPABASE_ANON_KEY");
-  required("TRACKR_URL");
-  required("TRACKR_API_KEY");
+  let current = initial;
 
-  await exchange();
+  const fetchWithAuth: typeof fetch = async (input, init = {}) => {
+    if (Date.now() >= current.expiresAt) {
+      current = await exchangeApiKey(apiKey);
+    }
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${current.jwt}`);
+    let res = await fetch(input, { ...init, headers });
+    if (res.status === 401) {
+      current = await exchangeApiKey(apiKey);
+      headers.set("Authorization", `Bearer ${current.jwt}`);
+      res = await fetch(input, { ...init, headers });
+    }
+    return res;
+  };
 
   return createClient(url, anonKey, {
     auth: {
@@ -62,11 +62,4 @@ export async function buildClient(): Promise<SupabaseClient> {
     },
     global: { fetch: fetchWithAuth },
   });
-}
-
-export async function currentUserId(): Promise<string> {
-  if (!cachedUserId) {
-    throw new Error("Not authenticated — call buildClient() first");
-  }
-  return cachedUserId;
 }

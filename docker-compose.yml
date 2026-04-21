@@ -337,6 +337,29 @@ services:
       JWT_SECRET: ${JWT_SECRET}
 
   # ──────────────────────────────────────────────
+  # Trackr MCP server (Streamable HTTP transport)
+  # ──────────────────────────────────────────────
+
+  mcp:
+    container_name: trackr-mcp
+    build: ./mcp-server
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    environment:
+      MCP_TRANSPORT: http
+      PORT: 3100
+      TRACKR_URL: ${SITE_URL}
+      TRACKR_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
+      TRACKR_SUPABASE_ANON_KEY: ${ANON_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ──────────────────────────────────────────────
   # Caddy (reverse proxy + automatic TLS)
   # ──────────────────────────────────────────────
 
@@ -355,6 +378,7 @@ services:
     depends_on:
       - kong
       - app
+      - mcp
 
 volumes:
   db-data:
