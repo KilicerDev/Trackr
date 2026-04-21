@@ -23,11 +23,16 @@ type SupabaseClaims = JWTPayload & {
 };
 
 export async function validateToken(raw: string): Promise<ValidatedAuth> {
+  // Supabase Auth's OAuth 2.1 Server issues access tokens without an "iss"
+  // claim, unlike its regular session JWTs. Don't require the claim, but if
+  // it is present, it must match the expected GoTrue issuer.
   const { payload } = await jwtVerify<SupabaseClaims>(raw, jwtSecret, {
-    issuer,
     algorithms: ["HS256"],
     requiredClaims: ["sub", "exp"],
   });
+  if (payload.iss && payload.iss !== issuer) {
+    throw new Error(`unexpected iss claim: ${payload.iss}`);
+  }
   return {
     userId: payload.sub!,
     jwt: raw,
