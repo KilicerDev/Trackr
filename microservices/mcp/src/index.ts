@@ -43,7 +43,7 @@ function resourceMetadata() {
   return {
     resource: resource || "",
     authorization_servers: [origin || supabaseAuthIssuer],
-    scopes_supported: ["openid"],
+    scopes_supported: ["profile"],
     bearer_methods_supported: ["header"],
   };
 }
@@ -65,7 +65,7 @@ function authorizationServerMetadata() {
       "client_secret_post",
       "none",
     ],
-    scopes_supported: ["openid"],
+    scopes_supported: ["profile"],
   };
 }
 
