@@ -21,6 +21,27 @@ const handleWellKnown: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
+// The OAuth token endpoint is a public RFC 6749 endpoint that accepts
+// x-www-form-urlencoded POSTs from foreign origins (Claude.ai, other MCP
+// clients). SvelteKit's default CSRF origin check would reject those before
+// our handler runs. Rewrite the Origin header to the app's own origin so the
+// check passes — the endpoint has no session-bound state to forge against;
+// PKCE and the single-use authorization code are what protect it.
+const handleOauthCsrfBypass: Handle = async ({ event, resolve }) => {
+  if (event.url.pathname === "/oauth/token" && event.request.method === "POST") {
+    const headers = new Headers(event.request.headers);
+    headers.set("origin", event.url.origin);
+    event.request = new Request(event.request.url, {
+      method: event.request.method,
+      headers,
+      body: event.request.body,
+      // @ts-expect-error Node fetch requires duplex for streaming bodies
+      duplex: "half",
+    });
+  }
+  return resolve(event);
+};
+
 const handleSetup: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname;
 
@@ -127,4 +148,10 @@ const handleParaglide: Handle = ({ event, resolve }) =>
     });
   });
 
-export const handle = sequence(handleWellKnown, handleParaglide, handleSetup, handleSupabase);
+export const handle = sequence(
+  handleWellKnown,
+  handleOauthCsrfBypass,
+  handleParaglide,
+  handleSetup,
+  handleSupabase,
+);
