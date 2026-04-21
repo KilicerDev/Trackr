@@ -4,30 +4,30 @@ import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { buildClient, exchangeApiKey } from "./supabase.js";
+import { supabaseAuthIssuer, validateToken, type ValidatedAuth } from "./auth.js";
+import { buildClient } from "./supabase.js";
 import { registerTools } from "./tools.js";
 
-async function createServerForApiKey(apiKey: string): Promise<McpServer> {
-  const auth = await exchangeApiKey(apiKey);
-  const db = buildClient(apiKey, auth);
+function createServerForJwt(jwt: string, userId: string): McpServer {
+  const db = buildClient(jwt);
   const server = new McpServer({ name: "trackr", version: "0.2.0" });
-  registerTools(server, db, auth.userId);
+  registerTools(server, db, userId);
   return server;
 }
 
 async function runStdio(): Promise<void> {
-  const apiKey = process.env.TRACKR_API_KEY;
-  if (!apiKey) throw new Error("TRACKR_API_KEY required in stdio mode");
-  const server = await createServerForApiKey(apiKey);
+  const jwt = process.env.TRACKR_JWT;
+  if (!jwt) throw new Error("TRACKR_JWT required in stdio mode");
+  const auth = await validateToken(jwt);
+  const server = createServerForJwt(auth.jwt, auth.userId);
   await server.connect(new StdioServerTransport());
 }
 
 function resourceMetadata() {
   const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "");
-  const authServer = (process.env.TRACKR_URL ?? "").replace(/\/$/, "");
   return {
     resource: resource || "",
-    authorization_servers: authServer ? [authServer] : [],
+    authorization_servers: [supabaseAuthIssuer],
     scopes_supported: ["mcp"],
     bearer_methods_supported: ["header"],
   };
@@ -60,7 +60,8 @@ async function runHttp(): Promise<void> {
     res.json({ ok: true });
   });
 
-  const serveProtectedResource = (_req: Request, res: Response) => {
+  const serveProtectedResource = (req: Request, res: Response) => {
+    console.error(`[trackr-mcp] ${req.method} ${req.originalUrl} -> resource-metadata`);
     res.set("Cache-Control", "public, max-age=3600");
     res.json(resourceMetadata());
   };
@@ -69,42 +70,54 @@ async function runHttp(): Promise<void> {
   app.get("/.well-known/oauth-protected-resource", serveProtectedResource);
   app.get("/.well-known/oauth-protected-resource/*", serveProtectedResource);
 
-  type SessionEntry = { server: McpServer; transport: StreamableHTTPServerTransport };
+  type SessionEntry = { server: McpServer; transport: StreamableHTTPServerTransport; auth: ValidatedAuth };
   const sessions = new Map<string, SessionEntry>();
 
   async function handleMcp(req: Request, res: Response): Promise<void> {
     const sessionId = req.header("mcp-session-id") ?? undefined;
+    const hasAuthz = Boolean(req.header("authorization"));
+    console.error(
+      `[trackr-mcp] ${req.method} ${req.originalUrl} authz=${hasAuthz} session=${sessionId ?? "-"}`
+    );
     let entry = sessionId ? sessions.get(sessionId) : undefined;
 
     if (!entry) {
       const authz = req.header("authorization") ?? "";
       const m = authz.match(/^Bearer\s+(.+)$/);
       if (!m) {
+        console.error(`[trackr-mcp] 401 no-bearer`);
         res.set("WWW-Authenticate", wwwAuthenticateHeader());
         res.status(401).json({ error: "Missing Bearer token" });
         return;
       }
       const bearer = m[1];
 
-      let server: McpServer;
+      let auth: ValidatedAuth;
       try {
-        server = await createServerForApiKey(bearer);
+        auth = await validateToken(bearer);
       } catch (e) {
-        res.set("WWW-Authenticate", wwwAuthenticateHeader());
+        console.error(`[trackr-mcp] 401 invalid-token: ${(e as Error).message}`);
+        res.set("WWW-Authenticate", `${wwwAuthenticateHeader()}, error="invalid_token"`);
         res.status(401).json({ error: (e as Error).message });
         return;
       }
+
+      const server = createServerForJwt(auth.jwt, auth.userId);
 
       const newId = randomUUID();
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => newId,
         onsessionclosed: () => {
+          console.error(`[trackr-mcp] session closed: ${newId}`);
           sessions.delete(newId);
         },
       });
       await server.connect(transport);
-      entry = { server, transport };
+      entry = { server, transport, auth };
       sessions.set(newId, entry);
+      console.error(
+        `[trackr-mcp] session opened: ${newId} user=${auth.userId} client=${auth.clientId ?? "-"}`
+      );
     }
 
     await entry.transport.handleRequest(req, res, req.body);

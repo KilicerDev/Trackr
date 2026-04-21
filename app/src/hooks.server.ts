@@ -1,5 +1,5 @@
 import { sequence } from "@sveltejs/kit/hooks";
-import { redirect, json, type Handle } from "@sveltejs/kit";
+import { redirect, type Handle } from "@sveltejs/kit";
 import { getTextDirection } from "$lib/paraglide/runtime";
 import { paraglideMiddleware } from "$lib/paraglide/server";
 import { createServerClient } from "@supabase/ssr";
@@ -10,16 +10,6 @@ import {
 import { env } from "$env/dynamic/private";
 import { isSetupComplete } from "$lib/server/setup-check";
 import { getAdminClient } from "$lib/server/supabase-admin";
-import { authorizationServerMetadata } from "$lib/server/oauth";
-
-const handleWellKnown: Handle = async ({ event, resolve }) => {
-  if (event.url.pathname === "/.well-known/oauth-authorization-server") {
-    return json(authorizationServerMetadata(event.url.origin), {
-      headers: { "Cache-Control": "public, max-age=3600" },
-    });
-  }
-  return resolve(event);
-};
 
 const handleSetup: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname;
@@ -127,4 +117,4 @@ const handleParaglide: Handle = ({ event, resolve }) =>
     });
   });
 
-export const handle = sequence(handleWellKnown, handleParaglide, handleSetup, handleSupabase);
+export const handle = sequence(handleParaglide, handleSetup, handleSupabase);

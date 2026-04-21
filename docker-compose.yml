@@ -111,6 +111,9 @@ services:
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "Your Trackr sign-in link"
       GOTRUE_EXTERNAL_PHONE_ENABLED: ${ENABLE_PHONE_SIGNUP}
       GOTRUE_SMS_AUTOCONFIRM: ${ENABLE_PHONE_AUTOCONFIRM}
+      GOTRUE_OAUTH_SERVER_ENABLED: "true"
+      GOTRUE_OAUTH_SERVER_ALLOW_DYNAMIC_REGISTRATION: "true"
+      GOTRUE_OAUTH_SERVER_AUTHORIZATION_PATH: /oauth/consent
 
   rest:
     container_name: supabase-rest
@@ -344,17 +347,14 @@ services:
 
   mcp:
     container_name: trackr-mcp
-    build: ./mcp-server
+    build: ./microservices/mcp
     restart: unless-stopped
-    depends_on:
-      app:
-        condition: service_started
     environment:
       MCP_TRANSPORT: http
       PORT: 3100
-      TRACKR_URL: ${SITE_URL}
-      TRACKR_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
-      TRACKR_SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      JWT_SECRET: ${JWT_SECRET}
       MCP_RESOURCE_URL: ${MCP_RESOURCE_URL}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3100/health || exit 1"]
