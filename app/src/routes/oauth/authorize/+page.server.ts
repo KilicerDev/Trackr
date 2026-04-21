@@ -4,6 +4,7 @@ import { getAdminClient } from "$lib/server/supabase-admin";
 import {
   generateAuthorizationCode,
   hash,
+  issuerUrl,
   mcpResourceUrl,
   redirectUriMatches,
   CODE_TTL_SEC,
@@ -195,7 +196,7 @@ function appendQuery(uri: string, pairs: Record<string, string>): string {
 }
 
 export const actions: Actions = {
-  approve: async ({ request, locals, cookies }) => {
+  approve: async ({ request, url, locals, cookies }) => {
     if (!locals.user) throw redirect(303, "/login");
 
     const form = await request.formData();
@@ -228,6 +229,7 @@ export const actions: Actions = {
     const code = await issueCode(params, locals.user.id);
     const redirectTo = appendQuery(params.redirectUri, {
       code,
+      iss: issuerUrl(url.origin),
       ...(params.state ? { state: params.state } : {}),
     });
 
@@ -238,12 +240,13 @@ export const actions: Actions = {
     throw redirect(303, redirectTo);
   },
 
-  deny: async ({ request, cookies }) => {
+  deny: async ({ request, url, cookies }) => {
     const form = await request.formData();
     const params = parseParams(formParamSource(form), { requireResponseType: false });
     cookies.delete("oauth_csrf", { path: "/oauth" });
     const redirectTo = appendQuery(params.redirectUri, {
       error: "access_denied",
+      iss: issuerUrl(url.origin),
       ...(params.state ? { state: params.state } : {}),
     });
     throw redirect(303, redirectTo);

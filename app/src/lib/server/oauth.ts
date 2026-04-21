@@ -106,7 +106,7 @@ export async function verifyPkce(codeVerifier: string, storedChallenge: string):
   return timingSafeEqual(a, b);
 }
 
-/** Discovery metadata (RFC 8414). */
+/** Discovery metadata (RFC 8414) — now also advertising RFC 9207 `iss` param. */
 export function authorizationServerMetadata(fallbackIssuer?: string) {
   const issuer = issuerUrl(fallbackIssuer);
   return {
@@ -120,6 +120,7 @@ export function authorizationServerMetadata(fallbackIssuer?: string) {
     code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: ["none"],
     scopes_supported: [...SUPPORTED_SCOPES],
+    authorization_response_iss_parameter_supported: true,
   };
 }
 
