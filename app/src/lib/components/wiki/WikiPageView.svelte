@@ -3,7 +3,7 @@
   import WikiShareModal from "./WikiShareModal.svelte";
   import { wikiStore, type WikiPageFull } from "$lib/stores/wiki.svelte";
   import { auth } from "$lib/stores/auth.svelte";
-  import { Check, Loader2, AlertCircle, Save, Share2 } from "@lucide/svelte";
+  import { Check, Loader2, AlertCircle, Save, Share2, Code2, Eye, MoreVertical, Link2 } from "@lucide/svelte";
 
   let { page: wikiPage }: { page: WikiPageFull } = $props();
 
@@ -11,6 +11,56 @@
   let pendingContent: string | null = null;
   let titleDirty = $state(false);
   let shareModalOpen = $state(false);
+  let showSource = $state(false);
+  let moreMenuOpen = $state(false);
+  let moreMenuEl: HTMLDivElement | undefined = $state();
+  let linkCopied = $state(false);
+  let markdownCopied = $state(false);
+
+  async function copyLink() {
+    if (typeof window === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      linkCopied = true;
+      setTimeout(() => { linkCopied = false; }, 1500);
+    } catch { /* noop */ }
+    moreMenuOpen = false;
+  }
+
+  async function copyMarkdown() {
+    if (typeof window === "undefined") return;
+    const md = pendingContent ?? wikiPage.content ?? "";
+    try {
+      await navigator.clipboard.writeText(md);
+      markdownCopied = true;
+      setTimeout(() => { markdownCopied = false; }, 1500);
+    } catch { /* noop */ }
+    moreMenuOpen = false;
+  }
+
+  $effect(() => {
+    if (!moreMenuOpen) return;
+    function handler(e: MouseEvent) {
+      if (moreMenuEl && !moreMenuEl.contains(e.target as Node)) moreMenuOpen = false;
+    }
+    function esc(e: KeyboardEvent) { if (e.key === "Escape") moreMenuOpen = false; }
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", esc);
+    };
+  });
+
+  function autosize(node: HTMLTextAreaElement) {
+    const resize = () => {
+      node.style.height = 'auto';
+      node.style.height = node.scrollHeight + 'px';
+    };
+    resize();
+    node.addEventListener('input', resize);
+    return { destroy: () => node.removeEventListener('input', resize) };
+  }
 
   const canEdit = $derived(
     wikiStore.isWikiAdmin ||
@@ -23,6 +73,7 @@
     title = wikiPage.title;
     pendingContent = null;
     titleDirty = false;
+    showSource = false;
   });
 
   async function save() {
@@ -114,41 +165,92 @@
       />
       <!-- Actions area -->
       <div class="mt-0.5 flex shrink-0 items-center gap-3">
-        {#if canShare}
+        <div class="flex items-center gap-0.5 rounded-sm bg-surface-hover/40 p-0.5">
           <button
-            class="flex items-center gap-1 text-sm text-muted/50 transition-all duration-150 hover:text-accent"
-            onclick={() => shareModalOpen = true}
+            class="flex h-6 w-6 items-center justify-center rounded-sm transition-all duration-150 {!showSource ? 'bg-surface-hover text-sidebar-text' : 'text-muted/50 hover:text-accent'}"
+            onclick={() => showSource = false}
+            title="Show rendered"
+            aria-label="Show rendered"
+            aria-pressed={!showSource}
           >
-            <Share2 size={12} />
-            Share
+            <Eye size={13} />
           </button>
-        {/if}
+          <button
+            class="flex h-6 w-6 items-center justify-center rounded-sm transition-all duration-150 {showSource ? 'bg-surface-hover text-sidebar-text' : 'text-muted/50 hover:text-accent'}"
+            onclick={() => showSource = true}
+            title="Show markdown source"
+            aria-label="Show markdown source"
+            aria-pressed={showSource}
+          >
+            <Code2 size={13} />
+          </button>
+        </div>
         {#if canEdit}
-          {#if wikiStore.saveStatus === "saved"}
-            <span class="flex items-center gap-1 text-xs text-muted/40">
-              <Check size={10} class="text-green-400" /> Saved
-            </span>
-          {:else if wikiStore.saveStatus === "saving"}
+          {#if wikiStore.saveStatus === "saving"}
             <span class="flex items-center gap-1 text-xs text-muted/40">
               <Loader2 size={10} class="animate-spin" /> Saving...
+            </span>
+          {:else if wikiStore.saveStatus === "unsaved"}
+            <span class="flex items-center rounded-sm bg-yellow-500/15 px-1.5 py-0.5 text-sm font-medium text-yellow-600 dark:text-yellow-400">
+              Unsaved
             </span>
           {:else if wikiStore.saveStatus === "error"}
             <span class="flex items-center gap-1 text-xs text-red-400/60">
               <AlertCircle size={10} /> Error
             </span>
           {/if}
-          {#if wikiStore.saveStatus === "unsaved" || wikiStore.saveStatus === "error"}
-            <button
-              class="flex items-center gap-1 text-sm font-medium text-accent transition-all duration-150 hover:text-accent/80"
-              onclick={save}
-            >
-              <Save size={12} />
-              Save
-            </button>
-          {/if}
         {:else}
           <span class="text-xs text-muted/30">Read only</span>
         {/if}
+        <div class="relative" bind:this={moreMenuEl}>
+          <button
+            class="flex h-6 w-6 items-center justify-center rounded-sm text-muted/50 transition-all duration-150 hover:bg-surface-hover/60 hover:text-sidebar-text"
+            onclick={() => moreMenuOpen = !moreMenuOpen}
+            title="More actions"
+            aria-label="More actions"
+            aria-expanded={moreMenuOpen}
+          >
+            <MoreVertical size={14} />
+          </button>
+          {#if moreMenuOpen}
+            <div class="absolute right-0 z-30 mt-1.5 w-48 rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
+              {#if canEdit}
+                <button
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60 disabled:cursor-not-allowed disabled:opacity-40"
+                  onclick={() => { save(); moreMenuOpen = false; }}
+                  disabled={wikiStore.saveStatus === "saved" || wikiStore.saveStatus === "saving"}
+                >
+                  <Save size={13} class="text-muted/60" />
+                  Save
+                  <span class="ml-auto font-mono text-xs text-muted/30">&#8984;S</span>
+                </button>
+              {/if}
+              {#if canShare}
+                <button
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60"
+                  onclick={() => { shareModalOpen = true; moreMenuOpen = false; }}
+                >
+                  <Share2 size={13} class="text-muted/60" />
+                  Share
+                </button>
+              {/if}
+              <button
+                class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60"
+                onclick={copyLink}
+              >
+                <Link2 size={13} class="text-muted/60" />
+                {linkCopied ? "Link copied" : "Copy link"}
+              </button>
+              <button
+                class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60"
+                onclick={copyMarkdown}
+              >
+                <Code2 size={13} class="text-muted/60" />
+                {markdownCopied ? "Markdown copied" : "Copy markdown"}
+              </button>
+            </div>
+          {/if}
+        </div>
       </div>
     </div>
     <!-- Metadata -->
@@ -169,11 +271,22 @@
 
   <!-- Editor -->
   {#key wikiPage.id}
-    <MilkdownEditor
-      content={wikiPage.content}
-      onchange={handleContentChange}
-      readonly={!canEdit}
-    />
+    {#if showSource}
+      <textarea
+        use:autosize
+        value={pendingContent ?? wikiPage.content}
+        oninput={(e) => handleContentChange(e.currentTarget.value)}
+        readonly={!canEdit}
+        spellcheck="false"
+        class="block w-full resize-none overflow-hidden bg-transparent font-mono text-sm leading-relaxed text-sidebar-text outline-none placeholder:text-muted/30 {!canEdit ? 'cursor-default' : ''}"
+      ></textarea>
+    {:else}
+      <MilkdownEditor
+        content={pendingContent ?? wikiPage.content}
+        onchange={handleContentChange}
+        readonly={!canEdit}
+      />
+    {/if}
   {/key}
 </div>
 
