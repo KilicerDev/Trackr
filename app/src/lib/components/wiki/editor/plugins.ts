@@ -1,5 +1,6 @@
 import type { Editor } from "@milkdown/kit/core";
 import { commonmark } from "@milkdown/kit/preset/commonmark";
+import { gfm } from "@milkdown/kit/preset/gfm";
 import { history } from "@milkdown/kit/plugin/history";
 import { clipboard } from "@milkdown/kit/plugin/clipboard";
 import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
@@ -22,6 +23,7 @@ export function configurePlugins(editor: Editor, config: PluginConfig): Editor {
 
   return editor
     .use(commonmark)
+    .use(gfm)
     .use(history)
     .use(clipboard)
     .use(trailing)
