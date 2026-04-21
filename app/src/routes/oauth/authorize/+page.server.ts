@@ -28,25 +28,32 @@ type AuthorizeParams = {
   resource: string | null;
 };
 
-function parseParams(url: URL): AuthorizeParams {
-  const responseType = url.searchParams.get("response_type");
-  if (responseType !== "code") throw error(400, "response_type must be 'code'");
+type ParamSource = { get: (name: string) => string | null };
 
-  const clientId = url.searchParams.get("client_id");
+function parseParams(
+  source: ParamSource,
+  opts: { requireResponseType: boolean } = { requireResponseType: true }
+): AuthorizeParams {
+  if (opts.requireResponseType) {
+    const responseType = source.get("response_type");
+    if (responseType !== "code") throw error(400, "response_type must be 'code'");
+  }
+
+  const clientId = source.get("client_id");
   if (!clientId) throw error(400, "client_id required");
 
-  const redirectUri = url.searchParams.get("redirect_uri");
+  const redirectUri = source.get("redirect_uri");
   if (!redirectUri) throw error(400, "redirect_uri required");
 
-  const codeChallenge = url.searchParams.get("code_challenge");
+  const codeChallenge = source.get("code_challenge");
   if (!codeChallenge || codeChallenge.length < 43 || codeChallenge.length > 128) {
     throw error(400, "code_challenge required (43-128 chars)");
   }
 
-  const method = url.searchParams.get("code_challenge_method");
+  const method = source.get("code_challenge_method");
   if (method !== "S256") throw error(400, "code_challenge_method must be 'S256'");
 
-  const scopeRaw = url.searchParams.get("scope") ?? "mcp";
+  const scopeRaw = source.get("scope") ?? "mcp";
   const scope = scopeRaw.split(/\s+/).filter(Boolean);
   for (const s of scope) {
     if (!(SUPPORTED_SCOPES as readonly string[]).includes(s)) {
@@ -54,7 +61,7 @@ function parseParams(url: URL): AuthorizeParams {
     }
   }
 
-  const resource = url.searchParams.get("resource");
+  const resource = source.get("resource");
   if (resource && resource !== mcpResourceUrl()) {
     throw error(400, "resource does not match this MCP server");
   }
@@ -64,11 +71,22 @@ function parseParams(url: URL): AuthorizeParams {
     redirectUri,
     codeChallenge,
     codeChallengeMethod: "S256",
-    state: url.searchParams.get("state"),
+    state: source.get("state"),
     scope,
     resource,
   };
 }
+
+const formParamSource = (form: FormData): ParamSource => ({
+  get: (name) => {
+    const v = form.get(name);
+    return typeof v === "string" ? v : null;
+  },
+});
+
+const urlParamSource = (url: URL): ParamSource => ({
+  get: (name) => url.searchParams.get(name),
+});
 
 export const load: PageServerLoad = async ({ url, locals, cookies, setHeaders }) => {
   setHeaders({
@@ -77,7 +95,7 @@ export const load: PageServerLoad = async ({ url, locals, cookies, setHeaders })
     "Cache-Control": "no-store",
   });
 
-  const params = parseParams(url);
+  const params = parseParams(urlParamSource(url));
   const admin = getAdminClient();
 
   const { data: client } = await admin
@@ -167,7 +185,7 @@ function appendQuery(uri: string, pairs: Record<string, string>): string {
 }
 
 export const actions: Actions = {
-  approve: async ({ request, url, locals, cookies }) => {
+  approve: async ({ request, locals, cookies }) => {
     if (!locals.user) throw redirect(303, "/login");
 
     const form = await request.formData();
@@ -177,7 +195,7 @@ export const actions: Actions = {
       return fail(403, { message: "CSRF check failed" });
     }
 
-    const params = parseParams(url);
+    const params = parseParams(formParamSource(form), { requireResponseType: false });
     const admin = getAdminClient();
 
     const { data: client } = await admin
@@ -207,8 +225,9 @@ export const actions: Actions = {
     throw redirect(303, redirectTo);
   },
 
-  deny: async ({ url, cookies }) => {
-    const params = parseParams(url);
+  deny: async ({ request, cookies }) => {
+    const form = await request.formData();
+    const params = parseParams(formParamSource(form), { requireResponseType: false });
     cookies.delete("oauth_csrf", { path: "/oauth" });
     const redirectTo = appendQuery(params.redirectUri, {
       error: "access_denied",

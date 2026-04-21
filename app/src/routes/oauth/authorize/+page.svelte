@@ -55,6 +55,17 @@
 
 		<form method="POST" use:enhance class="mt-6 flex flex-col gap-2">
 			<input type="hidden" name="csrf" value={data.csrf} />
+			<input type="hidden" name="client_id" value={data.params.clientId} />
+			<input type="hidden" name="redirect_uri" value={data.params.redirectUri} />
+			<input type="hidden" name="code_challenge" value={data.params.codeChallenge} />
+			<input type="hidden" name="code_challenge_method" value={data.params.codeChallengeMethod} />
+			<input type="hidden" name="scope" value={data.params.scope.join(' ')} />
+			{#if data.params.state}
+				<input type="hidden" name="state" value={data.params.state} />
+			{/if}
+			{#if data.params.resource}
+				<input type="hidden" name="resource" value={data.params.resource} />
+			{/if}
 			<button
 				type="submit"
 				formaction="?/approve"
