@@ -332,9 +332,11 @@ services:
       NODE_ENV: production
       PORT: 3000
       ORIGIN: ${SITE_URL}
+      SITE_URL: ${SITE_URL}
       SUPABASE_URL: http://kong:8000
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL}
 
   # ──────────────────────────────────────────────
   # Trackr MCP server (Streamable HTTP transport)
@@ -353,6 +355,7 @@ services:
       TRACKR_URL: ${SITE_URL}
       TRACKR_SUPABASE_URL: ${PUBLIC_SUPABASE_URL}
       TRACKR_SUPABASE_ANON_KEY: ${ANON_KEY}
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3100/health || exit 1"]
       interval: 15s

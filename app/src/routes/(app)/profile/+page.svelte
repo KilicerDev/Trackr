@@ -15,8 +15,8 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import type { ApiKey } from '$lib/api/keys';
 
-	type Tab = 'profile' | 'style' | 'integrations' | 'security' | 'apiKeys';
-	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations', 'security', 'apiKeys'];
+	type Tab = 'profile' | 'style' | 'integrations' | 'security' | 'apiKeys' | 'connectedApps';
+	const VALID_TABS: Tab[] = ['profile', 'style', 'integrations', 'security', 'apiKeys', 'connectedApps'];
 	let activeTab = $derived.by(() => {
 		const param = page.url.searchParams.get('tab') as Tab;
 		return VALID_TABS.includes(param) ? param : 'profile';
@@ -26,6 +26,7 @@
 		{ key: 'style', label: 'Style' },
 		{ key: 'integrations', label: 'Integrations' },
 		{ key: 'apiKeys', label: 'API Keys' },
+		{ key: 'connectedApps', label: 'Connected Apps' },
 		{ key: 'security', label: 'Security' }
 	];
 
@@ -187,7 +188,56 @@
 		if (activeTab === 'apiKeys' && !apiKeysLoaded) {
 			loadApiKeys();
 		}
+		if (activeTab === 'connectedApps' && !connectedAppsLoaded) {
+			loadConnectedApps();
+		}
 	});
+
+	// Connected Apps (OAuth consents)
+	type ConnectedApp = {
+		client_id: string;
+		client_name: string;
+		logo_uri: string | null;
+		scope: string[];
+		approved_at: string;
+		last_used_at: string | null;
+	};
+	let connectedApps = $state<ConnectedApp[]>([]);
+	let connectedAppsLoaded = $state(false);
+	let connectedAppsLoading = $state(false);
+	let revokingAppId = $state<string | null>(null);
+
+	async function loadConnectedApps() {
+		connectedAppsLoading = true;
+		try {
+			const res = await fetch('/api/oauth/apps');
+			if (!res.ok) throw new Error('Failed to load');
+			const body = (await res.json()) as { apps: ConnectedApp[] };
+			connectedApps = body.apps;
+		} catch {
+			notifications.add('error', 'Failed to load connected apps');
+		} finally {
+			connectedAppsLoading = false;
+			connectedAppsLoaded = true;
+		}
+	}
+
+	async function revokeConnectedApp(clientId: string) {
+		if (revokingAppId) return;
+		revokingAppId = clientId;
+		try {
+			const res = await fetch(`/api/oauth/apps/${encodeURIComponent(clientId)}`, {
+				method: 'DELETE'
+			});
+			if (!res.ok) throw new Error('Failed');
+			connectedApps = connectedApps.filter((a) => a.client_id !== clientId);
+			notifications.add('success', 'Access revoked');
+		} catch {
+			notifications.add('error', 'Failed to revoke access');
+		} finally {
+			revokingAppId = null;
+		}
+	}
 
 	async function loadApiKeys() {
 		apiKeysLoading = true;
@@ -936,6 +986,55 @@
 				<p class="mt-6 text-xs text-muted/30">
 					Treat API keys like passwords. Revoke immediately if a key is lost or exposed.
 				</p>
+			</section>
+		</div>
+	{/if}
+
+	<!-- Connected Apps Tab -->
+	{#if activeTab === 'connectedApps'}
+		<div class="space-y-4">
+			<section>
+				<h2 class="mb-1 text-base font-semibold text-sidebar-text">Connected Apps</h2>
+				<p class="mb-4 text-sm text-muted/60">
+					Apps and integrations that have been granted access to your Trackr account via OAuth.
+					Revoking access also invalidates all active tokens.
+				</p>
+				{#if !connectedAppsLoaded}
+					<p class="text-sm text-muted/40">Loading...</p>
+				{:else if connectedApps.length === 0}
+					<p class="text-sm text-muted/40">No connected apps yet.</p>
+				{:else}
+					<div class="space-y-2">
+						{#each connectedApps as app (app.client_id)}
+							<div class="flex items-center gap-3 rounded-sm border border-surface-border bg-surface-hover/40 p-3">
+								{#if app.logo_uri}
+									<img src={app.logo_uri} alt="" class="h-8 w-8 shrink-0 rounded-sm" />
+								{:else}
+									<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-surface-hover text-xs text-muted/60">
+										{app.client_name.slice(0, 1).toUpperCase()}
+									</div>
+								{/if}
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-sm font-medium text-sidebar-text">{app.client_name}</p>
+									<p class="text-xs text-muted/50">
+										Approved {new Date(app.approved_at).toLocaleDateString()}
+										{#if app.last_used_at}
+											· Last used {new Date(app.last_used_at).toLocaleDateString()}
+										{/if}
+									</p>
+								</div>
+								<button
+									type="button"
+									class="shrink-0 rounded-sm px-2.5 py-1 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-40"
+									disabled={revokingAppId === app.client_id}
+									onclick={() => revokeConnectedApp(app.client_id)}
+								>
+									{revokingAppId === app.client_id ? 'Revoking...' : 'Revoke'}
+								</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</section>
 		</div>
 	{/if}

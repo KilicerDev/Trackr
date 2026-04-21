@@ -22,13 +22,38 @@ async function runStdio(): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
+function resourceMetadata() {
+  const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "") + "/";
+  const authServer = (process.env.TRACKR_URL ?? "").replace(/\/$/, "");
+  return {
+    resource,
+    authorization_servers: authServer ? [authServer] : [],
+    scopes_supported: ["mcp"],
+    bearer_methods_supported: ["header"],
+  };
+}
+
+function wwwAuthenticateHeader(): string {
+  const resource = (process.env.MCP_RESOURCE_URL ?? "").replace(/\/$/, "");
+  const metaUrl = resource
+    ? `${resource}/.well-known/oauth-protected-resource`
+    : `/.well-known/oauth-protected-resource`;
+  return `Bearer realm="trackr", resource_metadata="${metaUrl}"`;
+}
+
 async function runHttp(): Promise<void> {
   const port = Number(process.env.PORT ?? 3100);
   const app = express();
+  app.set("trust proxy", 1);
   app.use(express.json({ limit: "4mb" }));
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
+  });
+
+  app.get("/.well-known/oauth-protected-resource", (_req, res) => {
+    res.set("Cache-Control", "public, max-age=3600");
+    res.json(resourceMetadata());
   });
 
   type SessionEntry = { server: McpServer; transport: StreamableHTTPServerTransport };
@@ -42,15 +67,17 @@ async function runHttp(): Promise<void> {
       const authz = req.header("authorization") ?? "";
       const m = authz.match(/^Bearer\s+(.+)$/);
       if (!m) {
-        res.status(401).json({ error: "Missing Bearer API key" });
+        res.set("WWW-Authenticate", wwwAuthenticateHeader());
+        res.status(401).json({ error: "Missing Bearer token" });
         return;
       }
-      const apiKey = m[1];
+      const bearer = m[1];
 
       let server: McpServer;
       try {
-        server = await createServerForApiKey(apiKey);
+        server = await createServerForApiKey(bearer);
       } catch (e) {
+        res.set("WWW-Authenticate", wwwAuthenticateHeader());
         res.status(401).json({ error: (e as Error).message });
         return;
       }
