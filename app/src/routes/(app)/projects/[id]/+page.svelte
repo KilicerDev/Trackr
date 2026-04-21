@@ -47,7 +47,7 @@
 		archived: 'bg-gray-100 text-gray-500 dark:bg-surface-hover dark:text-muted'
 	};
 
-	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
+	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done', 'cancelled'] as const;
 	const TASK_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
 	const TASK_GROUP_OPTIONS = ['none', 'status'] as const;
@@ -67,6 +67,7 @@
 		backlog: 'bg-gray-100 text-gray-600 dark:bg-surface-hover dark:text-sidebar-text',
 		todo: 'bg-gray-100 text-gray-700 dark:bg-surface-hover dark:text-sidebar-text',
 		in_progress: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300',
+		paused: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300',
 		in_review: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
 		done: 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300',
 		cancelled: 'bg-gray-100 text-gray-400 dark:bg-surface-hover dark:text-muted'

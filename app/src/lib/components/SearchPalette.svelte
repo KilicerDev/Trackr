@@ -212,6 +212,7 @@
 		switch (status) {
 			case 'open': return 'text-blue-400';
 			case 'in_progress': return 'text-amber-400';
+			case 'paused': return 'text-yellow-400';
 			case 'resolved': case 'done': return 'text-green-400';
 			case 'closed': return 'text-neutral-400';
 			case 'todo': case 'backlog': return 'text-neutral-400';

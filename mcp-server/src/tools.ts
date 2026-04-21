@@ -9,6 +9,7 @@ const TASK_STATUS = [
   "backlog",
   "todo",
   "in_progress",
+  "paused",
   "in_review",
   "done",
   "cancelled",
@@ -18,6 +19,7 @@ const TASK_TYPE = ["task", "bug", "feature", "improvement", "epic"] as const;
 const TICKET_STATUS = [
   "open",
   "in_progress",
+  "paused",
   "waiting_on_customer",
   "waiting_on_agent",
   "resolved",

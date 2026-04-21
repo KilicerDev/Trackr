@@ -15,7 +15,7 @@
 
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
-	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done'] as const;
+	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done'] as const;
 
 	interface Props {
 		projectId?: string;

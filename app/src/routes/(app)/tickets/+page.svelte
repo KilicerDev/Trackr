@@ -21,6 +21,7 @@
 	const TICKET_STATUSES = [
 		'open',
 		'in_progress',
+		'paused',
 		'waiting_on_customer',
 		'waiting_on_agent',
 		'resolved',

@@ -14,7 +14,7 @@
 	import AttachmentGrid from './AttachmentGrid.svelte';
 	import AttachmentCompact from './AttachmentCompact.svelte';
 
-	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'] as const;
+	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done', 'cancelled'] as const;
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
 
@@ -562,7 +562,8 @@
 	const dateInputClass =
 		'date-clean w-full cursor-pointer rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 hover:bg-surface-hover/60';
 	const dropdownPanelClass =
-		'absolute left-0 z-30 mt-1.5 max-h-48 w-full overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
+		'absolute left-0 z-30 mt-1.5 w-full rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in';
+	const dropdownPanelScrollClass = `${dropdownPanelClass} max-h-48 overflow-y-auto`;
 	const dropdownItemBase =
 		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
 
@@ -753,7 +754,7 @@
 									</button>
 								{/if}
 								{#if openDropdown === 'parent'}
-									<div class={dropdownPanelClass}>
+									<div class={dropdownPanelScrollClass}>
 										{#if loadingParents}<p class="px-3 py-2 text-sm text-muted">Loading...</p>{/if}
 										{#each parentCandidates.filter((t) => t.id !== task?.id && !descendantIds.has(t.id)) as t (t.id)}
 											<button class="{dropdownItemBase} text-sidebar-text" onmousedown={(e) => { e.preventDefault(); updateField('parent_id', t.id); }}>
