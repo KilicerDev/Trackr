@@ -222,3 +222,121 @@
   float: left;
   height: 0;
 }
+
+/* --- Floating UIs: selection toolbar, slash menu, block handle ---
+   The three Milkdown plugins append their content element to the editor's
+   parent and toggle [data-show]. They set `position`, `left`, `top` via
+   Floating UI; we only provide look-and-feel + hide-by-default. */
+
+.wiki-editor-tooltip,
+.wiki-editor-slash,
+.wiki-editor-block-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.wiki-editor-tooltip[data-show="true"],
+.wiki-editor-slash[data-show="true"],
+.wiki-editor-block-handle[data-show="true"] {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* Selection toolbar: horizontal button row */
+.wiki-editor-tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-surface-border) 70%, transparent);
+  background: var(--color-surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.wiki-editor-tooltip__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-sidebar-text);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+
+.wiki-editor-tooltip__btn:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, transparent);
+  color: var(--color-accent);
+}
+
+/* Slash menu: vertical list */
+.wiki-editor-slash {
+  min-width: 220px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-surface-border) 70%, transparent);
+  background: var(--color-surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.wiki-editor-slash__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-sidebar-text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background 80ms;
+}
+
+.wiki-editor-slash__item--active,
+.wiki-editor-slash__item:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 60%, transparent);
+  color: var(--color-accent);
+}
+
+.wiki-editor-slash__empty {
+  padding: 8px;
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--color-muted) 60%, transparent);
+  text-align: center;
+}
+
+/* Block handle: small draggable gutter grip */
+.wiki-editor-block-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 22px;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  cursor: grab;
+  transition: background 120ms, color 120ms;
+}
+
+.wiki-editor-block-handle:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 60%, transparent);
+  color: var(--color-sidebar-text);
+}
+
+.wiki-editor-block-handle:active {
+  cursor: grabbing;
+}

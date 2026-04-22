@@ -7,6 +7,13 @@ import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
 import { trailing } from "@milkdown/kit/plugin/trailing";
 import { indent } from "@milkdown/kit/plugin/indent";
 import { cursor } from "@milkdown/kit/plugin/cursor";
+import { tooltipFactory } from "@milkdown/plugin-tooltip";
+import { slashFactory } from "@milkdown/plugin-slash";
+import { block } from "@milkdown/plugin-block";
+
+export const selectionTooltip = tooltipFactory("wiki-selection-toolbar");
+export const slashMenu = slashFactory("wiki-slash-menu");
+export { block };
 
 export type PluginConfig = {
   initialContent: string;
@@ -30,6 +37,9 @@ export function configurePlugins(editor: Editor, config: PluginConfig): Editor {
     .use(indent)
     .use(cursor)
     .use(listener)
+    .use(selectionTooltip)
+    .use(slashMenu)
+    .use(block)
     .config((ctx) => {
       const l = ctx.get(listenerCtx);
       if (config.onChange) {
