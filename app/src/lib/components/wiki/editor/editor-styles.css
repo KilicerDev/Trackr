@@ -4,7 +4,10 @@
 
 .wiki-editor .milkdown-editor {
   font-family: var(--font-sans);
-  color: var(--color-sidebar-text);
+  /* Body copy sits slightly below full white so pages don't feel harsh at a
+     glance. Headings override this back to full --color-sidebar-text so they
+     still pop as structure. */
+  color: color-mix(in srgb, var(--color-sidebar-text) 82%, transparent);
   font-size: var(--text-md);
   line-height: 1.4;
   letter-spacing: 0.01em;
