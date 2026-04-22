@@ -63,7 +63,7 @@
 
 <button
 	data-task-id={task.id}
-	class="group flex w-full items-center gap-2.5 px-3 py-[7px] text-left transition-all duration-100 {selected ? 'bg-accent/8' : 'hover:bg-surface-hover/40'}"
+	class="group flex w-full items-center gap-4 px-3 py-[7px] text-left transition-all duration-100 {selected ? 'bg-accent/8' : 'hover:bg-surface-hover/40'}"
 	style={depth > 0 ? `padding-left: ${12 + depth * 16}px` : ''}
 	{onclick}
 >
@@ -71,12 +71,12 @@
 	<span class="h-1.5 w-1.5 shrink-0 rounded-full {statusDot[task.status] ?? 'bg-gray-400'}"></span>
 
 	<!-- ID -->
-	<span class="shrink-0 whitespace-nowrap font-mono text-xs text-muted/50">
+	<span class="w-[60px] shrink-0 whitespace-nowrap font-mono text-xs text-muted/50">
 		{displayId}
 	</span>
 
 	<!-- Title -->
-	<span class="min-w-0 flex-1 truncate text-base leading-tight text-sidebar-text">
+	<span class="min-w-0 flex-1 truncate text-base text-sidebar-text">
 		{task.title}
 	</span>
 

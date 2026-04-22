@@ -623,15 +623,13 @@
 					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {viewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setView('list')}
 				>
-					<LayoutList size={13} />
-					List
+					<LayoutList size={12} /> List
 				</button>
 				<button
 					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {viewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
 					onclick={() => setView('board')}
 				>
-					<Columns3 size={13} />
-					Board
+					<Columns3 size={12} /> Board
 				</button>
 			</div>
 
