@@ -4,21 +4,21 @@
     toggleStrongCommand,
     toggleEmphasisCommand,
     toggleInlineCodeCommand,
-    toggleLinkCommand,
   } from "@milkdown/kit/preset/commonmark";
   import { toggleStrikethroughCommand } from "@milkdown/kit/preset/gfm";
+  import type { ActiveMarks } from "../use-editor";
 
-  let { element = $bindable<HTMLElement | null>(null), dispatch }: {
+  let {
+    element = $bindable<HTMLElement | null>(null),
+    dispatch,
+    onRequestLink,
+    activeMarks,
+  }: {
     element?: HTMLElement | null;
     dispatch: (command: unknown, payload?: unknown) => void;
+    onRequestLink: () => void;
+    activeMarks: ActiveMarks;
   } = $props();
-
-  function promptForHref(): string | null {
-    if (typeof window === "undefined") return null;
-    const url = window.prompt("URL");
-    if (!url) return null;
-    return url;
-  }
 </script>
 
 <div
@@ -30,8 +30,10 @@
   <button
     type="button"
     class="wiki-editor-tooltip__btn"
+    class:wiki-editor-tooltip__btn--active={activeMarks.bold}
     title="Bold (⌘B)"
     aria-label="Bold"
+    aria-pressed={activeMarks.bold}
     onmousedown={(e) => e.preventDefault()}
     onclick={() => dispatch(toggleStrongCommand.key)}
   >
@@ -40,8 +42,10 @@
   <button
     type="button"
     class="wiki-editor-tooltip__btn"
+    class:wiki-editor-tooltip__btn--active={activeMarks.italic}
     title="Italic (⌘I)"
     aria-label="Italic"
+    aria-pressed={activeMarks.italic}
     onmousedown={(e) => e.preventDefault()}
     onclick={() => dispatch(toggleEmphasisCommand.key)}
   >
@@ -50,8 +54,10 @@
   <button
     type="button"
     class="wiki-editor-tooltip__btn"
+    class:wiki-editor-tooltip__btn--active={activeMarks.strike}
     title="Strikethrough"
     aria-label="Strikethrough"
+    aria-pressed={activeMarks.strike}
     onmousedown={(e) => e.preventDefault()}
     onclick={() => dispatch(toggleStrikethroughCommand.key)}
   >
@@ -60,8 +66,10 @@
   <button
     type="button"
     class="wiki-editor-tooltip__btn"
+    class:wiki-editor-tooltip__btn--active={activeMarks.code}
     title="Inline code"
     aria-label="Inline code"
+    aria-pressed={activeMarks.code}
     onmousedown={(e) => e.preventDefault()}
     onclick={() => dispatch(toggleInlineCodeCommand.key)}
   >
@@ -70,13 +78,12 @@
   <button
     type="button"
     class="wiki-editor-tooltip__btn"
+    class:wiki-editor-tooltip__btn--active={activeMarks.link}
     title="Link"
     aria-label="Link"
+    aria-pressed={activeMarks.link}
     onmousedown={(e) => e.preventDefault()}
-    onclick={() => {
-      const href = promptForHref();
-      if (href) dispatch(toggleLinkCommand.key, { href, title: "" });
-    }}
+    onclick={onRequestLink}
   >
     <LinkIcon size={14} />
   </button>

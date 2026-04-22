@@ -60,6 +60,7 @@
 .wiki-editor .milkdown-editor a {
   color: var(--color-accent);
   text-decoration: none;
+  cursor: pointer;
   transition: opacity 150ms;
 }
 
@@ -276,6 +277,15 @@
 .wiki-editor-tooltip__btn:hover {
   background: color-mix(in srgb, var(--color-surface-hover) 70%, transparent);
   color: var(--color-accent);
+}
+
+.wiki-editor-tooltip__btn--active {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-accent);
+}
+
+.wiki-editor-tooltip__btn--active:hover {
+  background: color-mix(in srgb, var(--color-accent) 28%, transparent);
 }
 
 /* Slash menu: vertical list */
