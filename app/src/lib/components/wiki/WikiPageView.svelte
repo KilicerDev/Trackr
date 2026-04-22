@@ -3,7 +3,7 @@
   import WikiShareModal from "./WikiShareModal.svelte";
   import { wikiStore, type WikiPageFull } from "$lib/stores/wiki.svelte";
   import { auth } from "$lib/stores/auth.svelte";
-  import { Check, Loader2, AlertCircle, Save, Share2, Code2, Eye, MoreVertical, Link2 } from "@lucide/svelte";
+  import { Check, Loader2, AlertCircle, Save, Share2, Code2, Eye, MoreVertical, Link2, TriangleAlert, Command } from "@lucide/svelte";
 
   let { page: wikiPage }: { page: WikiPageFull } = $props();
 
@@ -151,6 +151,8 @@
 </script>
 
 <div class="mx-auto w-full max-w-[740px] py-6 px-6">
+  <!-- Sticky header — stays pinned to viewport top while the editor scrolls below -->
+  <div class="sticky top-0 z-20 -mx-6 -mt-6 bg-page-bg px-6 pt-6">
   <!-- Header -->
   <div class="mb-4">
     <div class="flex items-start justify-between gap-3">
@@ -165,7 +167,25 @@
       />
       <!-- Actions area -->
       <div class="mt-0.5 flex shrink-0 items-center gap-3">
-        <div class="flex items-center gap-0.5 rounded-sm bg-surface-hover/40 p-0.5">
+        {#if canEdit}
+          {#if wikiStore.saveStatus === "saving"}
+            <span class="flex h-7 items-center gap-1 text-xs text-muted/40">
+              <Loader2 size={10} class="animate-spin" /> Saving...
+            </span>
+          {:else if wikiStore.saveStatus === "unsaved"}
+            <span class="flex h-7 items-center gap-1.5 rounded-sm bg-yellow-500/15 px-2 text-sm leading-none text-yellow-600 dark:text-yellow-400">
+              <TriangleAlert size={12} />
+              Unsaved
+            </span>
+          {:else if wikiStore.saveStatus === "error"}
+            <span class="flex h-7 items-center gap-1 text-xs text-red-400/60">
+              <AlertCircle size={10} /> Error
+            </span>
+          {/if}
+        {:else}
+          <span class="flex h-7 items-center text-xs text-muted/30">Read only</span>
+        {/if}
+        <div class="flex h-7 items-center gap-0.5 rounded-sm bg-surface-hover/40 p-0.5">
           <button
             class="flex h-6 w-6 items-center justify-center rounded-sm transition-all duration-150 {!showSource ? 'bg-surface-hover text-sidebar-text' : 'text-muted/50 hover:text-accent'}"
             onclick={() => showSource = false}
@@ -185,26 +205,9 @@
             <Code2 size={13} />
           </button>
         </div>
-        {#if canEdit}
-          {#if wikiStore.saveStatus === "saving"}
-            <span class="flex items-center gap-1 text-xs text-muted/40">
-              <Loader2 size={10} class="animate-spin" /> Saving...
-            </span>
-          {:else if wikiStore.saveStatus === "unsaved"}
-            <span class="flex items-center rounded-sm bg-yellow-500/15 px-1.5 py-0.5 text-sm font-medium text-yellow-600 dark:text-yellow-400">
-              Unsaved
-            </span>
-          {:else if wikiStore.saveStatus === "error"}
-            <span class="flex items-center gap-1 text-xs text-red-400/60">
-              <AlertCircle size={10} /> Error
-            </span>
-          {/if}
-        {:else}
-          <span class="text-xs text-muted/30">Read only</span>
-        {/if}
         <div class="relative" bind:this={moreMenuEl}>
           <button
-            class="flex h-6 w-6 items-center justify-center rounded-sm text-muted/50 transition-all duration-150 hover:bg-surface-hover/60 hover:text-sidebar-text"
+            class="flex h-7 w-7 items-center justify-center rounded-sm text-muted/50 transition-all duration-150 hover:bg-surface-hover/60 hover:text-sidebar-text"
             onclick={() => moreMenuOpen = !moreMenuOpen}
             title="More actions"
             aria-label="More actions"
@@ -213,7 +216,7 @@
             <MoreVertical size={14} />
           </button>
           {#if moreMenuOpen}
-            <div class="absolute right-0 z-30 mt-1.5 w-48 rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-in">
+            <div class="absolute right-0 z-30 mt-1.5 w-48 rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07] animate-dropdown-fade-in">
               {#if canEdit}
                 <button
                   class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-sidebar-text transition-colors hover:bg-surface-hover/60 disabled:cursor-not-allowed disabled:opacity-40"
@@ -222,7 +225,9 @@
                 >
                   <Save size={13} class="text-muted/60" />
                   Save
-                  <span class="ml-auto font-mono text-xs text-muted/30">&#8984;S</span>
+                  <kbd class="ml-auto flex items-center gap-px rounded border border-surface-border bg-surface-hover px-1.5 py-0.5 text-xs font-medium leading-none text-muted/70">
+                    <Command size={9} />S
+                  </kbd>
                 </button>
               {/if}
               {#if canShare}
@@ -254,22 +259,21 @@
       </div>
     </div>
     <!-- Metadata -->
-    <div class="mt-1 flex items-center gap-2 text-xs text-muted/40">
+    <div class="-mt-0.5 flex items-center gap-2 text-sm text-muted/60">
       {#if wikiPage.updated_by_user}
         <span>Last edited by {wikiPage.updated_by_user.full_name} · {formatTimeAgo(wikiPage.updated_at)}</span>
       {:else if wikiPage.created_by_user}
         <span>Created by {wikiPage.created_by_user.full_name} · {formatTimeAgo(wikiPage.created_at)}</span>
       {/if}
-      {#if canEdit}
-        <span class="font-mono text-muted/20">&#8984;S</span>
-      {/if}
     </div>
   </div>
 
   <!-- Divider -->
-  <div class="mb-4 h-px bg-surface-border/30"></div>
+  <div class="h-px bg-surface-border/30"></div>
+  </div>
 
   <!-- Editor -->
+  <div class="pt-4">
   {#key wikiPage.id}
     {#if showSource}
       <textarea
@@ -288,6 +292,7 @@
       />
     {/if}
   {/key}
+  </div>
 </div>
 
 {#if canShare}
