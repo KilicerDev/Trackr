@@ -1,73 +1,33 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
+	import { goto, replaceState } from '$app/navigation';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { clientPortal } from '$lib/stores/clientPortal.svelte';
-	import { notifications } from '$lib/stores/notifications.svelte';
-	import { Send, ArrowLeft, Circle, LoaderCircle } from '@lucide/svelte';
-	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
-	import type { LayoutData } from './$types';
+	import { clientPortal, type ClientTicket } from '$lib/stores/clientPortal.svelte';
+	import { ListFilter, LayoutList, Columns3, Plus } from '@lucide/svelte';
+	import { ticketStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
+	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
+	import TicketRow from '$lib/components/TicketRow.svelte';
+	import TicketBoardCard from '$lib/components/TicketBoardCard.svelte';
+	import ClientTicketChat from '$lib/components/ClientTicketChat.svelte';
+	import CreateTicketModal from '$lib/components/CreateTicketModal.svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { localizeHref } from '$lib/paraglide/runtime';
+	import * as m from '$lib/paraglide/messages';
+	import { tStatus, tPriority, tCategory } from '$lib/i18n/ticket-labels';
+	import type { LayoutData } from './$types';
 
 	let { data }: { data: LayoutData } = $props();
 
-	const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
-	const CATEGORIES = ['billing', 'technical_issue', 'feature_request', 'general'] as const;
+	const TICKET_STATUSES = ['open', 'in_progress', 'paused', 'waiting_on_customer', 'waiting_on_agent', 'resolved', 'closed'] as const;
+	const TICKET_PRIORITIES = ['urgent', 'high', 'medium', 'low'] as const;
+	const TICKET_CATEGORIES = ['billing', 'technical_issue', 'feature_request', 'general'] as const;
 
-	let selectedOrgId = $derived(
-		page.url.searchParams.get('org') ?? data.organizations[0]?.id ?? ''
-	);
-	let selectedTicketId = $derived(page.url.searchParams.get('ticket'));
+	type ViewMode = 'list' | 'board';
+	type GroupBy = 'none' | 'status' | 'priority';
 
-	// Create ticket form state
-	let subject = $state('');
-	let description = $state('');
-	let priority = $state('medium');
-	const selectedPortalPriority = $derived(priorityIcons[priority] ?? defaultPriorityIcon);
-	const SelectedPortalPriorityIcon = $derived(selectedPortalPriority.icon);
-	let category = $state('general');
-	let creating = $state(false);
-	let openDropdown = $state<string | null>(null);
-
-	// Ticket detail state
-	type TicketDetail = {
-		id: string;
-		subject: string;
-		description: string | null;
-		status: string;
-		priority: string;
-		category: string | null;
-		channel: string;
-		created_at: string;
-		updated_at: string;
-		resolved_at: string | null;
-		agent: { id: string; full_name: string; avatar_url: string | null } | null;
-		[key: string]: unknown;
-	};
-
-	type Message = {
-		id: string;
-		body: string;
-		is_internal_note: boolean;
-		created_at: string;
-		sender: {
-			id: string;
-			full_name: string;
-			username: string;
-			avatar_url: string | null;
-		} | null;
-	};
-
-	let ticket = $state<TicketDetail | null>(null);
-	let messages = $state<Message[]>([]);
-	let ticketLoading = $state(false);
-	let ticketError = $state<string | null>(null);
-	let messageBody = $state('');
-	let sendingMessage = $state(false);
-	let messagesContainer: HTMLDivElement | undefined = $state();
-	let composeTextarea: HTMLTextAreaElement | undefined = $state();
+	const selectedOrgId = $derived(page.url.searchParams.get('org') ?? data.organizations[0]?.id ?? '');
+	const selectedTicketId = $derived(page.url.searchParams.get('ticket'));
 
 	// Ensure ?org is always set in URL
 	$effect(() => {
@@ -78,458 +38,444 @@
 		}
 	});
 
-	// Load tickets when org changes
+	// Load tickets when org changes. Users whose role grants
+	// support_tickets.read = all (e.g. a custom client-admin role) see every
+	// ticket in the org; default 'own' scope keeps a customer to their own.
 	$effect(() => {
 		const orgId = selectedOrgId;
 		const userId = auth.user?.id;
 		if (!orgId || !userId) return;
-		clientPortal.loadTickets(orgId, userId);
+		const scope = auth.scope('support_tickets', 'read');
+		const filterCustomerId = scope === 'all' ? null : userId;
+		clientPortal.loadTickets(orgId, filterCustomerId);
 	});
 
-	// Load ticket detail when ticket param changes
-	$effect(() => {
-		const ticketId = selectedTicketId;
-		if (!ticketId) {
-			ticket = null;
-			messages = [];
-			ticketError = null;
-			return;
-		}
-		loadTicketDetail(ticketId);
-	});
+	// ----- view mode + group + filters (persisted) -----
+	function parseFilterParam(raw: string | null): { op: 'is' | 'is_not'; values: string[] } {
+		if (!raw) return { op: 'is', values: [] };
+		if (raw.startsWith('not:')) return { op: 'is_not', values: raw.slice(4).split(',').filter(Boolean) };
+		if (raw.startsWith('is:')) return { op: 'is', values: raw.slice(3).split(',').filter(Boolean) };
+		return { op: 'is', values: raw.split(',').filter(Boolean) };
+	}
+	function encodeFilterParam(op: 'is' | 'is_not', values: string[]): string {
+		if (values.length === 0) return '';
+		return (op === 'is_not' ? 'not:' : 'is:') + values.join(',');
+	}
 
-	async function loadTicketDetail(id: string) {
-		ticketLoading = true;
-		ticketError = null;
-		messageBody = '';
+	function loadFiltersFromStorage() {
+		if (!browser) return null;
 		try {
-			const [t, m] = await Promise.all([
-				api.tickets.getById(id),
-				api.tickets.getMessages(id)
-			]);
-			ticket = t as TicketDetail;
-			messages = (m as Message[]).filter((msg) => !msg.is_internal_note);
-			scrollToBottom();
-		} catch (e) {
-			ticketError = e instanceof Error ? e.message : 'Failed to load ticket';
-		} finally {
-			ticketLoading = false;
+			const raw = localStorage.getItem('c-filters');
+			if (!raw) return null;
+			const parsed = JSON.parse(raw);
+			const has = parsed.statusSelected?.length || parsed.prioritySelected?.length || parsed.categorySelected?.length;
+			return has ? parsed : null;
+		} catch { return null; }
+	}
+
+	const initView = (page.url.searchParams.get('view') as ViewMode) ?? (browser ? localStorage.getItem('c-view') : null) ?? 'list';
+	const initGroup = (page.url.searchParams.get('group') as GroupBy) ?? (browser ? localStorage.getItem('c-group') : null) ?? 'status';
+	const hasUrlFilters = ['status', 'priority', 'category'].some((k) => page.url.searchParams.has(k));
+	const stored = !hasUrlFilters && browser ? loadFiltersFromStorage() : null;
+
+	const initStatusF = stored
+		? { op: stored.statusOp, values: stored.statusSelected }
+		: parseFilterParam(page.url.searchParams.get('status'));
+	const initPriorityF = stored
+		? { op: stored.priorityOp, values: stored.prioritySelected }
+		: parseFilterParam(page.url.searchParams.get('priority'));
+	const initCategoryF = stored
+		? { op: stored.categoryOp, values: stored.categorySelected }
+		: parseFilterParam(page.url.searchParams.get('category'));
+
+	let viewMode = $state<ViewMode>(initView === 'board' ? 'board' : 'list');
+	let groupBy = $state<GroupBy>((['none', 'status', 'priority'] as const).includes(initGroup as GroupBy) ? initGroup as GroupBy : 'status');
+	let statusOp = $state<'is' | 'is_not'>(initStatusF.op);
+	let statusSelected = $state<string[]>(initStatusF.values);
+	let priorityOp = $state<'is' | 'is_not'>(initPriorityF.op);
+	let prioritySelected = $state<string[]>(initPriorityF.values);
+	let categoryOp = $state<'is' | 'is_not'>(initCategoryF.op);
+	let categorySelected = $state<string[]>(initCategoryF.values);
+
+	let filtersVisible = $state(false);
+	let createModalOpen = $state(false);
+
+	function saveFiltersToStorage() {
+		if (!browser) return;
+		const empty = !statusSelected.length && !prioritySelected.length && !categorySelected.length;
+		if (empty) {
+			localStorage.removeItem('c-filters');
+		} else {
+			localStorage.setItem('c-filters', JSON.stringify({
+				statusOp, statusSelected, priorityOp, prioritySelected, categoryOp, categorySelected
+			}));
 		}
 	}
 
-	function scrollToBottom() {
-		requestAnimationFrame(() => {
-			if (messagesContainer) {
-				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+	function syncUrl() {
+		const url = new URL(window.location.href);
+		const set = (k: string, v: string) => (v ? url.searchParams.set(k, v) : url.searchParams.delete(k));
+		set('view', viewMode);
+		set('group', groupBy);
+		set('status', encodeFilterParam(statusOp, statusSelected));
+		set('priority', encodeFilterParam(priorityOp, prioritySelected));
+		set('category', encodeFilterParam(categoryOp, categorySelected));
+		replaceState(localizeHref(url.pathname + url.search), {});
+		saveFiltersToStorage();
+	}
+
+	function persistViewMode(v: ViewMode) {
+		viewMode = v;
+		if (browser) localStorage.setItem('c-view', v);
+		// Board needs a group
+		if (v === 'board' && groupBy === 'none') {
+			groupBy = 'status';
+			if (browser) localStorage.setItem('c-group', 'status');
+		}
+		syncUrl();
+	}
+	function persistGroupBy(g: GroupBy) {
+		groupBy = g;
+		if (browser) localStorage.setItem('c-group', g);
+		syncUrl();
+	}
+
+	const hasActiveFilters = $derived(
+		!!(statusSelected.length || prioritySelected.length || categorySelected.length)
+	);
+	const activeFiltersCount = $derived(
+		[statusSelected.length, prioritySelected.length, categorySelected.length].filter(Boolean).length
+	);
+
+	function clearFilters() {
+		statusOp = 'is'; statusSelected = [];
+		priorityOp = 'is'; prioritySelected = [];
+		categoryOp = 'is'; categorySelected = [];
+		syncUrl();
+	}
+
+	function passes(t: ClientTicket): boolean {
+		const apply = (val: string, op: 'is' | 'is_not', sel: string[]) => {
+			if (sel.length === 0) return true;
+			const inSet = sel.includes(val);
+			return op === 'is' ? inSet : !inSet;
+		};
+		return (
+			apply(t.status, statusOp, statusSelected)
+			&& apply(t.priority, priorityOp, prioritySelected)
+			&& apply(t.category ?? '', categoryOp, categorySelected)
+		);
+	}
+
+	const filteredTickets = $derived(clientPortal.tickets.filter(passes));
+
+	function groupLabel(key: string): string {
+		return groupBy === 'priority' ? tPriority(key) : tStatus(key);
+	}
+
+	// ----- list view groups -----
+	type ListGroup = { key: string; label: string; tickets: ClientTicket[] };
+	const listGroups = $derived.by((): ListGroup[] | null => {
+		if (groupBy === 'none') return null;
+		const map = new Map<string, ListGroup>();
+		const order: string[] = [];
+		const keys = groupBy === 'status' ? TICKET_STATUSES : TICKET_PRIORITIES;
+		for (const k of keys) {
+			map.set(k, { key: k, label: groupLabel(k), tickets: [] });
+			order.push(k);
+		}
+		for (const t of filteredTickets) {
+			const k = (groupBy === 'status' ? t.status : t.priority);
+			if (!map.has(k)) {
+				map.set(k, { key: k, label: groupLabel(k), tickets: [] });
+				order.push(k);
 			}
-		});
-	}
-
-	async function createTicket() {
-		if (!subject.trim() || !auth.user || creating) return;
-		creating = true;
-		const handle = notifications.action('Creating ticket...');
-		try {
-			const newTicket = await api.tickets.create({
-				subject: subject.trim(),
-				description: description.trim() || undefined,
-				customer_id: auth.user.id,
-				organization_id: selectedOrgId,
-				priority,
-				category,
-				channel: 'web_form'
-			});
-			clientPortal.addTicket(newTicket as unknown as Parameters<typeof clientPortal.addTicket>[0]);
-			handle.success('Ticket created successfully');
-			subject = '';
-			description = '';
-			priority = 'medium';
-			category = 'general';
-			const params = new SvelteURLSearchParams(page.url.searchParams);
-			params.set('ticket', newTicket.id);
-			goto(`${localizeHref('/c')}?${params.toString()}`);
-		} catch (e) {
-			handle.error(
-				'Failed to create ticket',
-				e instanceof Error ? e.message : undefined
-			);
-		} finally {
-			creating = false;
+			map.get(k)!.tickets.push(t);
 		}
-	}
+		return order.map((k) => map.get(k)!).filter((g) => g.tickets.length > 0);
+	});
 
-	async function sendMessage() {
-		if (!ticket || !messageBody.trim() || sendingMessage || !auth.user) return;
-		sendingMessage = true;
+	// ----- board columns -----
+	type BoardColumn = { key: string; label: string; tickets: ClientTicket[] };
+	const boardColumns = $derived.by((): BoardColumn[] => {
+		const keys = groupBy === 'priority' ? TICKET_PRIORITIES : TICKET_STATUSES;
+		return keys.map((k) => ({
+			key: k,
+			label: groupLabel(k),
+			tickets: filteredTickets.filter((t) => (groupBy === 'priority' ? t.priority : t.status) === k)
+		}));
+	});
+
+	// ----- collapsed groups (shared between list & board, per groupBy) -----
+	function loadCollapsed(): Record<string, string[]> {
+		if (!browser) return {};
 		try {
-			const msg = (await api.tickets.addMessage(
-				ticket.id,
-				auth.user.id,
-				messageBody.trim(),
-				false
-			)) as Message;
-			messages = [...messages, msg];
-			messageBody = '';
-			if (composeTextarea) composeTextarea.style.height = 'auto';
-			scrollToBottom();
-		} catch {
-			notifications.add('error', 'Failed to send message');
-		} finally {
-			sendingMessage = false;
-		}
+			const raw = localStorage.getItem('c-collapsed');
+			return raw ? JSON.parse(raw) : {};
+		} catch { return {}; }
+	}
+	let collapsedByGroup = $state<Record<string, string[]>>(loadCollapsed());
+	const collapsedSet = $derived(new Set(collapsedByGroup[groupBy] ?? []));
+
+	function toggleCollapsed(key: string) {
+		const next = new Set(collapsedByGroup[groupBy] ?? []);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		collapsedByGroup = { ...collapsedByGroup, [groupBy]: Array.from(next) };
+		if (browser) localStorage.setItem('c-collapsed', JSON.stringify(collapsedByGroup));
 	}
 
-	function backToCreate() {
+	// ----- helpers -----
+	function formatLabel(s: string): string {
+		return s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+	}
+
+	function selectTicket(id: string) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		params.set('ticket', id);
+		goto(`${localizeHref('/c')}?${params.toString()}`);
+	}
+	function backToList() {
 		const params = new SvelteURLSearchParams(page.url.searchParams);
 		params.delete('ticket');
 		goto(`${localizeHref('/c')}?${params.toString()}`);
 	}
 
-	function displayName(val: string): string {
-		return val
-			.split('_')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
-	}
-
-	function formatDateTime(dateStr: unknown): string {
-		if (!dateStr || typeof dateStr !== 'string') return '—';
-		const d = new Date(dateStr);
-		if (isNaN(d.getTime())) return '—';
-		return (
-			d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-			' ' +
-			d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-		);
-	}
-
-	function formatTime(dateStr: string): string {
-		const d = new Date(dateStr);
-		if (isNaN(d.getTime())) return '';
-		return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-	}
-
-	$effect(() => {
-		if (!openDropdown) return;
-		function handleClick(e: MouseEvent) {
-			const target = e.target as HTMLElement;
-			if (!target.closest('[data-dropdown]')) {
-				openDropdown = null;
-			}
-		}
-		document.addEventListener('mousedown', handleClick);
-		return () => document.removeEventListener('mousedown', handleClick);
-	});
-
-	const statusColor: Record<string, string> = {
-		open: 'text-blue-500',
-		in_progress: 'text-yellow-500',
-		waiting_on_customer: 'text-orange-500',
-		waiting_on_agent: 'text-purple-500',
-		resolved: 'text-green-500',
-		closed: 'text-sidebar-icon'
-	};
-
-	const priorityColor: Record<string, string> = {
-		low: 'text-blue-400',
-		medium: 'text-yellow-500',
-		high: 'text-orange-400',
-		urgent: 'text-red-400'
-	};
-
-	const chevronSvg = `<svg class="h-3.5 w-3.5 shrink-0 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
-	const dropdownBtnClass =
-		'flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60';
-	const dropdownPanelClass =
-		'absolute left-0 z-20 mt-1.5 max-h-48 w-full origin-top-left animate-dropdown-in overflow-y-auto rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]';
-	const dropdownItemBase =
-		'flex w-full items-center px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/60';
-	import { labelClass, inputClass } from '$lib/styles/ui';
 </script>
 
+<svelte:head><title>{m.client_page_title()}</title></svelte:head>
+
 {#if selectedTicketId}
-	<!-- Ticket detail + chat view -->
-	<div class="flex h-screen flex-col">
-		{#if ticketLoading}
-			<div class="flex flex-1 items-center justify-center">
-				<LoaderCircle size={24} class="animate-spin text-muted" />
-			</div>
-		{:else if ticketError || !ticket}
-			<div class="flex flex-1 flex-col items-center justify-center gap-3">
-				<p class="text-base text-red-400">{ticketError ?? 'Ticket not found'}</p>
+	<div class="flex h-[calc(100vh-3rem)] min-h-0 flex-col">
+		<ClientTicketChat ticketId={selectedTicketId} onBack={backToList} />
+	</div>
+{:else}
+	<div class="flex h-[calc(100vh-3rem)] min-h-0 flex-col">
+		<!-- Toolbar -->
+		<div class="flex shrink-0 items-center justify-between gap-2 border-b border-surface-border px-3 py-1.5">
+			<div class="flex items-center gap-1">
 				<button
-					class="flex h-7 items-center gap-1 rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
-					onclick={backToCreate}
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium leading-none transition-all duration-150 hover:bg-surface-hover/50 {viewMode === 'list' ? 'text-accent' : 'text-muted'}"
+					onclick={() => persistViewMode('list')}
 				>
-					Go back
+					<LayoutList size={12} /> {m.client_view_list()}
+				</button>
+				<button
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium leading-none transition-all duration-150 hover:bg-surface-hover/50 {viewMode === 'board' ? 'text-accent' : 'text-muted'}"
+					onclick={() => persistViewMode('board')}
+				>
+					<Columns3 size={12} /> {m.client_view_board()}
+				</button>
+
+				<div class="mx-1 h-4 w-px bg-surface-border/60"></div>
+
+				<!-- Group by -->
+				<button
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium leading-none transition-all duration-150 hover:bg-surface-hover/50 {groupBy === 'status' ? 'text-accent' : 'text-muted'}"
+					onclick={() => persistGroupBy('status')}
+				>
+					{m.client_group_status()}
+				</button>
+				<button
+					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium leading-none transition-all duration-150 hover:bg-surface-hover/50 {groupBy === 'priority' ? 'text-accent' : 'text-muted'}"
+					onclick={() => persistGroupBy('priority')}
+				>
+					{m.client_group_priority()}
+				</button>
+				{#if viewMode === 'list'}
+					<button
+						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium leading-none transition-all duration-150 hover:bg-surface-hover/50 {groupBy === 'none' ? 'text-accent' : 'text-muted'}"
+						onclick={() => persistGroupBy('none')}
+					>
+						{m.client_group_none()}
+					</button>
+				{/if}
+
+				<div class="mx-1 h-4 w-px bg-surface-border/60"></div>
+
+				<button
+					class="relative flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium leading-none transition-all duration-150 hover:bg-surface-hover/50 {filtersVisible || hasActiveFilters ? 'text-accent' : 'text-muted'}"
+					onclick={() => (filtersVisible = !filtersVisible)}
+				>
+					<ListFilter size={12} />
+					{#if activeFiltersCount > 0}
+						<span class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent/15 text-2xs font-semibold text-accent">
+							{activeFiltersCount}
+						</span>
+					{/if}
 				</button>
 			</div>
-		{:else}
-			<!-- Ticket header -->
-			<div class="shrink-0 border-b border-surface-border/40 px-6 py-4">
-				<div class="mx-auto flex max-w-3xl items-center gap-3">
-					<button
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover hover:text-sidebar-text"
-						onclick={backToCreate}
-						aria-label="Back"
-					>
-						<ArrowLeft size={14} />
-					</button>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center gap-2">
-							<h1 class="truncate text-lg font-semibold text-sidebar-text">
-								{ticket.subject}
-							</h1>
-						</div>
-						<div class="mt-1 flex items-center gap-3 text-sm text-muted/50">
-							<span class="flex items-center gap-1">
-							<Circle
-								size={7}
-								class={statusColor[ticket.status] ?? 'text-sidebar-icon'}
-								fill="currentColor"
-							/>
-								{displayName(ticket.status)}
-							</span>
-							<span
-								class="text-xs font-medium {priorityColor[ticket.priority] ??
-									''}"
-							>
-								{displayName(ticket.priority)}
-							</span>
-							{#if ticket.category}
-								<span>{displayName(ticket.category)}</span>
-							{/if}
-							<span class="font-mono">Created {formatDateTime(ticket.created_at)}</span>
-						</div>
-					</div>
-				</div>
 
-				{#if ticket.description}
-					<div class="mx-auto mt-3 max-w-3xl pl-8">
-						<div class="border-l-2 border-surface-border/40 pl-3">
-							<p class="whitespace-pre-wrap text-base text-sidebar-text/80">
-								{ticket.description}
-							</p>
-						</div>
+			<div class="flex items-center gap-2">
+				<button
+					class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
+					onclick={() => (createModalOpen = true)}
+				>
+					<Plus size={14} class="shrink-0" />
+					{m.client_new_ticket()}
+				</button>
+			</div>
+		</div>
+
+		<!-- Filters bar -->
+		{#if filtersVisible}
+			<div class="flex shrink-0 items-center gap-0.5 border-b border-surface-border px-3 py-1">
+				<div class="flex flex-wrap items-center gap-0.5">
+					<FilterDropdown
+						label={m.client_filter_status()}
+						options={TICKET_STATUSES.map((s) => ({ value: s, label: tStatus(s) }))}
+						operator={statusOp}
+						selected={statusSelected}
+						onchange={(op, sel) => { statusOp = op; statusSelected = sel; syncUrl(); }}
+					/>
+					<FilterDropdown
+						label={m.client_filter_priority()}
+						options={TICKET_PRIORITIES.map((p) => ({ value: p, label: tPriority(p) }))}
+						operator={priorityOp}
+						selected={prioritySelected}
+						onchange={(op, sel) => { priorityOp = op; prioritySelected = sel; syncUrl(); }}
+					/>
+					<FilterDropdown
+						label={m.client_filter_category()}
+						options={TICKET_CATEGORIES.map((c) => ({ value: c, label: tCategory(c) }))}
+						operator={categoryOp}
+						selected={categorySelected}
+						onchange={(op, sel) => { categoryOp = op; categorySelected = sel; syncUrl(); }}
+					/>
+				</div>
+				{#if hasActiveFilters}
+					<button class="ml-1 text-xs text-muted/40 transition-colors hover:text-accent" onclick={clearFilters}>
+						{m.client_clear()}
+					</button>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Content -->
+		{#if clientPortal.loading && clientPortal.tickets.length === 0}
+			<p class="px-4 py-12 text-center text-lg text-muted">{m.client_loading()}</p>
+		{:else if clientPortal.error}
+			<p class="px-4 py-12 text-center text-lg text-red-500">{clientPortal.error}</p>
+		{:else if clientPortal.tickets.length === 0}
+			<div class="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12">
+				<p class="text-base text-muted">{m.client_no_tickets_yet()}</p>
+				<button
+					class="flex h-8 items-center gap-1.5 rounded-sm bg-accent px-3 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90"
+					onclick={() => (createModalOpen = true)}
+				>
+					<Plus size={14} /> {m.client_create_first_ticket()}
+				</button>
+			</div>
+		{:else if filteredTickets.length === 0}
+			<div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-12">
+				<p class="text-base text-muted">{m.client_no_match_filters()}</p>
+				<button class="text-sm text-accent hover:underline" onclick={clearFilters}>{m.client_clear_filters()}</button>
+			</div>
+		{:else if viewMode === 'list'}
+			<div class="flex-1 overflow-y-auto">
+				{#if listGroups}
+					{#each listGroups as group (group.key)}
+						{@const isCollapsed = collapsedSet.has(group.key)}
+						{@const statusInfo = ticketStatusIcons[group.key] ?? defaultStatusIcon}
+						{@const StatusIcon = statusInfo.icon}
+						<button
+							class="sticky top-0 z-10 flex w-full items-center gap-2 border-b border-surface-border bg-page-bg px-3 py-1.5 text-left transition-colors hover:bg-surface-hover/30"
+							onclick={() => toggleCollapsed(group.key)}
+						>
+							{#if groupBy === 'status'}
+								<StatusIcon size={11} class={statusInfo.className} />
+							{/if}
+							<span class="text-sm font-medium text-sidebar-text">{group.label}</span>
+							<span class="text-xs text-muted/50">{group.tickets.length}</span>
+						</button>
+						{#if !isCollapsed}
+							<div>
+								{#each group.tickets as ticket, i (ticket.id)}
+									<TicketRow
+										ticket={ticket as never}
+										onclick={() => selectTicket(ticket.id)}
+									/>
+									{#if i < group.tickets.length - 1}
+										<div class="mx-3 h-px bg-surface-border/30"></div>
+									{/if}
+								{/each}
+							</div>
+						{/if}
+					{/each}
+				{:else}
+					<div>
+						{#each filteredTickets as ticket (ticket.id)}
+							<TicketRow ticket={ticket as never} onclick={() => selectTicket(ticket.id)} />
+						{/each}
 					</div>
 				{/if}
 			</div>
-
-			<!-- Messages -->
-			<div
-				bind:this={messagesContainer}
-				class="flex-1 overflow-y-auto px-6 py-4"
-			>
-				<div class="mx-auto max-w-3xl">
-					{#if messages.length === 0}
-						<div class="flex h-full items-center justify-center py-20">
-							<p class="text-sm text-muted/50">No messages yet. Start the conversation below.</p>
-						</div>
-					{:else}
-						<div class="space-y-4">
-							{#each messages as msg (msg.id)}
-								{@const isOwn = msg.sender?.id === auth.user?.id}
-								<div class="flex {isOwn ? 'justify-end' : 'justify-start'}">
-									<div
-										class="max-w-[70%] rounded border {isOwn
-											? 'border-accent/20 bg-accent/5'
-											: 'border-surface-border/40 bg-surface/50'} p-3"
-									>
-										<div class="mb-1 flex items-center justify-between gap-4">
-											<span class="text-sm font-medium text-sidebar-text">
-												{msg.sender?.full_name ?? 'Unknown'}
-											</span>
-											<span class="font-mono text-xs text-muted/50">
-												{formatTime(msg.created_at)}
-											</span>
-										</div>
-										<p class="whitespace-pre-wrap text-base text-sidebar-text">
-											{msg.body}
-										</p>
-									</div>
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Compose -->
-			<div class="shrink-0 border-t border-surface-border/40 px-6 py-3">
-				<div class="mx-auto max-w-3xl">
-					<div class="flex items-end gap-2">
-						<textarea
-							bind:this={composeTextarea}
-							bind:value={messageBody}
-							rows="1"
-							class="{inputClass} max-h-32 flex-1 resize-none overflow-y-auto"
-							placeholder="Write a message..."
-							oninput={(e) => {
-								const el = e.currentTarget;
-								el.style.height = 'auto';
-								el.style.height = el.scrollHeight + 'px';
-							}}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-									e.preventDefault();
-									sendMessage();
-								}
-							}}
-						></textarea>
-						<button
-							class="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-sm bg-accent text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
-							disabled={!messageBody.trim() || sendingMessage}
-							onclick={sendMessage}
-							aria-label="Send message"
-						>
-							<Send size={14} />
-						</button>
+		{:else}
+			<!-- Board view (read-only, no DnD) -->
+			<div class="flex min-h-0 flex-1 gap-0 overflow-x-auto">
+				{#each boardColumns as col (col.key)}
+					{@const collapsed = collapsedSet.has(col.key)}
+					{@const statusInfo = ticketStatusIcons[col.key] ?? defaultStatusIcon}
+					{@const StatusIcon = statusInfo.icon}
+					<div class="flex {collapsed ? 'w-9' : 'w-64'} shrink-0 flex-col border-r border-surface-border/50 max-h-full last:border-r-0 transition-[width] duration-150">
+						{#if collapsed}
+							<button
+								type="button"
+								class="flex flex-col items-center gap-2 px-2 py-2 text-left transition-colors hover:bg-surface-hover/30 cursor-pointer"
+								title="Expand {col.label}"
+								onclick={() => toggleCollapsed(col.key)}
+							>
+								{#if groupBy === 'status'}
+									<StatusIcon size={11} class={statusInfo.className} />
+								{/if}
+								<span class="text-sm font-medium text-muted truncate [writing-mode:vertical-rl]">{col.label}</span>
+								<span class="text-xs text-muted/30">{col.tickets.length}</span>
+							</button>
+						{:else}
+							<button
+								type="button"
+								class="flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-hover/30 cursor-pointer"
+								title="Collapse {col.label}"
+								onclick={() => toggleCollapsed(col.key)}
+							>
+								{#if groupBy === 'status'}
+									<StatusIcon size={11} class={statusInfo.className} />
+								{/if}
+								<span class="text-sm font-medium text-muted truncate">{col.label}</span>
+								<span class="text-xs text-muted/30">{col.tickets.length}</span>
+							</button>
+							<div class="flex-1 overflow-y-auto px-2 pb-2 min-h-[60px] scrollbar-none" style="-ms-overflow-style: none; scrollbar-width: none;">
+								{#each col.tickets as ticket (ticket.id)}
+									<TicketBoardCard
+										ticket={ticket as never}
+										showStatus={groupBy === 'priority'}
+										onclick={() => selectTicket(ticket.id)}
+									/>
+								{/each}
+							</div>
+						{/if}
 					</div>
-					<p class="mt-1.5 text-xs text-muted/50">
-						Press <kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5 text-2xs">Ctrl</kbd>
-						+
-						<kbd class="rounded-sm border border-surface-border/60 px-1 py-0.5 text-2xs">Enter</kbd>
-						to send
-					</p>
-				</div>
+				{/each}
 			</div>
 		{/if}
 	</div>
-{:else}
-	<!-- Create ticket form (centered) -->
-	<div class="flex min-h-screen items-center justify-center px-6">
-		<div class="w-full max-w-lg">
-			<h1 class="mb-1 text-lg font-semibold text-sidebar-text">New Support Ticket</h1>
-			<p class="mb-6 text-sm text-muted/50">Describe your issue and we'll get back to you.</p>
+{/if}
 
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					createTicket();
-				}}
-				class="space-y-4"
-			>
-				<!-- Subject -->
-				<div>
-					<label for="subject" class={labelClass}>Subject</label>
-					<input
-						id="subject"
-						type="text"
-						bind:value={subject}
-						class={inputClass}
-						placeholder="Brief summary of your issue"
-						required
-					/>
-				</div>
-
-				<!-- Description -->
-				<div>
-					<label for="description" class={labelClass}>Description</label>
-					<textarea
-						id="description"
-						bind:value={description}
-						class="{inputClass} resize-none"
-						rows="5"
-						placeholder="Provide details about your issue..."
-					></textarea>
-				</div>
-
-				<div class="grid grid-cols-2 gap-4">
-					<!-- Priority -->
-					<div>
-						<span class={labelClass}>Priority</span>
-						<div class="relative" data-dropdown>
-							<button
-								type="button"
-								class={dropdownBtnClass}
-								onclick={() =>
-									(openDropdown = openDropdown === 'priority' ? null : 'priority')}
-							>
-								<span class="flex items-center gap-1.5 truncate">
-									<SelectedPortalPriorityIcon size={16} class={selectedPortalPriority.className} />
-									{displayName(priority)}
-								</span>
-								{@html chevronSvg}
-							</button>
-							{#if openDropdown === 'priority'}
-								<div class={dropdownPanelClass}>
-									{#each PRIORITIES as p (p)}
-										{@const info = priorityIcons[p] ?? defaultPriorityIcon}
-										{@const PriorityIcon = info.icon}
-										<button
-											type="button"
-											class="{dropdownItemBase} {priority === p
-												? 'font-medium text-accent'
-												: 'text-sidebar-text'}"
-											onmousedown={(e) => {
-												e.preventDefault();
-												priority = p;
-												openDropdown = null;
-											}}><span class="mr-2"><PriorityIcon size={16} class={info.className} /></span>{displayName(p)}</button
-										>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					</div>
-
-					<!-- Category -->
-					<div>
-						<span class={labelClass}>Category</span>
-						<div class="relative" data-dropdown>
-							<button
-								type="button"
-								class={dropdownBtnClass}
-								onclick={() =>
-									(openDropdown = openDropdown === 'category' ? null : 'category')}
-							>
-								<span class="truncate">{displayName(category)}</span>
-								{@html chevronSvg}
-							</button>
-							{#if openDropdown === 'category'}
-								<div class={dropdownPanelClass}>
-									{#each CATEGORIES as c (c)}
-										<button
-											type="button"
-											class="{dropdownItemBase} {category === c
-												? 'font-medium text-accent'
-												: 'text-sidebar-text'}"
-											onmousedown={(e) => {
-												e.preventDefault();
-												category = c;
-												openDropdown = null;
-											}}>{displayName(c)}</button
-										>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					</div>
-				</div>
-
-				<button
-					type="submit"
-					disabled={!subject.trim() || creating}
-					class="flex h-7 w-full items-center justify-center rounded-sm bg-accent text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
-				>
-					{#if creating}
-						<LoaderCircle size={14} class="mr-2 animate-spin" />
-						Creating...
-					{:else}
-						Submit Ticket
-					{/if}
-				</button>
-			</form>
-		</div>
-	</div>
+{#if createModalOpen}
+	<CreateTicketModal
+		organizationId={selectedOrgId}
+		customers={[]}
+		onClose={() => (createModalOpen = false)}
+		onSuccess={() => {
+			createModalOpen = false;
+			if (auth.user) {
+				const scope = auth.scope('support_tickets', 'read');
+				clientPortal.loadTickets(selectedOrgId, scope === 'all' ? null : auth.user.id);
+			}
+		}}
+	/>
 {/if}
 
 <style>
-	@keyframes dropdown-in {
-		from { opacity: 0; }
-		to   { opacity: 1; }
-	}
-	:global(.animate-dropdown-in) {
-		animation: dropdown-in 150ms ease-out;
-	}
+	.scrollbar-none::-webkit-scrollbar { display: none; }
 </style>

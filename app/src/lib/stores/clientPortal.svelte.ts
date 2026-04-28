@@ -17,13 +17,14 @@ class ClientPortalState {
   loading = $state(false);
   error = $state<string | null>(null);
 
-  async loadTickets(orgId: string, customerId: string) {
+  async loadTickets(orgId: string, customerId?: string | null) {
     this.loading = true;
     this.error = null;
     try {
-      const { data, count } = await api.tickets.getAll(orgId, {
-        customer_id: customerId,
-      });
+      const { data, count } = await api.tickets.getAll(
+        orgId,
+        customerId ? { customer_id: customerId } : {}
+      );
       this.tickets = data as ClientTicket[];
       this.count = count;
     } catch (e) {
