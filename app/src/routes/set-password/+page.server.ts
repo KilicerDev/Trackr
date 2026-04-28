@@ -1,4 +1,5 @@
 import type { PageServerLoad } from "./$types";
+import { isClientAreaRole } from "$lib/types/auth";
 
 export const load: PageServerLoad = async ({ parent, locals }) => {
   if (!locals.user) {
@@ -6,7 +7,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
   }
 
   const { role } = await parent();
-  const redirectTo = role?.role_slug === "client" ? "/c" : "/";
+  const redirectTo = isClientAreaRole(role) ? "/c" : "/";
 
   return { redirectTo };
 };

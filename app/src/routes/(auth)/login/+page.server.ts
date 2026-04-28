@@ -37,7 +37,8 @@ export const actions: Actions = {
             _organization_id: profile.organization_id,
           });
 
-          if (roles?.[0]?.role_slug === "client") {
+          const r = roles?.[0];
+          if (r && (r.role_slug === "client" || r.is_system === false)) {
             redirectTo = "/c";
           }
         }

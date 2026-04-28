@@ -3,6 +3,7 @@ import type {
     UserRole,
     UserPermission,
 } from "$lib/types/auth";
+import { isClientAreaRole } from "$lib/types/auth";
 
 // Runes-based state (Svelte 5)
 class AuthState {
@@ -24,7 +25,7 @@ class AuthState {
     }
 
     get isClient() {
-        return this.role?.role_slug === "client";
+        return isClientAreaRole(this.role);
     }
 
     get isAdminRole() {

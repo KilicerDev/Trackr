@@ -56,7 +56,17 @@
 			return;
 		}
 
-		goto(localizeHref(data.redirectTo));
+		// When an invitation was just accepted, the membership/role didn't exist
+		// at server load time, so data.redirectTo is stale — use the slug + is_system
+		// returned by accept_invitation() instead. Otherwise (password reset) fall back.
+		let target = data.redirectTo;
+		if (rpcResult?.success) {
+			const slug = rpcResult.role_slug as string | undefined;
+			const isSystem = rpcResult.role_is_system as boolean | undefined;
+			const isClientArea = slug === 'client' || isSystem === false;
+			target = isClientArea ? '/c' : '/';
+		}
+		goto(localizeHref(target));
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Something went wrong';
 		} finally {
