@@ -1,12 +1,14 @@
 <script lang="ts">
-	import ClientSidebar from '$lib/assets/components/ClientSidebar.svelte';
+	import ClientHeader from '$lib/assets/components/ClientHeader.svelte';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 </script>
 
-<ClientSidebar organizations={data.organizations} />
-<div class="min-h-screen bg-page-bg" style="margin-left: 260px">
-	{@render children()}
+<div class="flex min-h-screen flex-col bg-page-bg">
+	<ClientHeader organizations={data.organizations} />
+	<main class="flex-1 min-h-0">
+		{@render children()}
+	</main>
 </div>
