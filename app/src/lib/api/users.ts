@@ -18,6 +18,7 @@ export type User = {
 
 export type UserWithOrg = User & {
   organization: { id: string; name: string; slug: string } | null;
+  primary_role: { id: string; name: string; slug: string } | null;
 };
 
 export type Invitation = {
@@ -53,8 +54,23 @@ export type UpdateUserInput = {
 
 const USER_SELECT = `
   *,
-  organization:organizations!organization_id(id, name, slug)
+  organization:organizations!organization_id(id, name, slug),
+  memberships:organization_members(organization_id, role:roles!role_id(id, name, slug))
 `;
+
+type RawUserRow = User & {
+  organization: { id: string; name: string; slug: string } | null;
+  memberships: Array<{
+    organization_id: string;
+    role: { id: string; name: string; slug: string } | null;
+  }> | null;
+};
+
+function withPrimaryRole(row: RawUserRow): UserWithOrg {
+  const { memberships, ...rest } = row;
+  const primary = memberships?.find((m) => m.organization_id === rest.organization_id) ?? null;
+  return { ...rest, primary_role: primary?.role ?? null };
+}
 
 const INVITATION_SELECT = `
   *,
@@ -73,7 +89,7 @@ export const users = {
       .order("created_at");
 
     if (error) throw error;
-    return (data ?? []) as UserWithOrg[];
+    return ((data ?? []) as RawUserRow[]).map(withPrimaryRole);
   },
 
   async getDeleted() {
@@ -85,7 +101,7 @@ export const users = {
       .order("deleted_at", { ascending: false });
 
     if (error) throw error;
-    return (data ?? []) as UserWithOrg[];
+    return ((data ?? []) as RawUserRow[]).map(withPrimaryRole);
   },
 
   async reactivate(id: string, sendResetEmail = false) {
@@ -110,7 +126,7 @@ export const users = {
       .single();
 
     if (error) throw error;
-    return data as UserWithOrg;
+    return withPrimaryRole(data as RawUserRow);
   },
 
   async update(id: string, values: UpdateUserInput) {
@@ -123,7 +139,7 @@ export const users = {
       .single();
 
     if (error) throw error;
-    return data as UserWithOrg;
+    return withPrimaryRole(data as RawUserRow);
   },
 
   async invite(input: InviteInput) {

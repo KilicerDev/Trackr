@@ -1,7 +1,7 @@
 <svelte:head><title>Users – Trackr</title></svelte:head>
 
 <script lang="ts">
-	import { X, Mail, UserPlus, Shield, Building2, Ban, Trash2 } from '@lucide/svelte';
+	import { X, Mail, UserPlus, Shield, Building2, Ban, Trash2, Search } from '@lucide/svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
@@ -9,6 +9,7 @@
 	import { api } from '$lib/api';
 	import Modal from '$lib/components/Modal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
 	import type { UserWithOrg, Invitation } from '$lib/api/users';
 	import type { Role } from '$lib/api/roles';
 	import type { Organization } from '$lib/api/organizations';
@@ -125,18 +126,18 @@
 		loading = true;
 		error = null;
 		try {
-			const orgId = auth.organizationId ?? '';
 			await orgStore.loadIfNeeded();
+			organizations = orgStore.all;
+			const orgIds = organizations.map((o) => o.id);
 			const [u, inv, roles] = await Promise.all([
 				api.users.getAll(),
 				auth.can('members', 'invite')
 				? api.users.getInvitations().then((inv) => inv.filter((i) => i.status !== 'accepted'))
 				: Promise.resolve([]),
-				orgId ? api.roles.getAll(orgId) : api.roles.getAll('')
+				api.roles.getForOrgs(orgIds)
 			]);
 			usersList = u;
 			invitations = inv;
-			organizations = orgStore.all;
 			systemRoles = roles;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load data';
@@ -441,11 +442,126 @@
 
 	const platformOrgId = $derived(orgStore.platformOrgId);
 
+	// ── Filters & search ──
+
+	let userSearch = $state('');
+	let userStatusOp = $state<'is' | 'is_not'>('is');
+	let userStatusSelected = $state<string[]>([]);
+	let userRoleOp = $state<'is' | 'is_not'>('is');
+	let userRoleSelected = $state<string[]>([]);
+	let userOrgOp = $state<'is' | 'is_not'>('is');
+	let userOrgSelected = $state<string[]>([]);
+
+	let inviteSearch = $state('');
+	let inviteStatusOp = $state<'is' | 'is_not'>('is');
+	let inviteStatusSelected = $state<string[]>([]);
+	let inviteRoleOp = $state<'is' | 'is_not'>('is');
+	let inviteRoleSelected = $state<string[]>([]);
+	let inviteOrgOp = $state<'is' | 'is_not'>('is');
+	let inviteOrgSelected = $state<string[]>([]);
+
+	let formerSearch = $state('');
+	let formerOrgOp = $state<'is' | 'is_not'>('is');
+	let formerOrgSelected = $state<string[]>([]);
+
+	function matchesSet(op: 'is' | 'is_not', selected: string[], value: string | null | undefined): boolean {
+		if (selected.length === 0) return true;
+		const has = value != null && selected.includes(value);
+		return op === 'is' ? has : !has;
+	}
+
+	const filteredUsers = $derived.by(() => {
+		const q = userSearch.trim().toLowerCase();
+		return usersList.filter((u) => {
+			if (q) {
+				const hay = `${u.full_name} ${u.email} ${u.username}`.toLowerCase();
+				if (!hay.includes(q)) return false;
+			}
+			if (!matchesSet(userStatusOp, userStatusSelected, u.is_active ? 'active' : 'inactive')) return false;
+			if (!matchesSet(userRoleOp, userRoleSelected, u.primary_role?.id ?? null)) return false;
+			if (!matchesSet(userOrgOp, userOrgSelected, u.organization?.id ?? null)) return false;
+			return true;
+		});
+	});
+
+	const filteredInvitations = $derived.by(() => {
+		const q = inviteSearch.trim().toLowerCase();
+		return invitations.filter((i) => {
+			if (q && !i.email.toLowerCase().includes(q)) return false;
+			if (!matchesSet(inviteStatusOp, inviteStatusSelected, i.status)) return false;
+			if (!matchesSet(inviteRoleOp, inviteRoleSelected, i.role?.id ?? null)) return false;
+			if (!matchesSet(inviteOrgOp, inviteOrgSelected, i.organization_id)) return false;
+			return true;
+		});
+	});
+
+	const filteredFormerUsers = $derived.by(() => {
+		const q = formerSearch.trim().toLowerCase();
+		return formerUsers.filter((u) => {
+			if (q) {
+				const hay = `${u.full_name} ${u.email} ${u.username}`.toLowerCase();
+				if (!hay.includes(q)) return false;
+			}
+			if (!matchesSet(formerOrgOp, formerOrgSelected, u.organization?.id ?? null)) return false;
+			return true;
+		});
+	});
+
+	const userActiveFilters = $derived(
+		userStatusSelected.length + userRoleSelected.length + userOrgSelected.length + (userSearch.trim() ? 1 : 0)
+	);
+	const inviteActiveFilters = $derived(
+		inviteStatusSelected.length + inviteRoleSelected.length + inviteOrgSelected.length + (inviteSearch.trim() ? 1 : 0)
+	);
+	const formerActiveFilters = $derived(formerOrgSelected.length + (formerSearch.trim() ? 1 : 0));
+
+	function clearUserFilters() {
+		userSearch = '';
+		userStatusOp = 'is'; userStatusSelected = [];
+		userRoleOp = 'is'; userRoleSelected = [];
+		userOrgOp = 'is'; userOrgSelected = [];
+	}
+	function clearInviteFilters() {
+		inviteSearch = '';
+		inviteStatusOp = 'is'; inviteStatusSelected = [];
+		inviteRoleOp = 'is'; inviteRoleSelected = [];
+		inviteOrgOp = 'is'; inviteOrgSelected = [];
+	}
+	function clearFormerFilters() {
+		formerSearch = '';
+		formerOrgOp = 'is'; formerOrgSelected = [];
+	}
+
+	const orgFilterOptions = $derived(
+		organizations.map((o) => ({
+			value: o.id,
+			label: o.name,
+			subtitle: o.id === platformOrgId ? 'Internal' : undefined
+		}))
+	);
+	const roleFilterOptions = $derived(
+		systemRoles.map((r) => ({ value: r.id, label: r.name }))
+	);
+	const inviteStatusOptions = [
+		{ value: 'pending', label: 'Pending' },
+		{ value: 'expired', label: 'Expired' },
+		{ value: 'revoked', label: 'Revoked' }
+	];
+	const userStatusOptions = [
+		{ value: 'active', label: 'Active' },
+		{ value: 'inactive', label: 'Inactive' }
+	];
+
 	function allowedRoles(orgId: string): Role[] {
-		if (orgId === platformOrgId) {
-			return systemRoles.filter((r) => ['admin', 'manager', 'agent'].includes(r.slug));
-		}
-		return systemRoles.filter((r) => ['client', 'manager', 'agent'].includes(r.slug));
+		return systemRoles.filter((r) => {
+			if (!r.is_system) {
+				// Global custom roles (org_id IS NULL) are usable everywhere;
+				// per-org custom roles only in their own org.
+				return r.organization_id === null || r.organization_id === orgId;
+			}
+			if (orgId === platformOrgId) return ['admin', 'manager', 'agent'].includes(r.slug);
+			return ['client', 'manager', 'agent'].includes(r.slug);
+		});
 	}
 
 	const checkSvg = `<svg class="h-3 w-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-linejoin="miter" d="M5 13l4 4L19 7"/></svg>`;
@@ -459,6 +575,24 @@
 		</span>
 		<span class="text-base text-sidebar-text">{label}</span>
 	</button>
+{/snippet}
+
+{#snippet searchBox(value: string, placeholder: string, oninput: (e: Event) => void, onclear: () => void)}
+	<div class="relative flex items-center">
+		<Search size={12} class="absolute left-2 text-muted/50 pointer-events-none" />
+		<input
+			type="text"
+			{placeholder}
+			{value}
+			{oninput}
+			class="h-7 w-48 rounded-sm border border-transparent bg-surface-hover/50 pl-7 pr-6 text-sm text-sidebar-text transition-all duration-150 placeholder:text-muted/50 focus:w-64 focus:border-surface-border focus:bg-surface focus:outline-none"
+		/>
+		{#if value}
+			<button class="absolute right-2 text-muted/50 hover:text-sidebar-text" onclick={onclear}>
+				<X size={12} />
+			</button>
+		{/if}
+	</div>
 {/snippet}
 
 <div class="mx-auto w-full">
@@ -510,23 +644,60 @@
 	{:else if error}
 		<p class="px-3 py-8 text-center text-sm text-red-400">{error}</p>
 	{:else if pageTab === 'users'}
+		<!-- Users toolbar -->
+		<div class="flex flex-wrap items-center gap-1.5 border-b border-surface-border/40 px-3 py-1.5">
+			{@render searchBox(userSearch, 'Search users...', (e) => (userSearch = (e.currentTarget as HTMLInputElement).value), () => (userSearch = ''))}
+			<div class="mx-1 h-4 w-px bg-surface-border/40"></div>
+			<FilterDropdown
+				label="Status"
+				options={userStatusOptions}
+				operator={userStatusOp}
+				selected={userStatusSelected}
+				onchange={(op, sel) => { userStatusOp = op; userStatusSelected = sel; }}
+			/>
+			<FilterDropdown
+				label="Role"
+				options={roleFilterOptions}
+				operator={userRoleOp}
+				selected={userRoleSelected}
+				onchange={(op, sel) => { userRoleOp = op; userRoleSelected = sel; }}
+			/>
+			<FilterDropdown
+				label="Organization"
+				searchable
+				options={orgFilterOptions}
+				operator={userOrgOp}
+				selected={userOrgSelected}
+				onchange={(op, sel) => { userOrgOp = op; userOrgSelected = sel; }}
+			/>
+			{#if userActiveFilters > 0}
+				<button class="ml-auto text-xs text-muted/50 hover:text-accent" onclick={clearUserFilters}>
+					Clear all
+				</button>
+				<span class="text-xs text-muted/40">{filteredUsers.length} of {usersList.length}</span>
+			{/if}
+		</div>
+
 		<!-- Users Table -->
 		{#if usersList.length === 0}
 			<p class="px-3 py-8 text-center text-sm text-muted">No users yet.</p>
+		{:else if filteredUsers.length === 0}
+			<p class="px-3 py-8 text-center text-sm text-muted">No users match your filters.</p>
 		{:else}
-			<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+			<div class="mx-3 mt-2 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
 							<th class="px-3 py-2">Name</th>
 							<th class="px-3 py-2">Email</th>
 							<th class="px-3 py-2">Organization</th>
+							<th class="px-3 py-2">Role</th>
 							<th class="px-3 py-2">Status</th>
 							<th class="px-3 py-2">Last Seen</th>
 						</tr>
 					</thead>
 					<tbody>
-						{#each usersList as user (user.id)}
+						{#each filteredUsers as user (user.id)}
 							<tr
 								class="cursor-pointer border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60 {selectedUser?.id === user.id ? 'bg-surface-hover/60' : ''}"
 								onclick={() => openPanel(user)}
@@ -560,7 +731,18 @@
 									{/if}
 								</td>
 								<td class="px-3 py-2">
-									<span class="text-xs font-medium {user.is_active ? 'text-green-400' : 'text-muted/50'}">
+									{#if user.primary_role}
+										<span class="inline-flex items-center gap-1 text-xs text-muted">
+											<Shield size={10} class="text-muted/40" />
+											{user.primary_role.name}
+										</span>
+									{:else}
+										<span class="text-muted/50">—</span>
+									{/if}
+								</td>
+								<td class="px-3 py-2">
+									<span class="inline-flex items-center gap-1.5 text-xs font-medium {user.is_active ? 'text-green-400' : 'text-muted/50'}">
+										<span class="h-1.5 w-1.5 rounded-full {user.is_active ? 'bg-green-400' : 'bg-muted/40'}"></span>
 										{user.is_active ? 'Active' : 'Inactive'}
 									</span>
 								</td>
@@ -572,11 +754,47 @@
 			</div>
 		{/if}
 	{:else if pageTab === 'invitations'}
+		<!-- Invitations toolbar -->
+		<div class="flex flex-wrap items-center gap-1.5 border-b border-surface-border/40 px-3 py-1.5">
+			{@render searchBox(inviteSearch, 'Search by email...', (e) => (inviteSearch = (e.currentTarget as HTMLInputElement).value), () => (inviteSearch = ''))}
+			<div class="mx-1 h-4 w-px bg-surface-border/40"></div>
+			<FilterDropdown
+				label="Status"
+				options={inviteStatusOptions}
+				operator={inviteStatusOp}
+				selected={inviteStatusSelected}
+				onchange={(op, sel) => { inviteStatusOp = op; inviteStatusSelected = sel; }}
+			/>
+			<FilterDropdown
+				label="Role"
+				options={roleFilterOptions}
+				operator={inviteRoleOp}
+				selected={inviteRoleSelected}
+				onchange={(op, sel) => { inviteRoleOp = op; inviteRoleSelected = sel; }}
+			/>
+			<FilterDropdown
+				label="Organization"
+				searchable
+				options={orgFilterOptions}
+				operator={inviteOrgOp}
+				selected={inviteOrgSelected}
+				onchange={(op, sel) => { inviteOrgOp = op; inviteOrgSelected = sel; }}
+			/>
+			{#if inviteActiveFilters > 0}
+				<button class="ml-auto text-xs text-muted/50 hover:text-accent" onclick={clearInviteFilters}>
+					Clear all
+				</button>
+				<span class="text-xs text-muted/40">{filteredInvitations.length} of {invitations.length}</span>
+			{/if}
+		</div>
+
 		<!-- Invitations Table -->
 		{#if invitations.length === 0}
 			<p class="px-3 py-8 text-center text-sm text-muted">No invitations yet.</p>
+		{:else if filteredInvitations.length === 0}
+			<p class="px-3 py-8 text-center text-sm text-muted">No invitations match your filters.</p>
 		{:else}
-			<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+			<div class="mx-3 mt-2 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
@@ -590,7 +808,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each invitations as inv (inv.id)}
+						{#each filteredInvitations as inv (inv.id)}
 							<tr class="border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60">
 								<td class="px-3 py-2">
 									<div class="flex items-center gap-1.5">
@@ -635,25 +853,48 @@
 			</div>
 		{/if}
 	{:else if pageTab === 'former'}
+		<!-- Former toolbar -->
+		<div class="flex flex-wrap items-center gap-1.5 border-b border-surface-border/40 px-3 py-1.5">
+			{@render searchBox(formerSearch, 'Search former users...', (e) => (formerSearch = (e.currentTarget as HTMLInputElement).value), () => (formerSearch = ''))}
+			<div class="mx-1 h-4 w-px bg-surface-border/40"></div>
+			<FilterDropdown
+				label="Organization"
+				searchable
+				options={orgFilterOptions}
+				operator={formerOrgOp}
+				selected={formerOrgSelected}
+				onchange={(op, sel) => { formerOrgOp = op; formerOrgSelected = sel; }}
+			/>
+			{#if formerActiveFilters > 0}
+				<button class="ml-auto text-xs text-muted/50 hover:text-accent" onclick={clearFormerFilters}>
+					Clear all
+				</button>
+				<span class="text-xs text-muted/40">{filteredFormerUsers.length} of {formerUsers.length}</span>
+			{/if}
+		</div>
+
 		<!-- Former Users Table -->
 		{#if formerLoading}
 			<p class="px-3 py-8 text-center text-sm text-muted">Loading...</p>
 		{:else if formerUsers.length === 0}
 			<p class="px-3 py-8 text-center text-sm text-muted">No former users.</p>
+		{:else if filteredFormerUsers.length === 0}
+			<p class="px-3 py-8 text-center text-sm text-muted">No former users match your filters.</p>
 		{:else}
-			<div class="mx-3 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
+			<div class="mx-3 mt-2 mb-2 overflow-x-auto rounded border border-surface-border/40 bg-surface/50">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-surface-border/30 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted">
 							<th class="px-3 py-2">Name</th>
 							<th class="px-3 py-2">Email</th>
 							<th class="px-3 py-2">Organization</th>
+							<th class="px-3 py-2">Role</th>
 							<th class="px-3 py-2">Deleted</th>
 							<th class="px-3 py-2"></th>
 						</tr>
 					</thead>
 					<tbody>
-						{#each formerUsers as user (user.id)}
+						{#each filteredFormerUsers as user (user.id)}
 							<tr class="border-b border-surface-border/30 transition-all duration-150 hover:bg-surface-hover/60">
 								<td class="px-3 py-2">
 									<div class="flex items-center gap-2">
@@ -675,6 +916,16 @@
 									{#if user.organization}
 										<span class="text-xs font-medium text-muted">
 											{user.organization.name}
+										</span>
+									{:else}
+										<span class="text-muted/50">—</span>
+									{/if}
+								</td>
+								<td class="px-3 py-2">
+									{#if user.primary_role}
+										<span class="inline-flex items-center gap-1 text-xs text-muted/70">
+											<Shield size={10} class="text-muted/40" />
+											{user.primary_role.name}
 										</span>
 									{:else}
 										<span class="text-muted/50">—</span>
