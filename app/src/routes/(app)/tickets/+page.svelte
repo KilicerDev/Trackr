@@ -2,21 +2,28 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { replaceState, afterNavigate } from '$app/navigation';
+	import { dndzone } from 'svelte-dnd-action';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { ticketStore } from '$lib/stores/tickets.svelte';
+	import { ticketStore, type Ticket } from '$lib/stores/tickets.svelte';
 	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import type { TicketFilters } from '$lib/api/tickets';
 	import type { FilterOp } from '$lib/api/tasks';
+	import type { SavedView } from '$lib/api/views';
 	import { localizeHref } from '$lib/paraglide/runtime';
-	import TaskRow from '$lib/components/TaskRow.svelte';
+	import { slide } from 'svelte/transition';
+	import { ChevronDown } from '@lucide/svelte';
+	import TicketRow from '$lib/components/TicketRow.svelte';
+	import TicketBoardCard from '$lib/components/TicketBoardCard.svelte';
 	import CreateTicketModal from '$lib/components/CreateTicketModal.svelte';
 	import TicketDetailPanel from '$lib/components/TicketDetailPanel.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
-	import { ListFilter } from '@lucide/svelte';
+	import ListBoardToolbar from '$lib/components/ListBoardToolbar.svelte';
+	import Modal from '$lib/components/Modal.svelte';
 
 	const TICKET_STATUSES = [
 		'open',
@@ -30,6 +37,10 @@
 	const TICKET_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 	const TICKET_CATEGORIES = ['billing', 'technical_issue', 'feature_request', 'general'] as const;
 	const TICKET_CHANNELS = ['email', 'api', 'chat', 'web_form'] as const;
+	const GROUP_OPTIONS = ['none', 'status', 'priority', 'category'] as const;
+
+	type ViewMode = 'list' | 'board';
+	type GroupBy = (typeof GROUP_OPTIONS)[number];
 
 	type Member = {
 		user_id: string;
@@ -41,6 +52,37 @@
 	const organizations = $derived(orgStore.all);
 	let selectedOrgId = $state<string | null>(ticketStore.lastLoadedOrgId ?? null);
 	let orgDropdownOpen = $state(false);
+
+	const initView = (page.url.searchParams.get('view') as ViewMode) ?? (browser ? localStorage.getItem('tickets-view') : null) ?? 'list';
+	let viewMode = $state<ViewMode>(initView === 'board' ? 'board' : 'list');
+
+	const initGroup = (browser ? localStorage.getItem('tickets-group') : null) ?? 'status';
+	let groupBy = $state<GroupBy>(GROUP_OPTIONS.includes(initGroup as GroupBy) ? (initGroup as GroupBy) : 'status');
+
+	function loadCollapsed(): Record<string, string[]> {
+		if (!browser) return {};
+		try {
+			const raw = localStorage.getItem('tickets-collapsed');
+			return raw ? JSON.parse(raw) : {};
+		} catch {
+			return {};
+		}
+	}
+	let collapsedByGroup = $state<Record<string, string[]>>(loadCollapsed());
+	const collapsedSet = $derived(new Set(collapsedByGroup[groupBy] ?? []));
+
+	function toggleCollapsed(key: string) {
+		const next = new Set(collapsedByGroup[groupBy] ?? []);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		collapsedByGroup = { ...collapsedByGroup, [groupBy]: Array.from(next) };
+		if (browser) localStorage.setItem('tickets-collapsed', JSON.stringify(collapsedByGroup));
+	}
+
+	function setGroupBy(g: GroupBy) {
+		groupBy = g;
+		if (browser) localStorage.setItem('tickets-group', g);
+	}
 
 	let statusOp = $state<'is' | 'is_not'>('is');
 	let statusSelected = $state<string[]>([]);
@@ -67,6 +109,18 @@
 	let selectedTicketId = $state<string | null>(null);
 	let selectedTicketTab = $state<'details' | 'messages' | 'time'>('details');
 
+	// ---------- saved views ----------
+	let savedViews = $state<SavedView[]>([]);
+	let activeViewId = $state<string | null>(browser ? localStorage.getItem('tickets-active-view') : null);
+	$effect(() => {
+		if (!browser) return;
+		if (activeViewId) localStorage.setItem('tickets-active-view', activeViewId);
+		else localStorage.removeItem('tickets-active-view');
+	});
+	let saveModalOpen = $state(false);
+	let saveViewName = $state('');
+	let savingView = $state(false);
+
 	function selectTicket(id: string | null) {
 		filterDropdownOpen = null;
 		orgDropdownOpen = false;
@@ -92,7 +146,8 @@
 
 	function getFilters(): TicketFilters {
 		const f: TicketFilters = {};
-		f.status = toFilterOp(statusOp, statusSelected);
+		// Skip status filter when board groups by status (column = status)
+		if (viewMode !== 'board') f.status = toFilterOp(statusOp, statusSelected);
 		f.priority = toFilterOp(priorityOp, prioritySelected);
 		f.category = toFilterOp(categoryOp, categorySelected);
 		f.channel = toFilterOp(channelOp, channelSelected);
@@ -108,14 +163,16 @@
 		return f;
 	}
 
-	function applyFilters() {
-		ticketStore.load(selectedOrgId ?? undefined, getFilters());
+	async function applyFilters(keepView = false) {
+		if (!keepView) activeViewId = null;
+		await ticketStore.load(selectedOrgId ?? undefined, getFilters());
+		if (viewMode === 'board') rebuildBoard();
 	}
 
 	function selectOrg(orgId: string | null) {
 		selectedOrgId = orgId;
 		orgDropdownOpen = false;
-		ticketStore.load(orgId ?? undefined, getFilters());
+		applyFilters(true);
 		if (orgId) {
 			api.members
 				.getAll(orgId)
@@ -157,7 +214,7 @@
 		satisfactionMin = '';
 		satisfactionMax = '';
 		filterDropdownOpen = null;
-		ticketStore.load(selectedOrgId ?? undefined, {});
+		applyFilters();
 	}
 
 	const hasActiveFilters = $derived(
@@ -194,7 +251,240 @@
 		].filter(Boolean).length
 	);
 
-	import { filterLabelClass, dropdownBtnClass, dropdownPanelClass } from '$lib/config/filter-styles';
+	import { dropdownPanelClass } from '$lib/config/filter-styles';
+
+	// ---------- Board ----------
+
+	function formatStatus(s: string): string {
+		return s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+	}
+
+	// List grouping
+	type ListGroup = { key: string; label: string; tickets: Ticket[] };
+
+	const listGroups = $derived.by((): ListGroup[] | null => {
+		if (groupBy === 'none') return null;
+		const items = ticketStore.items;
+		const map = new Map<string, ListGroup>();
+		const order: string[] = [];
+
+		const seedKeys =
+			groupBy === 'status'
+				? (TICKET_STATUSES as readonly string[])
+				: groupBy === 'priority'
+				? (TICKET_PRIORITIES as readonly string[])
+				: (TICKET_CATEGORIES as readonly string[]);
+
+		for (const k of seedKeys) {
+			map.set(k, { key: k, label: formatStatus(k), tickets: [] });
+			order.push(k);
+		}
+
+		for (const t of items) {
+			const raw =
+				groupBy === 'status'
+					? t.status
+					: groupBy === 'priority'
+					? t.priority
+					: (t.category ?? '__none__');
+			const key = raw || '__none__';
+			let g = map.get(key);
+			if (!g) {
+				g = {
+					key,
+					label: key === '__none__' ? 'Uncategorized' : formatStatus(key),
+					tickets: []
+				};
+				map.set(key, g);
+				order.push(key);
+			}
+			g.tickets.push(t);
+		}
+
+		return order.map((k) => map.get(k)!).filter((g) => g.tickets.length > 0);
+	});
+
+	type BoardColumn = { key: string; label: string; items: (Ticket & { id: string })[] };
+	let boardColumns = $state<BoardColumn[]>([]);
+
+	function rebuildBoard() {
+		boardColumns = TICKET_STATUSES.map((s) => ({
+			key: s,
+			label: formatStatus(s),
+			items: ticketStore.items
+				.filter((t) => t.status === s)
+				.map((t) => ({ ...t, id: t.id })) as (Ticket & { id: string })[]
+		}));
+	}
+
+	function handleConsider(colIndex: number, e: CustomEvent<{ items: (Ticket & { id: string })[] }>) {
+		boardColumns[colIndex].items = e.detail.items;
+	}
+
+	async function handleFinalize(
+		colIndex: number,
+		colKey: string,
+		e: CustomEvent<{ items: (Ticket & { id: string })[] }>
+	) {
+		boardColumns[colIndex].items = e.detail.items;
+
+		const moved: { id: string; status: string }[] = [];
+		for (const item of e.detail.items) {
+			if (item.status !== colKey) {
+				item.status = colKey;
+				moved.push({ id: item.id, status: colKey });
+			}
+		}
+
+		for (const m of moved) {
+			try {
+				const patch: Record<string, unknown> = { status: m.status };
+				if (m.status === 'resolved') patch.resolved_at = new Date().toISOString();
+				await api.tickets.update(m.id, patch);
+			} catch (err) {
+				console.error('[Tickets board] Failed to persist move:', err);
+				await ticketStore.load(selectedOrgId ?? undefined, getFilters());
+				rebuildBoard();
+				return;
+			}
+		}
+
+		if (moved.length > 0) {
+			const moveMap = new Map(moved.map((m) => [m.id, m.status]));
+			ticketStore.items = ticketStore.items.map((t) => {
+				const newStatus = moveMap.get(t.id);
+				return newStatus ? { ...t, status: newStatus } : t;
+			});
+		}
+	}
+
+	$effect(() => {
+		const _ = ticketStore.items; // track dependency
+		if (viewMode === 'board') rebuildBoard();
+	});
+
+	async function setView(v: ViewMode) {
+		viewMode = v;
+		if (browser) localStorage.setItem('tickets-view', v);
+		const url = new URL(window.location.href);
+		url.searchParams.set('view', v);
+		replaceState(localizeHref(url.pathname + url.search), {});
+		await ticketStore.load(selectedOrgId ?? undefined, getFilters());
+		if (v === 'board') rebuildBoard();
+	}
+
+	// ---------- saved views ----------
+
+	function getCurrentViewState() {
+		return {
+			statusOp, statusSelected,
+			priorityOp, prioritySelected,
+			categoryOp, categorySelected,
+			channelOp, channelSelected,
+			assignedAgentId, customerId,
+			createdFrom, createdTo,
+			resolvedFrom, resolvedTo,
+			satisfactionMin, satisfactionMax,
+			selectedOrgId
+		};
+	}
+
+	async function loadSavedViews() {
+		try {
+			savedViews = await api.views.getAll('tickets');
+			if (activeViewId && !savedViews.some((v) => v.id === activeViewId)) {
+				activeViewId = null;
+			}
+		} catch { /* ignore */ }
+	}
+
+	async function saveCurrentView() {
+		const name = saveViewName.trim();
+		if (!name) return;
+		savingView = true;
+		try {
+			const view = await api.views.create({
+				name,
+				filters: getCurrentViewState(),
+				view_mode: viewMode,
+				group_by: groupBy,
+				scope: 'tickets'
+			});
+			savedViews = [...savedViews, view];
+			activeViewId = view.id;
+			saveViewName = '';
+			saveModalOpen = false;
+		} catch (e) {
+			console.error('Failed to save view:', e);
+		} finally {
+			savingView = false;
+		}
+	}
+
+	async function applySavedView(view: SavedView) {
+		const f = view.filters as Record<string, unknown>;
+		statusOp = (f.statusOp as 'is' | 'is_not') ?? 'is';
+		statusSelected = (f.statusSelected as string[]) ?? [];
+		priorityOp = (f.priorityOp as 'is' | 'is_not') ?? 'is';
+		prioritySelected = (f.prioritySelected as string[]) ?? [];
+		categoryOp = (f.categoryOp as 'is' | 'is_not') ?? 'is';
+		categorySelected = (f.categorySelected as string[]) ?? [];
+		channelOp = (f.channelOp as 'is' | 'is_not') ?? 'is';
+		channelSelected = (f.channelSelected as string[]) ?? [];
+		assignedAgentId = (f.assignedAgentId as string) ?? '';
+		customerId = (f.customerId as string) ?? '';
+		createdFrom = (f.createdFrom as string) ?? '';
+		createdTo = (f.createdTo as string) ?? '';
+		resolvedFrom = (f.resolvedFrom as string) ?? '';
+		resolvedTo = (f.resolvedTo as string) ?? '';
+		satisfactionMin = (f.satisfactionMin as number | '') ?? '';
+		satisfactionMax = (f.satisfactionMax as number | '') ?? '';
+
+		const orgFromView = (f.selectedOrgId as string | null | undefined) ?? null;
+		if (orgFromView !== selectedOrgId) {
+			selectOrg(orgFromView);
+		}
+
+		if (view.view_mode === 'board' || view.view_mode === 'list') viewMode = view.view_mode as ViewMode;
+		if (GROUP_OPTIONS.includes(view.group_by as GroupBy)) setGroupBy(view.group_by as GroupBy);
+
+		activeViewId = view.id;
+		await applyFilters(true);
+	}
+
+	async function renameSavedView(id: string, name: string) {
+		try {
+			const updated = await api.views.update(id, { name });
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to rename view:', e);
+		}
+	}
+
+	async function deleteView(id: string) {
+		try {
+			await api.views.delete(id);
+			savedViews = savedViews.filter((v) => v.id !== id);
+			if (activeViewId === id) activeViewId = null;
+		} catch (e) {
+			console.error('Failed to delete view:', e);
+		}
+	}
+
+	async function updateViewFilters(id: string) {
+		try {
+			const updated = await api.views.update(id, {
+				filters: getCurrentViewState(),
+				view_mode: viewMode,
+				group_by: groupBy
+			});
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to update view:', e);
+		}
+	}
+
+	// ---------- lifecycle ----------
 
 	onMount(async () => {
 		await orgStore.loadIfNeeded();
@@ -204,12 +494,14 @@
 			selectedOrgId = ticketOrgs.some((o) => o.id === orgId) ? orgId : null;
 		}
 
-		ticketStore.loadIfNeeded(selectedOrgId ?? undefined, getFilters());
+		await ticketStore.loadIfNeeded(selectedOrgId ?? undefined, getFilters());
+		loadSavedViews();
+		if (viewMode === 'board') rebuildBoard();
 
 		if (selectedOrgId) {
 			Promise.all([
 				api.members.getAll(selectedOrgId).catch(() => [] as Member[]),
-				api.tickets.getCustomersByOrg(selectedOrgId).catch(() => [] as CustomerOption[]),
+				api.tickets.getCustomersByOrg(selectedOrgId).catch(() => [] as CustomerOption[])
 			]).then(([m, c]) => {
 				members = m as Member[];
 				customers = c;
@@ -250,7 +542,7 @@
 			if (next !== idx) {
 				selectTicket(items[next].id);
 				requestAnimationFrame(() => {
-					document.querySelector(`[data-task-id="${items[next].id}"]`)
+					document.querySelector(`[data-ticket-id="${items[next].id}"]`)
 						?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 				});
 			}
@@ -261,9 +553,9 @@
 </script>
 
 <div class="flex h-full overflow-hidden">
-<div class="min-w-0 flex-1 overflow-y-auto">
+<div class="flex min-w-0 flex-1 flex-col {viewMode === 'board' ? 'overflow-hidden' : 'overflow-y-auto'}">
 <div
-	class="mx-auto w-full"
+	class="flex h-full min-h-0 w-full flex-col"
 	use:clickOutside={{
 		onClickOutside: () => {
 			orgDropdownOpen = false;
@@ -272,9 +564,30 @@
 		enabled: orgDropdownOpen || filterDropdownOpen !== null
 	}}
 >
-	<!-- Header: org + actions -->
-	<div class="flex items-center justify-between px-3 py-1.5">
-		<div class="flex items-center gap-2">
+	<!-- ===== HEADER ===== -->
+	<ListBoardToolbar
+		viewMode={viewMode}
+		onViewChange={setView}
+		groupBy={groupBy}
+		groupOptions={GROUP_OPTIONS}
+		groupOptionsForBoard={[]}
+		onGroupChange={(g) => setGroupBy(g as GroupBy)}
+		filtersVisible={filtersVisible}
+		activeFiltersCount={activeFiltersCount}
+		onFilterToggle={() => (filtersVisible = !filtersVisible)}
+		savedViews={savedViews}
+		activeViewId={activeViewId}
+		onApplyView={applySavedView}
+		onSaveCurrentView={() => { saveModalOpen = true; saveViewName = ''; }}
+		onRenameView={renameSavedView}
+		onDeleteView={deleteView}
+		onUpdateViewFilters={updateViewFilters}
+		newLabel="New Ticket"
+		newDisabled={!auth.can('support_tickets', 'create')}
+		newDisabledTitle="You don't have permission to create tickets"
+		onNew={() => (createModalOpen = true)}
+	>
+		{#snippet leftSlot()}
 			<div class="relative">
 				<button
 					class="flex h-7 min-w-[11rem] cursor-pointer items-center justify-between gap-2 rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
@@ -330,36 +643,8 @@
 					</div>
 				{/if}
 			</div>
-			<div class="relative shrink-0">
-				<button
-					class="flex h-7 w-7 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover/40 {filtersVisible
-						? 'text-accent'
-						: 'text-sidebar-icon'}"
-					onclick={() => (filtersVisible = !filtersVisible)}
-					title={filtersVisible ? 'Hide filters' : 'Show filters'}
-				>
-					<ListFilter size={16} />
-				</button>
-				{#if activeFiltersCount > 0}
-					<span
-						class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-2xs font-semibold leading-none text-white"
-						aria-label="{activeFiltersCount} active filter{activeFiltersCount === 1 ? '' : 's'}"
-					>
-						{activeFiltersCount > 9 ? '9+' : activeFiltersCount}
-					</span>
-				{/if}
-			</div>
-		</div>
-
-		{#if auth.can('support_tickets', 'create')}
-			<button
-				class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
-				onclick={() => (createModalOpen = true)}
-			>
-				New Ticket
-			</button>
-		{/if}
-	</div>
+		{/snippet}
+	</ListBoardToolbar>
 
 	{#if createModalOpen}
 		<CreateTicketModal
@@ -372,7 +657,7 @@
 
 	<!-- Filter bar -->
 	{#if filtersVisible}
-		<div class="px-3 py-1.5">
+		<div class="shrink-0 border-b border-surface-border px-3 py-1.5">
 			<div class="mb-3 flex items-center justify-between">
 				<span class="text-xs font-medium uppercase tracking-[0.08em] text-muted/50">Filters</span>
 				{#if hasActiveFilters}
@@ -385,13 +670,15 @@
 				{/if}
 			</div>
 			<div class="flex flex-wrap items-end gap-4">
-				<FilterDropdown
-					label="Status"
-					options={TICKET_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, ' ') }))}
-					operator={statusOp}
-					selected={statusSelected}
-					onchange={(op, sel) => { statusOp = op; statusSelected = sel; applyFilters(); }}
-				/>
+				{#if viewMode !== 'board'}
+					<FilterDropdown
+						label="Status"
+						options={TICKET_STATUSES.map((s) => ({ value: s, label: s.replace(/_/g, ' ') }))}
+						operator={statusOp}
+						selected={statusSelected}
+						onchange={(op, sel) => { statusOp = op; statusSelected = sel; applyFilters(); }}
+					/>
+				{/if}
 				<FilterDropdown
 					label="Priority"
 					options={TICKET_PRIORITIES.map((p) => ({ value: p, label: p }))}
@@ -543,7 +830,7 @@
 											type="date"
 											bind:value={createdFrom}
 											class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
-											onchange={applyFilters}
+											onchange={() => applyFilters()}
 										/>
 									</div>
 									<div>
@@ -555,7 +842,7 @@
 											type="date"
 											bind:value={createdTo}
 											class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
-											onchange={applyFilters}
+											onchange={() => applyFilters()}
 										/>
 									</div>
 									<div>
@@ -567,7 +854,7 @@
 											type="date"
 											bind:value={resolvedFrom}
 											class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
-											onchange={applyFilters}
+											onchange={() => applyFilters()}
 										/>
 									</div>
 									<div>
@@ -579,7 +866,7 @@
 											type="date"
 											bind:value={resolvedTo}
 											class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
-											onchange={applyFilters}
+											onchange={() => applyFilters()}
 										/>
 									</div>
 									<div class="grid grid-cols-2 gap-2">
@@ -594,7 +881,7 @@
 												max="5"
 												bind:value={satisfactionMin}
 												class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
-												onchange={applyFilters}
+												onchange={() => applyFilters()}
 											/>
 										</div>
 										<div>
@@ -608,7 +895,7 @@
 												max="5"
 												bind:value={satisfactionMax}
 												class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none focus:bg-surface-hover/60"
-												onchange={applyFilters}
+												onchange={() => applyFilters()}
 											/>
 										</div>
 									</div>
@@ -627,11 +914,13 @@
 			</div>
 	{/if}
 
+	<!-- ===== CONTENT ===== -->
 	{#if ticketStore.loading}
 		<p class="px-4 py-8 text-center text-sm text-muted">Loading...</p>
 	{:else if ticketStore.error}
 		<p class="px-4 py-8 text-center text-sm text-red-500">{ticketStore.error}</p>
-	{:else}
+	{:else if viewMode === 'list'}
+		<!-- LIST VIEW -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="p-3" onclick={() => { filterDropdownOpen = null; orgDropdownOpen = false; }}>
 			{#if ticketStore.items.length === 0}
@@ -646,25 +935,39 @@
 						</button>
 					{/if}
 				</div>
+			{:else if listGroups}
+				<div class="space-y-1">
+					{#each listGroups as group (group.key)}
+						{@const isCollapsed = collapsedSet.has(group.key)}
+						<button
+							class="flex w-full items-center gap-1.5 px-1 py-1 text-left"
+							onclick={() => toggleCollapsed(group.key)}
+						>
+							<ChevronDown size={10} class="shrink-0 text-muted/30 transition-transform duration-150 {isCollapsed ? '-rotate-90' : ''}" />
+							<span class="text-sm font-medium text-muted">{group.label}</span>
+							<span class="text-xs text-muted/30">{group.tickets.length}</span>
+						</button>
+						{#if !isCollapsed}
+							<div transition:slide={{ duration: 150 }} class="mb-2 overflow-hidden rounded border border-surface-border/50 bg-surface/50">
+								{#each group.tickets as ticket, i (ticket.id)}
+									<TicketRow
+										ticket={ticket}
+										selected={ticket.id === selectedTicketId}
+										onclick={() => selectTicket(ticket.id)}
+									/>
+									{#if i < group.tickets.length - 1}
+										<div class="mx-3 h-px bg-surface-border/30"></div>
+									{/if}
+								{/each}
+							</div>
+						{/if}
+					{/each}
+				</div>
 			{:else}
 				<div class="overflow-hidden rounded border border-surface-border/50 bg-surface/50">
 					{#each ticketStore.items as ticket, i (ticket.id)}
-						<TaskRow
-							task={{
-								id: ticket.id,
-								title: ticket.subject,
-								status: ticket.status,
-								priority: ticket.priority,
-								type: 'task',
-								short_id: ticket.id.slice(0, 6),
-								project_id: '',
-								created_by: '',
-								project: null,
-								assignments: [],
-								created_by_user: null,
-								start_at: ticket.created_at,
-								end_at: ticket.resolved_at
-							}}
+						<TicketRow
+							ticket={ticket}
 							selected={ticket.id === selectedTicketId}
 							onclick={() => selectTicket(ticket.id)}
 						/>
@@ -675,6 +978,33 @@
 				</div>
 			{/if}
 			<p class="mt-2 text-xs text-muted/30">{ticketStore.count} ticket{ticketStore.count === 1 ? '' : 's'}</p>
+		</div>
+	{:else}
+		<!-- BOARD VIEW -->
+		<div class="flex min-h-0 flex-1 gap-0 overflow-x-auto">
+			{#each boardColumns as col, colIndex (col.key)}
+				<div class="flex w-64 shrink-0 flex-col border-r border-surface-border/50 max-h-full last:border-r-0">
+					<div class="flex items-center gap-2 px-3 py-2">
+						<span class="text-sm font-medium text-muted truncate">{col.label}</span>
+						<span class="ml-auto shrink-0 text-xs text-muted/30">{col.items.length}</span>
+					</div>
+					<div
+						class="flex-1 overflow-y-auto px-2 pb-2 min-h-[60px] scrollbar-none"
+						style="-ms-overflow-style: none; scrollbar-width: none;"
+						use:dndzone={{ items: col.items, flipDurationMs: 200, dropTargetStyle: { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' } }}
+						onconsider={(e) => handleConsider(colIndex, e)}
+						onfinalize={(e) => handleFinalize(colIndex, col.key, e)}
+					>
+						{#each col.items as ticket (ticket.id)}
+							<TicketBoardCard
+								ticket={ticket}
+								selected={selectedTicketId === ticket.id}
+								onclick={() => selectTicket(ticket.id)}
+							/>
+						{/each}
+					</div>
+				</div>
+			{/each}
 		</div>
 	{/if}
 </div>
@@ -697,17 +1027,60 @@
 					else url.searchParams.set('tab', tab);
 					replaceState(localizeHref(url.pathname + url.search), {});
 				}}
-				onUpdate={() => applyFilters()}
+				onUpdate={(updated) => {
+					if (updated) ticketStore.patch(updated.id, updated as unknown as Partial<typeof ticketStore.items[number]>);
+					else applyFilters(true);
+				}}
 			/>
 		</div>
 	{/if}
 </div>
 </div>
 
+<!-- ===== SAVE VIEW MODAL ===== -->
+<Modal open={saveModalOpen} onClose={() => (saveModalOpen = false)} maxWidth="max-w-sm">
+	<div class="px-3 py-2.5 border-b border-surface-border">
+		<h2 class="text-md font-semibold text-sidebar-text">Save view</h2>
+	</div>
+	<form onsubmit={(e) => { e.preventDefault(); saveCurrentView(); }} class="p-3 space-y-3">
+		<div>
+			<label for="ticket-view-name" class="mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50">Name</label>
+			<input
+				id="ticket-view-name"
+				type="text"
+				bind:value={saveViewName}
+				placeholder="e.g. Open billing tickets"
+				class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60"
+			/>
+			<p class="mt-1.5 text-xs text-muted/40">Saves the current filters, organization, and view mode.</p>
+		</div>
+		<div class="flex justify-end gap-2 pt-1">
+			<button
+				type="button"
+				class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
+				onclick={() => (saveModalOpen = false)}
+			>
+				Cancel
+			</button>
+			<button
+				type="submit"
+				disabled={savingView || !saveViewName.trim()}
+				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
+			>
+				{savingView ? 'Saving…' : 'Save view'}
+			</button>
+		</div>
+	</form>
+</Modal>
+
 <style>
+	.scrollbar-none::-webkit-scrollbar {
+		display: none;
+	}
+
 	@keyframes dropdown-in {
-		from { opacity: 0; transform: scale(0.95) translateY(-4px); }
-		to { opacity: 1; transform: scale(1) translateY(0); }
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 	:global(.animate-dropdown-in) {
 		animation: dropdown-in 150ms ease-out;

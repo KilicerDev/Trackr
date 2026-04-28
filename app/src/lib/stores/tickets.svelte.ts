@@ -100,6 +100,12 @@ class TicketStore {
     }
   }
 
+  patch(id: string, partial: Partial<Ticket>) {
+    this.items = this.items.map((t) =>
+      t.id === id ? { ...t, ...partial } : t
+    );
+  }
+
   setFilters(filters: TicketFilters) {
     this.filters = filters;
   }

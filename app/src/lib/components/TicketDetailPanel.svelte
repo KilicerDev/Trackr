@@ -74,15 +74,17 @@
 		members: Member[];
 		initialTab?: 'details' | 'messages' | 'time';
 		onClose: () => void;
-		onUpdate: () => void;
+		onUpdate: (updated?: TicketDetail) => void;
 		onTabChange?: (tab: 'details' | 'messages' | 'time') => void;
 	}
 
 	let { ticketId, members, initialTab = 'details', onClose, onUpdate, onTabChange }: Props = $props();
 
 	const ASSIGNABLE_ROLES = ['owner', 'admin', 'manager', 'agent'];
+	let panelMembers = $state<Member[]>([]);
+	const effectiveMembers = $derived(panelMembers.length > 0 ? panelMembers : members);
 	const assignableMembers = $derived(
-		members.filter((m) => m.user.is_active && !m.user.deleted_at && m.role && ASSIGNABLE_ROLES.includes(m.role.slug))
+		effectiveMembers.filter((m) => m.user.is_active && !m.user.deleted_at && m.role && ASSIGNABLE_ROLES.includes(m.role.slug))
 	);
 
 	let ticket = $state<TicketDetail | null>(null);
@@ -196,6 +198,18 @@
 			workLogs = wl as WorkLog[];
 			linkedTasks = lt as LinkedTask[];
 			descriptionDraft = ticket.description ?? '';
+			// Load members from the ticket's own org so the agent dropdown is
+			// always populated, even when the parent page has "All Organizations"
+			// selected and didn't load members itself.
+			const ticketOrgId = (ticket as Record<string, unknown>).organization_id as string | undefined;
+			if (ticketOrgId) {
+				api.members
+					.getAll(ticketOrgId)
+					.then((rows) => { panelMembers = rows as Member[]; })
+					.catch(() => { panelMembers = []; });
+			} else {
+				panelMembers = [];
+			}
 			// Restore message → attachment mapping from persisted data
 			const map: Record<string, string[]> = {};
 			for (const msg of messages) {
@@ -290,7 +304,7 @@
 		try {
 			const updated = (await api.tickets.update(ticket.id, payload)) as TicketDetail;
 			ticket = updated;
-			onUpdate();
+			onUpdate(updated);
 		} catch {
 			ticket = prev;
 		}
@@ -305,7 +319,7 @@
 			})) as TicketDetail;
 			ticket = updated;
 			editingDescription = false;
-			onUpdate();
+			onUpdate(updated);
 		} catch {
 			/* keep editing open on error */
 		} finally {
@@ -357,7 +371,7 @@
 					first_response_at: now
 				})) as TicketDetail;
 				ticket = updated;
-				onUpdate();
+				onUpdate(updated);
 			}
 		} catch {
 			/* keep message in input on error */
@@ -912,7 +926,7 @@
 							></textarea>
 							<div class="flex shrink-0 flex-col gap-1">
 								<AttachmentUploadZone
-									compact
+									variant="compact"
 									onFilesSelected={(files) => { messagePendingFiles = [...messagePendingFiles, ...files]; }}
 								/>
 								<button
@@ -1072,8 +1086,8 @@
 
 <style>
 @keyframes dropdown-in {
-	from { opacity: 0; transform: scale(0.95) translateY(-4px); }
-	to { opacity: 1; transform: scale(1) translateY(0); }
+	from { opacity: 0; }
+	to { opacity: 1; }
 }
 :global(.animate-dropdown-in) { animation: dropdown-in 150ms ease-out; }
 </style>
