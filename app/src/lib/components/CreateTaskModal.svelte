@@ -10,8 +10,11 @@
 	import { orgStore } from '$lib/stores/organizations.svelte';
 	import { api } from '$lib/api';
 	import type { Tag } from '$lib/api/tags';
-	import { X, Paperclip, Plus } from '@lucide/svelte';
+	import { onDestroy } from 'svelte';
+	import { X, Plus, Upload, FileText, Image as ImageIcon, Table, Presentation, Film, File as FileIcon } from '@lucide/svelte';
+	import { validateAttachmentFiles } from '$lib/config/attachments';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
+	import AttachmentPreview from './AttachmentPreview.svelte';
 
 	const TASK_PRIORITIES = ['urgent', 'high', 'medium', 'low', 'none'] as const;
 	const TASK_TYPES = ['task', 'bug', 'feature', 'improvement', 'epic'] as const;
@@ -51,6 +54,70 @@
 	let endAt = $state('');
 	let submitting = $state(false);
 	let pendingFiles = $state<File[]>([]);
+	let previewIndex = $state<number | null>(null);
+	let modalDragOver = $state(false);
+	let modalDragDepth = 0;
+	let modalDragError = $state<string | null>(null);
+
+	function hasFiles(e: DragEvent): boolean {
+		return Array.from(e.dataTransfer?.types ?? []).includes('Files');
+	}
+	function onModalDragEnter(e: DragEvent) {
+		if (submitting || !hasFiles(e)) return;
+		e.preventDefault();
+		modalDragDepth += 1;
+		modalDragOver = true;
+	}
+	function onModalDragOver(e: DragEvent) {
+		if (submitting || !hasFiles(e)) return;
+		e.preventDefault();
+	}
+	function onModalDragLeave(e: DragEvent) {
+		if (submitting) return;
+		e.preventDefault();
+		modalDragDepth = Math.max(0, modalDragDepth - 1);
+		if (modalDragDepth === 0) modalDragOver = false;
+	}
+	function onModalDrop(e: DragEvent) {
+		if (submitting) return;
+		e.preventDefault();
+		modalDragDepth = 0;
+		modalDragOver = false;
+		const files = e.dataTransfer?.files;
+		if (!files || files.length === 0) return;
+		const result = validateAttachmentFiles(Array.from(files));
+		modalDragError = result.error;
+		if (result.valid.length > 0) {
+			pendingFiles = [...pendingFiles, ...result.valid];
+		}
+	}
+
+	// Lazy object-URL cache for local file previews; revoked on close.
+	const fileUrlCache = new WeakMap<File, string>();
+	const createdUrls: string[] = [];
+	function urlFor(file: File): string {
+		let url = fileUrlCache.get(file);
+		if (!url) {
+			url = URL.createObjectURL(file);
+			fileUrlCache.set(file, url);
+			createdUrls.push(url);
+		}
+		return url;
+	}
+	onDestroy(() => {
+		for (const url of createdUrls) URL.revokeObjectURL(url);
+	});
+
+	function fileIconFor(mime: string) {
+		if (mime.startsWith('image/')) return ImageIcon;
+		if (mime.startsWith('video/')) return Film;
+		if (mime === 'application/pdf') return FileText;
+		if (mime.includes('spreadsheet') || mime.includes('excel') || mime === 'text/csv') return Table;
+		if (mime.includes('presentation') || mime.includes('powerpoint')) return Presentation;
+		if (mime.includes('word') || mime.includes('document') || mime === 'text/plain') return FileText;
+		return FileIcon;
+	}
+
 
 	// Assignees
 	type ProjectMember = { user_id: string; user: { id: string; full_name: string; avatar_url: string | null; is_active: boolean; deleted_at: string | null } };
@@ -245,7 +312,20 @@
 </script>
 
 <Modal open={true} {onClose}>
-	<div>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="relative"
+		ondragenter={onModalDragEnter}
+		ondragover={onModalDragOver}
+		ondragleave={onModalDragLeave}
+		ondrop={onModalDrop}
+	>
+		{#if modalDragOver}
+			<div class="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed border-accent bg-accent/5">
+				<Upload size={28} class="text-accent" />
+				<span class="text-base font-medium text-accent">Drop files to attach</span>
+			</div>
+		{/if}
 		<div class="px-3 py-2.5">
 			<h2 class="text-md font-semibold text-sidebar-text">Create task</h2>
 		</div>
@@ -611,21 +691,45 @@
 				{/if}
 
 				<div>
-					<span class={labelClass}>Attachments</span>
-					<AttachmentUploadZone
-						onFilesSelected={(files) => { pendingFiles = [...pendingFiles, ...files]; }}
-						disabled={submitting}
-					/>
+					<div class="mb-2 flex items-center justify-between">
+						<span class="block text-xs font-medium uppercase tracking-[0.08em] text-muted">Attachments</span>
+						<AttachmentUploadZone
+							variant="button"
+							onFilesSelected={(files) => { pendingFiles = [...pendingFiles, ...files]; modalDragError = null; }}
+							disabled={submitting}
+						/>
+					</div>
+					{#if modalDragError}
+						<p class="mb-2 text-sm text-red-500">{modalDragError}</p>
+					{/if}
 					{#if pendingFiles.length > 0}
-						<div class="mt-2 flex flex-wrap gap-1">
-							{#each pendingFiles as file, i (file.name + i)}
-								<span class="flex items-center gap-1 rounded border border-surface-border/40 bg-surface/50 px-2 py-0.5 text-xs text-sidebar-text">
-									<Paperclip size={10} />
-									<span class="max-w-[120px] truncate">{file.name}</span>
-									<button type="button" class="text-muted hover:text-red-500" onclick={() => { pendingFiles = pendingFiles.filter((_, idx) => idx !== i); }}>
+						<div class="flex flex-wrap gap-2">
+							{#each pendingFiles as file, i (file.name + i + file.size)}
+								{@const isImage = file.type.startsWith('image/')}
+								{@const Icon = fileIconFor(file.type)}
+								<div class="group relative h-[80px] w-[80px] overflow-hidden rounded-sm border border-surface-border bg-surface transition-colors hover:border-sidebar-icon/30">
+									<button
+										type="button"
+										class="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-1.5"
+										title={file.name}
+										onclick={() => (previewIndex = i)}
+									>
+										{#if isImage}
+											<img src={urlFor(file)} alt={file.name} class="h-full w-full object-cover" />
+										{:else}
+											<Icon size={20} class="text-sidebar-icon" />
+											<span class="w-full truncate text-center text-2xs text-muted">{file.name}</span>
+										{/if}
+									</button>
+									<button
+										type="button"
+										class="absolute top-0.5 right-0.5 rounded-sm bg-surface/90 p-0.5 text-sidebar-icon opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+										onclick={() => { pendingFiles = pendingFiles.filter((_, idx) => idx !== i); }}
+										aria-label="Remove {file.name}"
+									>
 										<X size={10} />
 									</button>
-								</span>
+								</div>
 							{/each}
 						</div>
 					{/if}
@@ -651,3 +755,13 @@
 		</div>
 	</div>
 </Modal>
+
+{#if previewIndex !== null && pendingFiles[previewIndex]}
+	<AttachmentPreview
+		items={pendingFiles.map((f) => ({ name: f.name, mime: f.type }))}
+		currentIndex={previewIndex}
+		resolveUrl={(i) => urlFor(pendingFiles[i])}
+		onClose={() => (previewIndex = null)}
+		onNavigate={(idx) => (previewIndex = idx)}
+	/>
+{/if}

@@ -4,6 +4,7 @@
 	import { taskStore } from '$lib/stores/tasks.svelte';
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { notifications } from '$lib/stores/notifications.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import { taskStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
@@ -331,12 +332,28 @@
 		}
 	}
 
-	async function handleRemoveAttachment(att: Attachment) {
+	let attachmentToDelete = $state<Attachment | null>(null);
+	let deletingAttachment = $state(false);
+
+	function handleRemoveAttachment(att: Attachment) {
+		attachmentToDelete = att;
+	}
+
+	async function confirmDeleteAttachment() {
+		const att = attachmentToDelete;
+		if (!att) return;
+		deletingAttachment = true;
 		try {
 			await api.attachments.remove(att.id, att.storage_path);
 			taskAttachments = taskAttachments.filter((a) => a.id !== att.id);
-		} catch {
-			/* silent */
+			attachmentToDelete = null;
+		} catch (err) {
+			console.error('Delete attachment failed:', err);
+			const e = err as Record<string, unknown> | null;
+			const desc = (e?.message as string) || (e?.details as string) || (e?.hint as string) || (e?.code as string) || JSON.stringify(err);
+			notifications.add('error', 'Failed to delete attachment', desc);
+		} finally {
+			deletingAttachment = false;
 		}
 	}
 
@@ -1100,7 +1117,7 @@
 						></textarea>
 						<div class="flex shrink-0 flex-col gap-1">
 							<AttachmentUploadZone
-								compact
+								variant="compact"
 								onFilesSelected={(files) => { commentPendingFiles = [...commentPendingFiles, ...files]; }}
 							/>
 							<button
@@ -1234,6 +1251,17 @@
 	onCancel={() => (confirmDeleteOpen = false)}
 />
 
+<ConfirmDialog
+	open={attachmentToDelete !== null}
+	title="Delete attachment"
+	message={`Delete "${attachmentToDelete?.file_name ?? ''}"? This action cannot be undone.`}
+	confirmLabel="Delete"
+	loading={deletingAttachment}
+	destructive={true}
+	onConfirm={confirmDeleteAttachment}
+	onCancel={() => { if (!deletingAttachment) attachmentToDelete = null; }}
+/>
+
 <style>
 	:global(.date-clean::-webkit-calendar-picker-indicator) {
 		opacity: 0;
@@ -1245,14 +1273,8 @@
 	}
 
 	@keyframes dropdown-in {
-		from {
-			opacity: 0;
-			transform: scale(0.95) translateY(-4px);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1) translateY(0);
-		}
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 
 	:global(.animate-dropdown-in) {

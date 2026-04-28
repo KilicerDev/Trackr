@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
+	import { taskStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
 
 	type Props = {
 		task: Task;
@@ -11,14 +12,8 @@
 
 	let { task, depth = 0, selected = false, onclick }: Props = $props();
 
-	const statusDot: Record<string, string> = {
-		backlog: 'bg-gray-400/60',
-		todo: 'bg-gray-400',
-		in_progress: 'bg-amber-400',
-		in_review: 'bg-purple-400',
-		done: 'bg-green-400',
-		cancelled: 'bg-gray-400/30'
-	};
+	const statusInfo = $derived(taskStatusIcons[task.status] ?? defaultStatusIcon);
+	const StatusIcon = $derived(statusInfo.icon);
 
 	const priorityColors: Record<string, string> = {
 		urgent: 'text-red-400',
@@ -67,8 +62,8 @@
 	style={depth > 0 ? `padding-left: ${12 + depth * 16}px` : ''}
 	{onclick}
 >
-	<!-- Status dot -->
-	<span class="h-1.5 w-1.5 shrink-0 rounded-full {statusDot[task.status] ?? 'bg-gray-400'}"></span>
+	<!-- Status icon -->
+	<StatusIcon size={12} class="shrink-0 {statusInfo.className}" />
 
 	<!-- ID -->
 	<span class="w-[60px] shrink-0 whitespace-nowrap font-mono text-xs text-muted/50">

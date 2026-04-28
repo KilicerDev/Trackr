@@ -23,7 +23,7 @@ export const taskStatusIcons: Record<string, StatusIconInfo> = {
 	paused: { icon: CirclePause, className: 'text-yellow-500 dark:text-yellow-400' },
 	in_review: { icon: CircleDot, className: 'text-purple-500 dark:text-purple-400' },
 	done: { icon: CircleCheck, className: 'text-green-500 dark:text-green-400' },
-	cancelled: { icon: CircleX, className: 'text-gray-400 dark:text-gray-500' }
+	cancelled: { icon: CircleX, className: 'text-red-500 dark:text-red-400' }
 };
 
 export const ticketStatusIcons: Record<string, StatusIconInfo> = {

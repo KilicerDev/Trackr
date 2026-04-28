@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { notificationCenter } from '$lib/stores/notificationCenter.svelte';
 	import { notifications } from '$lib/stores/notifications.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 	import { api } from '$lib/api';
 	import { localizeHref } from '$lib/paraglide/runtime';
 	import { CheckCheck, Loader2, Mail, MailX } from '@lucide/svelte';
@@ -15,8 +16,13 @@
 		notificationCenter.close();
 
 		if (n.resource_type === 'ticket' && n.resource_id) {
-			const tab = n.type === 'ticket_message' ? '&tab=messages' : '';
-			await goto(localizeHref(`/tickets?id=${n.resource_id}${tab}`));
+			// Clients live under /c — they don't have access to the staff /tickets route.
+			if (auth.isClient) {
+				await goto(localizeHref(`/c?ticket=${n.resource_id}`));
+			} else {
+				const tab = n.type === 'ticket_message' ? '&tab=messages' : '';
+				await goto(localizeHref(`/tickets?id=${n.resource_id}${tab}`));
+			}
 		} else if (n.resource_type === 'task' && n.resource_id) {
 			try {
 				const task = await api.tasks.getById(n.resource_id);
@@ -124,8 +130,8 @@
 
 <style>
 	@keyframes dropdown-in {
-		from { opacity: 0; transform: scale(0.95) translateY(-4px); }
-		to { opacity: 1; transform: scale(1) translateY(0); }
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 	:global(.animate-dropdown-in) {
 		animation: dropdown-in 150ms ease-out;

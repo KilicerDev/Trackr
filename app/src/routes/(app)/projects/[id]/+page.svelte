@@ -12,11 +12,14 @@
 	import type { TaskFilters, FilterOp } from '$lib/api/tasks';
 	import type { Task } from '$lib/stores/tasks.svelte';
 	import TaskRow from '$lib/components/TaskRow.svelte';
-	import { Users, User, Check, X, Plus, LayoutList, Columns3, ListFilter, Info, Paperclip, SquareCheckBig } from '@lucide/svelte';
+	import { Users, User, Check, X, Plus, Info, Paperclip, SquareCheckBig } from '@lucide/svelte';
 	import TaskDetailPanel from '$lib/components/TaskDetailPanel.svelte';
 	import TaskBoardCard from '$lib/components/TaskBoardCard.svelte';
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
+	import ListBoardToolbar from '$lib/components/ListBoardToolbar.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import type { SavedView } from '$lib/api/views';
 	import { typeIcons, defaultTypeIcon } from '$lib/config/task-icons';
 	import { projectStatusIcons, defaultStatusIcon } from '$lib/config/status-icons';
 	import { localizeHref } from '$lib/paraglide/runtime';
@@ -84,6 +87,121 @@
 	let taskTypeSelected = $state<string[]>([]);
 	let taskFiltersVisible = $state(false);
 
+	// Saved views (per-project)
+	const initialProjectId = $page.params.id ?? '';
+	let savedViews = $state<SavedView[]>([]);
+	let activeViewId = $state<string | null>(
+		browser && initialProjectId
+			? localStorage.getItem(`project-${initialProjectId}-active-view`)
+			: null
+	);
+	let saveModalOpen = $state(false);
+	let saveViewName = $state('');
+	let savingView = $state(false);
+
+	function getCurrentTaskViewState() {
+		return {
+			taskStatusOp, taskStatusSelected,
+			taskPriorityOp, taskPrioritySelected,
+			taskTypeOp, taskTypeSelected
+		};
+	}
+
+	async function loadSavedTaskViews() {
+		const id = $page.params.id;
+		if (!id) return;
+		try {
+			savedViews = await api.views.getAll('tasks', id);
+			// Drop stale activeViewId if the view no longer exists
+			if (activeViewId && !savedViews.some((v) => v.id === activeViewId)) {
+				activeViewId = null;
+			}
+		} catch {
+			savedViews = [];
+		}
+	}
+
+	$effect(() => {
+		if (!browser) return;
+		const id = $page.params.id;
+		if (!id) return;
+		if (activeViewId) localStorage.setItem(`project-${id}-active-view`, activeViewId);
+		else localStorage.removeItem(`project-${id}-active-view`);
+	});
+
+	async function saveCurrentTaskView() {
+		const name = saveViewName.trim();
+		const id = $page.params.id;
+		if (!name || !id) return;
+		savingView = true;
+		try {
+			const view = await api.views.create({
+				name,
+				filters: getCurrentTaskViewState(),
+				view_mode: taskViewMode,
+				group_by: taskGroupBy,
+				scope: 'tasks',
+				project_id: id
+			});
+			savedViews = [...savedViews, view];
+			activeViewId = view.id;
+			saveViewName = '';
+			saveModalOpen = false;
+		} catch (e) {
+			console.error('Failed to save view:', e);
+		} finally {
+			savingView = false;
+		}
+	}
+
+	async function applySavedTaskView(view: SavedView) {
+		const f = view.filters as Record<string, unknown>;
+		taskStatusOp = (f.taskStatusOp as 'is' | 'is_not') ?? 'is';
+		taskStatusSelected = (f.taskStatusSelected as string[]) ?? [];
+		taskPriorityOp = (f.taskPriorityOp as 'is' | 'is_not') ?? 'is';
+		taskPrioritySelected = (f.taskPrioritySelected as string[]) ?? [];
+		taskTypeOp = (f.taskTypeOp as 'is' | 'is_not') ?? 'is';
+		taskTypeSelected = (f.taskTypeSelected as string[]) ?? [];
+
+		if (view.view_mode === 'board' || view.view_mode === 'list') taskViewMode = view.view_mode as TaskViewMode;
+		if (TASK_GROUP_OPTIONS.includes(view.group_by as TaskGroupBy)) taskGroupBy = view.group_by as TaskGroupBy;
+
+		activeViewId = view.id;
+		await applyTaskFilters(true);
+	}
+
+	async function renameSavedTaskView(id: string, name: string) {
+		try {
+			const updated = await api.views.update(id, { name });
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to rename view:', e);
+		}
+	}
+
+	async function deleteSavedTaskView(id: string) {
+		try {
+			await api.views.delete(id);
+			savedViews = savedViews.filter((v) => v.id !== id);
+			if (activeViewId === id) activeViewId = null;
+		} catch (e) {
+			console.error('Failed to delete view:', e);
+		}
+	}
+
+	async function updateSavedTaskViewFilters(id: string) {
+		try {
+			const updated = await api.views.update(id, {
+				filters: getCurrentTaskViewState(),
+				view_mode: taskViewMode,
+				group_by: taskGroupBy
+			});
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to update view:', e);
+		}
+	}
+
 	function formatTaskStatus(s: string): string {
 		return s.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 	}
@@ -107,7 +225,8 @@
 		return f;
 	}
 
-	async function applyTaskFilters() {
+	async function applyTaskFilters(keepView = false) {
+		if (!keepView) activeViewId = null;
 		await taskStore.load(getTaskFilters());
 		if (taskViewMode === 'board') rebuildTaskBoard();
 	}
@@ -388,10 +507,16 @@
 	onMount(async () => {
 		const id = $page.params.id!;
 		await Promise.all([
-			taskStore.load(getTaskFilters()),
 			projectStore.loadById(id),
-			api.attachments.list('project', id).then((att) => { projectAttachments = att; }).catch(() => {})
+			api.attachments.list('project', id).then((att) => { projectAttachments = att; }).catch(() => {}),
+			loadSavedTaskViews()
 		]);
+
+		// If a saved view was active before refresh, restore it (applies filters + reloads tasks).
+		// Otherwise just load tasks with the default filters.
+		const restored = activeViewId ? savedViews.find((v) => v.id === activeViewId) : null;
+		if (restored) await applySavedTaskView(restored);
+		else await taskStore.load(getTaskFilters());
 		if (taskViewMode === 'board') rebuildTaskBoard();
 
 		const orgId = projectStore.activeProject?.organization_id;
@@ -898,71 +1023,43 @@
 		<!-- Tasks section — fills remaining height -->
 		<div class="flex flex-1 min-h-0 flex-col">
 		<!-- Tasks header -->
-		<div class="flex shrink-0 items-center justify-between px-3 py-1.5">
-			<div class="flex items-center gap-2">
+		<ListBoardToolbar
+			viewMode={taskViewMode}
+			onViewChange={setTaskView}
+			groupBy={taskGroupBy}
+			groupOptions={TASK_GROUP_OPTIONS}
+			groupOptionsForBoard={[]}
+			onGroupChange={(g) => setTaskGroupBy(g as TaskGroupBy)}
+			filtersVisible={taskFiltersVisible}
+			activeFiltersCount={taskFilterCount}
+			onFilterToggle={() => (taskFiltersVisible = !taskFiltersVisible)}
+			savedViews={savedViews}
+			activeViewId={activeViewId}
+			onApplyView={applySavedTaskView}
+			onSaveCurrentView={() => { saveModalOpen = true; saveViewName = ''; }}
+			onRenameView={renameSavedTaskView}
+			onDeleteView={deleteSavedTaskView}
+			onUpdateViewFilters={updateSavedTaskViewFilters}
+			newLabel="Add"
+			onNew={() => (createModalOpen = true)}
+			bordered={false}
+		>
+			{#snippet title()}
 				<h2 class="text-xs font-medium tracking-[0.08em] text-muted/50 uppercase">
-					Tasks
-					{#if taskStore.count > 0}
-						<span class="ml-1 text-muted">({taskStore.count})</span>
-					{/if}
+					Tasks{#if taskStore.count > 0}<span class="ml-1 text-muted">({taskStore.count})</span>{/if}
 				</h2>
-
-				<!-- View toggle -->
-				<div class="flex items-center gap-0.5">
+			{/snippet}
+			{#snippet newButton()}
+				{#if canCreateTask}
 					<button
-						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {taskViewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
-						onclick={() => setTaskView('list')}
+						class="flex items-center gap-0.5 whitespace-nowrap text-sm leading-none text-muted/50 transition-colors hover:text-accent"
+						onclick={() => (createModalOpen = true)}
 					>
-						<LayoutList size={12} /> List
+						<Plus size={12} /> Add
 					</button>
-					<button
-						class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {taskViewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
-						onclick={() => setTaskView('board')}
-					>
-						<Columns3 size={12} /> Board
-					</button>
-				</div>
-
-				<!-- Group-by (list only) -->
-				{#if taskViewMode === 'list'}
-					<div class="h-4 w-px bg-surface-border"></div>
-				<div class="flex items-center gap-0.5">
-						{#each TASK_GROUP_OPTIONS as g (g)}
-							<button
-								class="flex h-7 items-center rounded-sm px-2 text-sm font-medium transition-all duration-150 {taskGroupBy === g ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
-								onclick={() => setTaskGroupBy(g)}
-							>
-								{formatTaskStatus(g)}
-							</button>
-						{/each}
-					</div>
 				{/if}
-
-				<!-- Filter toggle -->
-				<div class="relative shrink-0">
-					<button
-						class="flex h-7 w-7 items-center justify-center rounded-sm text-muted/40 transition-all duration-150 hover:bg-surface-hover/40 {taskFiltersVisible ? 'text-accent' : 'hover:text-sidebar-text'}"
-						onclick={() => (taskFiltersVisible = !taskFiltersVisible)}
-					>
-						<ListFilter size={13} />
-					</button>
-					{#if taskFilterCount > 0}
-						<span class="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-2xs font-semibold leading-none text-white">
-							{taskFilterCount}
-						</span>
-					{/if}
-				</div>
-			</div>
-
-			{#if canCreateTask}
-				<button
-					class="flex items-center gap-0.5 whitespace-nowrap text-sm leading-none text-muted/50 transition-colors hover:text-accent"
-					onclick={() => (createModalOpen = true)}
-				>
-					<Plus size={12} /> Add
-				</button>
-			{/if}
-		</div>
+			{/snippet}
+		</ListBoardToolbar>
 
 		<!-- Task filters -->
 		{#if taskFiltersVisible}
@@ -1097,6 +1194,42 @@
 		onCreated={async (id) => { await taskStore.load(getTaskFilters()); if (taskViewMode === 'board') rebuildTaskBoard(); selectTask(id); }}
 	/>
 {/if}
+
+<!-- ===== SAVE VIEW MODAL ===== -->
+<Modal open={saveModalOpen} onClose={() => (saveModalOpen = false)} maxWidth="max-w-sm">
+	<div class="px-3 py-2.5 border-b border-surface-border">
+		<h2 class="text-md font-semibold text-sidebar-text">Save view</h2>
+	</div>
+	<form onsubmit={(e) => { e.preventDefault(); saveCurrentTaskView(); }} class="p-3 space-y-3">
+		<div>
+			<label for="project-view-name" class="mb-1.5 block text-xs font-medium uppercase tracking-[0.08em] text-muted/50">Name</label>
+			<input
+				id="project-view-name"
+				type="text"
+				bind:value={saveViewName}
+				placeholder="e.g. My open bugs"
+				class="w-full rounded-sm bg-surface-hover/40 px-2.5 py-1.5 text-base text-sidebar-text outline-none transition-all duration-150 placeholder:text-muted/30 focus:bg-surface-hover/60"
+			/>
+			<p class="mt-1.5 text-xs text-muted/40">Saves filters, view mode, and grouping for this project.</p>
+		</div>
+		<div class="flex justify-end gap-2 pt-1">
+			<button
+				type="button"
+				class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
+				onclick={() => (saveModalOpen = false)}
+			>
+				Cancel
+			</button>
+			<button
+				type="submit"
+				disabled={savingView || !saveViewName.trim()}
+				class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
+			>
+				{savingView ? 'Saving…' : 'Save view'}
+			</button>
+		</div>
+	</form>
+</Modal>
 
 <div
 	class="h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-out"

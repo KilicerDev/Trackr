@@ -49,8 +49,8 @@
 		to { opacity: 1; }
 	}
 	@keyframes modal-panel-in {
-		from { opacity: 0; transform: scale(0.97) translateY(6px); }
-		to { opacity: 1; transform: scale(1) translateY(0); }
+		from { opacity: 0; }
+		to { opacity: 1; }
 	}
 	.modal-enter {
 		animation: modal-overlay-in 150ms ease-out;

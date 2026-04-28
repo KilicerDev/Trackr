@@ -7,6 +7,8 @@
 	import { X, Paperclip } from '@lucide/svelte';
 	import { priorityIcons, defaultPriorityIcon } from '$lib/config/priority-icons';
 	import AttachmentUploadZone from './AttachmentUploadZone.svelte';
+	import * as m from '$lib/paraglide/messages';
+	import { tPriority, tCategory } from '$lib/i18n/ticket-labels';
 
 	interface CustomerOption {
 		id: string;
@@ -77,7 +79,7 @@
 		e.preventDefault();
 		if (!canSubmit || !organizationId || submitting) return;
 		submitting = true;
-		const n = notifications.action('Creating ticket');
+		const n = notifications.action(m.client_creating_ticket());
 		try {
 			const ticket = await ticketStore.create({
 				subject: subject.trim(),
@@ -98,11 +100,11 @@
 					}
 				}
 			}
-			n.success('Ticket created');
+			n.success(m.client_ticket_created());
 			onSuccess?.();
 			onClose();
 		} catch (err) {
-			n.error('Failed', err instanceof Error ? err.message : 'Failed to create ticket');
+			n.error(m.client_failed_create_ticket(), err instanceof Error ? err.message : m.client_failed_create_ticket());
 		} finally {
 			submitting = false;
 		}
@@ -126,53 +128,53 @@
 <Modal open={true} onClose={onClose}>
 	<div>
 		<div class="px-3 py-2.5">
-			<h2 class="text-md font-semibold text-sidebar-text">Create support ticket</h2>
+			<h2 class="text-md font-semibold text-sidebar-text">{m.client_create_support_ticket()}</h2>
 		</div>
 		<div class="p-3">
 			{#if organizationId === null}
 				<p class="mb-4 text-base text-sidebar-icon">
-					Select an organization first to create a ticket.
+					{m.client_select_org_first()}
 				</p>
 				<button
 					type="button"
 					class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 					onclick={onClose}
 				>
-					Close
+					{m.client_close()}
 				</button>
 			{:else if !isSelfService && customers.length === 0}
 				<p class="mb-4 text-base text-sidebar-icon">
-					No customers in this organization. Add customers before creating tickets.
+					{m.client_no_customers_in_org()}
 				</p>
 				<button
 					type="button"
 					class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 					onclick={onClose}
 				>
-					Close
+					{m.client_close()}
 				</button>
 			{:else}
 				<form onsubmit={handleSubmit} class="space-y-4">
 					<div>
-						<label for="create-ticket-subject" class={labelClass}>Subject</label>
+						<label for="create-ticket-subject" class={labelClass}>{m.client_subject()}</label>
 						<input
 							id="create-ticket-subject"
 							type="text"
 							required
 							bind:value={subject}
 							class={inputClass}
-							placeholder="Brief description of the issue"
+							placeholder={m.client_subject_placeholder()}
 						/>
 					</div>
 
 					<div>
-						<label for="create-ticket-description" class={labelClass}>Description</label>
+						<label for="create-ticket-description" class={labelClass}>{m.client_description()}</label>
 						<textarea
 							id="create-ticket-description"
 							bind:value={description}
 							rows="3"
 							class="{inputClass} resize-none"
-							placeholder="Optional details"
+							placeholder={m.client_description_placeholder()}
 						></textarea>
 					</div>
 
@@ -215,11 +217,11 @@
 						</div>
 					{/if}
 
-					<!-- Priority / Category / Channel side by side -->
-					<div class="grid grid-cols-3 gap-3">
+					<!-- Priority / Category / Channel side by side (clients can't pick channel — locked to web_form) -->
+					<div class="grid {isSelfService ? 'grid-cols-2' : 'grid-cols-3'} gap-3">
 						<!-- Priority -->
 						<div>
-							<span class={labelClass}>Priority</span>
+							<span class={labelClass}>{m.client_priority()}</span>
 							<div class="relative" data-dropdown>
 								<button
 									type="button"
@@ -230,7 +232,7 @@
 										{#if priority}
 											<SelectedTicketPriorityIcon size={16} class={selectedTicketPriority.className} />
 										{/if}
-										{priority || '—'}
+										{priority ? tPriority(priority) : '—'}
 									</span>
 									<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'priority' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -247,7 +249,7 @@
 												onmousedown={(e) => { e.preventDefault(); priority = p; openDropdown = null; }}
 											>
 												<span class="mr-2"><PriorityIcon size={16} class={info.className} /></span>
-												{p}
+												{tPriority(p)}
 											</button>
 										{/each}
 									</div>
@@ -257,14 +259,14 @@
 
 						<!-- Category -->
 						<div>
-							<span class={labelClass}>Category</span>
+							<span class={labelClass}>{m.client_category()}</span>
 							<div class="relative" data-dropdown>
 								<button
 									type="button"
 									class={dropdownBtnClass}
 									onclick={() => toggleDropdown('category')}
 								>
-									<span class="truncate">{category ? displayName(category) : '—'}</span>
+									<span class="truncate">{category ? tCategory(category) : '—'}</span>
 									<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'category' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 									</svg>
@@ -276,7 +278,7 @@
 											class="{dropdownItemBase} {!category ? 'font-medium text-accent' : 'text-sidebar-text'}"
 											onmousedown={(e) => { e.preventDefault(); category = ''; openDropdown = null; }}
 										>
-											None
+											{m.client_category_none()}
 										</button>
 										{#each TICKET_CATEGORIES as c (c)}
 											<button
@@ -284,7 +286,7 @@
 												class="{dropdownItemBase} {category === c ? 'font-medium text-accent' : 'text-sidebar-text'}"
 												onmousedown={(e) => { e.preventDefault(); category = c; openDropdown = null; }}
 											>
-												{displayName(c)}
+												{tCategory(c)}
 											</button>
 										{/each}
 									</div>
@@ -292,39 +294,41 @@
 							</div>
 						</div>
 
-						<!-- Channel -->
-						<div>
-							<span class={labelClass}>Channel</span>
-							<div class="relative" data-dropdown>
-								<button
-									type="button"
-									class={dropdownBtnClass}
-									onclick={() => toggleDropdown('channel')}
-								>
-									<span class="truncate">{channel ? displayName(channel) : '—'}</span>
-									<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'channel' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-									</svg>
-								</button>
-								{#if openDropdown === 'channel'}
-									<div class={dropdownPanelUpClass}>
-										{#each TICKET_CHANNELS as ch (ch)}
-											<button
-												type="button"
-												class="{dropdownItemBase} {channel === ch ? 'font-medium text-accent' : 'text-sidebar-text'}"
-												onmousedown={(e) => { e.preventDefault(); channel = ch; openDropdown = null; }}
-											>
-												{displayName(ch)}
-											</button>
-										{/each}
-									</div>
-								{/if}
+						<!-- Channel — staff only; clients always submit as web_form -->
+						{#if !isSelfService}
+							<div>
+								<span class={labelClass}>Channel</span>
+								<div class="relative" data-dropdown>
+									<button
+										type="button"
+										class={dropdownBtnClass}
+										onclick={() => toggleDropdown('channel')}
+									>
+										<span class="truncate">{channel ? displayName(channel) : '—'}</span>
+										<svg class="h-4 w-4 shrink-0 text-sidebar-icon transition-transform {openDropdown === 'channel' ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+										</svg>
+									</button>
+									{#if openDropdown === 'channel'}
+										<div class={dropdownPanelUpClass}>
+											{#each TICKET_CHANNELS as ch (ch)}
+												<button
+													type="button"
+													class="{dropdownItemBase} {channel === ch ? 'font-medium text-accent' : 'text-sidebar-text'}"
+													onmousedown={(e) => { e.preventDefault(); channel = ch; openDropdown = null; }}
+												>
+													{displayName(ch)}
+												</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
 							</div>
-						</div>
+						{/if}
 					</div>
 
 					<div>
-						<span class={labelClass}>Attachments</span>
+						<span class={labelClass}>{m.client_attachments()}</span>
 						<AttachmentUploadZone
 							onFilesSelected={(files) => { pendingFiles = [...pendingFiles, ...files]; }}
 							disabled={submitting}
@@ -354,14 +358,14 @@
 							class="flex h-7 items-center rounded-sm bg-surface-hover/40 px-2.5 text-sm font-medium text-sidebar-text transition-all duration-150 hover:bg-surface-hover/60"
 							onclick={onClose}
 						>
-							Cancel
+							{m.client_cancel()}
 						</button>
 						<button
 							type="submit"
 							disabled={!canSubmit || submitting}
 							class="flex h-7 items-center gap-1 rounded-sm bg-accent px-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-accent/90 disabled:opacity-30"
 						>
-							{submitting ? 'Creating…' : 'Create ticket'}
+							{submitting ? m.client_creating() : m.client_create_ticket()}
 						</button>
 					</div>
 				</form>

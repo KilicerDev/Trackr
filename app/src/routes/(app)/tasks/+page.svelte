@@ -22,24 +22,13 @@
 	import CreateTaskModal from '$lib/components/CreateTaskModal.svelte';
 	import FilterDropdown from '$lib/components/FilterDropdown.svelte';
 	import TaskBoardCard from '$lib/components/TaskBoardCard.svelte';
+	import ListBoardToolbar from '$lib/components/ListBoardToolbar.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
-		ListFilter,
-		LayoutList,
-		Columns3,
 		ChevronLeft,
 		ChevronRight,
 		ChevronDown,
-		FolderOpen,
-		Folder,
-		Search,
-		X,
-		Plus,
-		Bookmark,
-		Pencil,
-		Trash2,
-		Check,
-		EllipsisVertical
+		Plus
 	} from '@lucide/svelte';
 
 	const TASK_STATUSES = ['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done', 'cancelled'] as const;
@@ -91,14 +80,15 @@
 	function saveFiltersToStorage() {
 		if (!browser) return;
 		const empty = !statusSelected.length && !prioritySelected.length
-			&& !typeSelected.length && !projectSelected.length && !tagSelected.length && !searchQuery;
+			&& !typeSelected.length && !projectSelected.length && !tagSelected.length
+			&& !assigneeSelected.length && !searchQuery;
 		if (empty) {
 			localStorage.removeItem('tasks-filters');
 		} else {
 			localStorage.setItem('tasks-filters', JSON.stringify({
 				statusOp, statusSelected, priorityOp, prioritySelected,
 				typeOp, typeSelected, projectOp, projectSelected,
-				tagOp, tagSelected, searchQuery
+				tagOp, tagSelected, assigneeOp, assigneeSelected, searchQuery
 			}));
 		}
 	}
@@ -111,7 +101,7 @@
 			const parsed = JSON.parse(raw);
 			const hasValues = parsed.statusSelected?.length || parsed.prioritySelected?.length
 				|| parsed.typeSelected?.length || parsed.projectSelected?.length
-				|| parsed.tagSelected?.length || parsed.searchQuery;
+				|| parsed.tagSelected?.length || parsed.assigneeSelected?.length || parsed.searchQuery;
 			return hasValues ? parsed : null;
 		} catch { return null; }
 	}
@@ -147,31 +137,47 @@
 	let tagOp = $state<'is' | 'is_not'>(storedFilters?.tagOp ?? 'is');
 	let tagSelected = $state<string[]>(storedFilters?.tagSelected ?? []);
 
+	// Assignee filter (client-side only since assignments are in a junction table)
+	let assigneeOp = $state<'is' | 'is_not'>(storedFilters?.assigneeOp ?? 'is');
+	let assigneeSelected = $state<string[]>(storedFilters?.assigneeSelected ?? []);
+
 	let filtersVisible = $state(false);
 	let createModalOpen = $state(false);
 	let createPrefill = $state<{ projectId?: string; status?: string }>({});
 
 	// ---------- saved views ----------
 	let savedViews = $state<SavedView[]>([]);
-	let activeViewId = $state<string | null>(null);
-	let viewsDropdownOpen = $state(false);
+	let activeViewId = $state<string | null>(browser ? localStorage.getItem('tasks-active-view') : null);
+	$effect(() => {
+		if (!browser) return;
+		if (activeViewId) localStorage.setItem('tasks-active-view', activeViewId);
+		else localStorage.removeItem('tasks-active-view');
+	});
 	let saveModalOpen = $state(false);
 	let saveViewName = $state('');
 	let savingView = $state(false);
-	let editingViewId = $state<string | null>(null);
-	let editingViewName = $state('');
-	let viewSubMenuId = $state<string | null>(null);
 	let selectedTaskId = $state<string | null>(page.url.searchParams.get('task') ?? null);
 	let currentPage = $state(1);
 	const perPage = 50;
 	let initialLoading = $state(true);
-	let collapsedGroups = $state<Set<string>>(new Set());
+	function loadCollapsed(): Record<string, string[]> {
+		if (!browser) return {};
+		try {
+			const raw = localStorage.getItem('tasks-collapsed');
+			return raw ? JSON.parse(raw) : {};
+		} catch {
+			return {};
+		}
+	}
+	let collapsedByGroup = $state<Record<string, string[]>>(loadCollapsed());
+	const collapsedSet = $derived(new Set(collapsedByGroup[groupBy] ?? []));
 
-	function toggleGroupCollapse(key: string) {
-		const next = new Set(collapsedGroups);
+	function toggleCollapsed(key: string) {
+		const next = new Set(collapsedByGroup[groupBy] ?? []);
 		if (next.has(key)) next.delete(key);
 		else next.add(key);
-		collapsedGroups = next;
+		collapsedByGroup = { ...collapsedByGroup, [groupBy]: Array.from(next) };
+		if (browser) localStorage.setItem('tasks-collapsed', JSON.stringify(collapsedByGroup));
 	}
 
 	// ---------- derived ----------
@@ -180,11 +186,11 @@
 	const orgNameMap = $derived(Object.fromEntries(orgStore.all.map((o) => [o.id, o.name])));
 
 	const hasActiveFilters = $derived(
-		!!(statusSelected.length || prioritySelected.length || typeSelected.length || projectSelected.length || tagSelected.length || searchQuery)
+		!!(statusSelected.length || prioritySelected.length || typeSelected.length || projectSelected.length || tagSelected.length || assigneeSelected.length || searchQuery)
 	);
 
 	const activeFiltersCount = $derived(
-		[statusSelected.length, prioritySelected.length, typeSelected.length, projectSelected.length, tagSelected.length, searchQuery].filter(Boolean).length
+		[statusSelected.length, prioritySelected.length, typeSelected.length, projectSelected.length, tagSelected.length, assigneeSelected.length, searchQuery].filter(Boolean).length
 	);
 
 	// Tag options derived from loaded tasks
@@ -202,6 +208,25 @@
 		return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
 	});
 
+	type AssignmentRow = { user_id: string; role?: string; user?: { id: string; full_name?: string | null; username?: string | null; avatar_url?: string | null } };
+
+	function getTaskAssignments(task: Task): AssignmentRow[] {
+		return ((task as Record<string, unknown>).assignments as AssignmentRow[] | undefined) ?? [];
+	}
+
+	// Assignee options derived from loaded tasks
+	const assigneeOptions = $derived.by(() => {
+		const seen = new Map<string, { value: string; label: string }>();
+		for (const t of taskStore.items) {
+			for (const a of getTaskAssignments(t)) {
+				if (!a.user_id || seen.has(a.user_id)) continue;
+				const label = a.user?.full_name || a.user?.username || 'Unknown';
+				seen.set(a.user_id, { value: a.user_id, label });
+			}
+		}
+		return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
+	});
+
 	// Client-side tag filter helper
 	function passesTagFilter(task: Task): boolean {
 		if (tagSelected.length === 0) return true;
@@ -211,12 +236,26 @@
 		return !tagSelected.some((id) => taskTagIds.includes(id));
 	}
 
+	// Client-side assignee filter helper
+	function passesAssigneeFilter(task: Task): boolean {
+		if (assigneeSelected.length === 0) return true;
+		const userIds = getTaskAssignments(task).map((a) => a.user_id).filter(Boolean);
+		if (assigneeOp === 'is') return assigneeSelected.some((id) => userIds.includes(id));
+		return !assigneeSelected.some((id) => userIds.includes(id));
+	}
+
+	function passesClientFilters(task: Task): boolean {
+		return passesTagFilter(task) && passesAssigneeFilter(task);
+	}
+
+	const hasClientFilters = $derived(tagSelected.length > 0 || assigneeSelected.length > 0);
+
 	// List view grouping
 	type ListGroup = { key: string; label: string; color?: string; tasks: Task[] };
 
 	const listGroups = $derived.by((): ListGroup[] | null => {
 		if (groupBy === 'none') return null;
-		const items = tagSelected.length > 0 ? taskStore.items.filter(passesTagFilter) : taskStore.items;
+		const items = hasClientFilters ? taskStore.items.filter(passesClientFilters) : taskStore.items;
 		const map = new Map<string, ListGroup>();
 		const order: string[] = [];
 
@@ -288,7 +327,7 @@
 	}
 
 	function rebuildBoard() {
-		const tasks = tagSelected.length > 0 ? taskStore.items.filter(passesTagFilter) : taskStore.items;
+		const tasks = hasClientFilters ? taskStore.items.filter(passesClientFilters) : taskStore.items;
 		boardColumns = groupBy === 'status' ? buildStatusColumns(tasks) : buildProjectColumns(tasks);
 	}
 
@@ -351,6 +390,7 @@
 		typeOp = 'is'; typeSelected = [];
 		projectOp = 'is'; projectSelected = [];
 		tagOp = 'is'; tagSelected = [];
+		assigneeOp = 'is'; assigneeSelected = [];
 		searchQuery = '';
 		activeViewId = null;
 		applyFilters();
@@ -359,7 +399,13 @@
 	// ---------- saved views logic ----------
 
 	async function loadSavedViews() {
-		try { savedViews = await api.views.getAll(); } catch { /* ignore */ }
+		try {
+			savedViews = await api.views.getAll('tasks', null);
+			// Drop stale activeViewId if the view no longer exists
+			if (activeViewId && !savedViews.some((v) => v.id === activeViewId)) {
+				activeViewId = null;
+			}
+		} catch { /* ignore */ }
 	}
 
 	function getCurrentViewState() {
@@ -369,6 +415,7 @@
 			typeOp, typeSelected,
 			projectOp, projectSelected,
 			tagOp, tagSelected,
+			assigneeOp, assigneeSelected,
 			searchQuery
 		};
 	}
@@ -382,7 +429,9 @@
 				name,
 				filters: getCurrentViewState(),
 				view_mode: viewMode,
-				group_by: groupBy
+				group_by: groupBy,
+				scope: 'tasks',
+				project_id: null
 			});
 			savedViews = [...savedViews, view];
 			activeViewId = view.id;
@@ -407,27 +456,15 @@
 		projectSelected = (f.projectSelected as string[]) ?? [];
 		tagOp = (f.tagOp as 'is' | 'is_not') ?? 'is';
 		tagSelected = (f.tagSelected as string[]) ?? [];
+		assigneeOp = (f.assigneeOp as 'is' | 'is_not') ?? 'is';
+		assigneeSelected = (f.assigneeSelected as string[]) ?? [];
 		searchQuery = (f.searchQuery as string) ?? '';
 
 		if (view.view_mode === 'board' || view.view_mode === 'list') viewMode = view.view_mode as ViewMode;
 		if (['none', 'status', 'project'].includes(view.group_by)) groupBy = view.group_by as GroupBy;
 
 		activeViewId = view.id;
-		viewsDropdownOpen = false;
-		viewSubMenuId = null;
 		await applyFilters(true);
-	}
-
-	async function renameView(id: string) {
-		const name = editingViewName.trim();
-		if (!name) return;
-		try {
-			const updated = await api.views.update(id, { name });
-			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
-		} catch (e) {
-			console.error('Failed to rename view:', e);
-		}
-		editingViewId = null;
 	}
 
 	async function deleteView(id: string) {
@@ -438,7 +475,6 @@
 		} catch (e) {
 			console.error('Failed to delete view:', e);
 		}
-		viewSubMenuId = null;
 	}
 
 	async function updateViewFilters(id: string) {
@@ -452,7 +488,15 @@
 		} catch (e) {
 			console.error('Failed to update view:', e);
 		}
-		viewSubMenuId = null;
+	}
+
+	async function renameSavedView(id: string, name: string) {
+		try {
+			const updated = await api.views.update(id, { name });
+			savedViews = savedViews.map((v) => (v.id === id ? updated : v));
+		} catch (e) {
+			console.error('Failed to rename view:', e);
+		}
 	}
 
 	async function setView(v: ViewMode) {
@@ -575,21 +619,6 @@
 
 	// ---------- lifecycle ----------
 
-	// Close views dropdown on outside click
-	$effect(() => {
-		if (!viewsDropdownOpen) return;
-		function onMouseDown(e: MouseEvent) {
-			const target = e.target as HTMLElement;
-			if (!target.closest('[data-views-dropdown]')) {
-				viewsDropdownOpen = false;
-				viewSubMenuId = null;
-				editingViewId = null;
-			}
-		}
-		document.addEventListener('mousedown', onMouseDown);
-		return () => document.removeEventListener('mousedown', onMouseDown);
-	});
-
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
 	function onSearchInput(e: Event) {
@@ -615,178 +644,29 @@
 <div class="flex h-full overflow-hidden">
 <div class="flex min-w-0 flex-1 flex-col {viewMode === 'board' ? 'overflow-hidden' : 'overflow-y-auto'}">
 	<!-- ===== HEADER ===== -->
-	<div class="flex shrink-0 items-center justify-between border-b border-surface-border px-3 py-1.5">
-		<div class="flex items-center gap-1">
-			<!-- View toggle -->
-			<div class="flex items-center gap-0.5">
-				<button
-					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {viewMode === 'list' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
-					onclick={() => setView('list')}
-				>
-					<LayoutList size={12} /> List
-				</button>
-				<button
-					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm leading-none font-medium transition-all duration-150 {viewMode === 'board' ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
-					onclick={() => setView('board')}
-				>
-					<Columns3 size={12} /> Board
-				</button>
-			</div>
-
-			<span class="mx-1 h-4 w-px bg-surface-border"></span>
-
-			<!-- Group-by -->
-			<div class="flex items-center gap-0.5">
-				{#each GROUP_OPTIONS as g (g)}
-					{#if !(viewMode === 'board' && g === 'none')}
-						<button
-							class="flex h-7 items-center rounded-sm px-2 text-sm font-medium transition-all duration-150 {groupBy === g ? 'text-accent' : 'text-muted hover:text-sidebar-text'}"
-							onclick={() => setGroupBy(g)}
-						>
-							{formatStatus(g)}
-						</button>
-					{/if}
-				{/each}
-			</div>
-
-			<span class="mx-1 h-4 w-px bg-surface-border"></span>
-
-			<!-- Filter toggle -->
-			<div class="relative shrink-0">
-				<button
-					class="flex h-7 w-7 items-center justify-center rounded-sm transition-all duration-150 hover:bg-surface-hover/50 {filtersVisible ? 'text-accent' : 'text-muted'}"
-					onclick={() => (filtersVisible = !filtersVisible)}
-					title={filtersVisible ? 'Hide filters' : 'Show filters'}
-				>
-					<ListFilter size={14} />
-				</button>
-				{#if activeFiltersCount > 0}
-					<span
-						class="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-0.5 text-3xs leading-none font-semibold text-white"
-					>
-						{activeFiltersCount > 9 ? '9+' : activeFiltersCount}
-					</span>
-				{/if}
-			</div>
-
-			<!-- Views dropdown -->
-			<div class="relative shrink-0" data-views-dropdown>
-				<button
-					class="flex h-7 items-center gap-1 rounded-sm px-2 text-sm font-medium transition-all duration-150 hover:bg-surface-hover/50 {viewsDropdownOpen || activeViewId ? 'text-accent' : 'text-muted'}"
-					onclick={() => { viewsDropdownOpen = !viewsDropdownOpen; viewSubMenuId = null; editingViewId = null; }}
-					title="Saved views"
-				>
-					<Bookmark size={14} />
-					{#if activeViewId}
-						<span class="max-w-24 truncate">{savedViews.find((v) => v.id === activeViewId)?.name ?? 'View'}</span>
-					{/if}
-				</button>
-				{#if viewsDropdownOpen}
-					<div class="absolute left-0 top-full z-20 mt-1.5 w-52 origin-top-left animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
-						<!-- Save current view -->
-						<button
-							class="flex w-full items-center gap-2 border-b border-surface-border/40 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-							onclick={() => { saveModalOpen = true; saveViewName = ''; viewsDropdownOpen = false; }}
-						>
-							<Plus size={11} class="text-muted/40" />
-							Save current view
-						</button>
-
-						{#if savedViews.length === 0}
-							<p class="px-3 py-3 text-center text-xs text-muted/40">No saved views yet.</p>
-						{:else}
-							{#each savedViews as view (view.id)}
-								<div class="group flex items-center justify-between transition-colors hover:bg-surface-hover/60">
-									{#if editingViewId === view.id}
-										<form class="flex min-w-0 flex-1 items-center gap-1 px-2.5 py-1" onsubmit={(e) => { e.preventDefault(); renameView(view.id); }}>
-											<input
-												type="text"
-												bind:value={editingViewName}
-												class="h-6 min-w-0 flex-1 rounded-sm border border-accent/40 bg-transparent px-2 text-sm text-sidebar-text outline-none focus:border-accent"
-												onkeydown={(e) => { if (e.key === 'Escape') editingViewId = null; }}
-											/>
-											<button type="submit" class="shrink-0 text-accent hover:text-accent/80"><Check size={11} /></button>
-											<button type="button" class="shrink-0 text-muted hover:text-sidebar-text" onclick={() => (editingViewId = null)}><X size={11} /></button>
-										</form>
-									{:else}
-										<button
-											class="flex flex-1 items-center gap-2 px-2.5 py-1.5 text-left text-sm transition-colors
-												{activeViewId === view.id ? 'text-accent font-medium' : 'text-muted hover:text-sidebar-text'}"
-											onclick={() => applySavedView(view)}
-										>
-											{#if activeViewId === view.id}<Check size={11} class="shrink-0" />{/if}
-											<span class="truncate">{view.name}</span>
-										</button>
-										<div class="relative">
-											<button
-												class="shrink-0 px-1.5 py-1.5 text-muted/30 opacity-0 transition-opacity hover:text-sidebar-text group-hover:opacity-100
-													{viewSubMenuId === view.id ? '!opacity-100' : ''}"
-												onclick={(e) => { e.stopPropagation(); viewSubMenuId = viewSubMenuId === view.id ? null : view.id; }}
-											>
-												<EllipsisVertical size={12} />
-											</button>
-											{#if viewSubMenuId === view.id}
-												<div class="absolute right-0 top-full z-30 mt-1 w-36 origin-top-right animate-dropdown-in rounded-md border border-surface-border bg-surface py-1 shadow-lg shadow-black/15 ring-1 ring-white/[0.07]">
-													<button
-														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-														onclick={() => { editingViewId = view.id; editingViewName = view.name; viewSubMenuId = null; }}
-													>
-														<Pencil size={11} /> Rename
-													</button>
-													<button
-														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-muted transition-colors hover:bg-surface-hover/60 hover:text-sidebar-text"
-														onclick={() => updateViewFilters(view.id)}
-													>
-														<Bookmark size={11} /> Update filters
-													</button>
-													<button
-														class="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm text-red-400 transition-colors hover:bg-surface-hover/60"
-														onclick={() => deleteView(view.id)}
-													>
-														<Trash2 size={11} /> Delete
-													</button>
-												</div>
-											{/if}
-										</div>
-									{/if}
-								</div>
-							{/each}
-						{/if}
-					</div>
-				{/if}
-			</div>
-		</div>
-
-		<div class="flex items-center gap-1.5">
-			<!-- Search -->
-			<div class="relative flex items-center">
-				<Search size={12} class="absolute left-2 text-muted pointer-events-none" />
-				<input
-					type="text"
-					placeholder="Search..."
-					value={searchQuery}
-					oninput={onSearchInput}
-					class="h-7 w-40 rounded-sm border border-transparent bg-surface-hover/50 pl-7 pr-6 text-sm text-sidebar-text transition-all duration-150 placeholder:text-muted/50 focus:w-56 focus:border-surface-border focus:bg-surface focus:outline-none"
-				/>
-				{#if searchQuery}
-					<button
-						class="absolute right-2 text-sidebar-icon hover:text-sidebar-text"
-						onclick={() => { searchQuery = ''; applyFilters(); }}
-					>
-						<X size={12} />
-					</button>
-				{/if}
-			</div>
-
-			<button
-				class="flex h-7 items-center justify-center gap-1 rounded-sm bg-accent px-2.5 text-sm leading-none font-medium text-white transition-all duration-150 hover:bg-accent/90"
-				onclick={() => { createPrefill = {}; createModalOpen = true; }}
-			>
-				<Plus size={14} class="shrink-0" />
-				New
-			</button>
-		</div>
-	</div>
+	<ListBoardToolbar
+		viewMode={viewMode}
+		onViewChange={setView}
+		groupBy={groupBy}
+		groupOptions={GROUP_OPTIONS}
+		groupOptionsForBoard={GROUP_OPTIONS.filter((g) => g !== 'none')}
+		onGroupChange={(g) => setGroupBy(g as GroupBy)}
+		filtersVisible={filtersVisible}
+		activeFiltersCount={activeFiltersCount}
+		onFilterToggle={() => (filtersVisible = !filtersVisible)}
+		savedViews={savedViews}
+		activeViewId={activeViewId}
+		onApplyView={applySavedView}
+		onSaveCurrentView={() => { saveModalOpen = true; saveViewName = ''; }}
+		onRenameView={renameSavedView}
+		onDeleteView={deleteView}
+		onUpdateViewFilters={updateViewFilters}
+		searchQuery={searchQuery}
+		onSearchInput={onSearchInput}
+		onSearchClear={() => { searchQuery = ''; applyFilters(); }}
+		newLabel="New"
+		onNew={() => { createPrefill = {}; createModalOpen = true; }}
+	/>
 
 	<!-- ===== FILTERS ===== -->
 	{#if filtersVisible}
@@ -835,6 +715,16 @@
 					onchange={(op, sel) => { tagOp = op; tagSelected = sel; if (viewMode === 'board') rebuildBoard(); syncUrl(); }}
 				/>
 				{/if}
+				{#if assigneeOptions.length > 0}
+				<FilterDropdown
+					label="Assignee"
+					searchable
+					options={assigneeOptions}
+					operator={assigneeOp}
+					selected={assigneeSelected}
+					onchange={(op, sel) => { assigneeOp = op; assigneeSelected = sel; if (viewMode === 'board') rebuildBoard(); syncUrl(); }}
+				/>
+				{/if}
 			</div>
 			{#if hasActiveFilters}
 				<button
@@ -871,11 +761,11 @@
 			<!-- Grouped list -->
 			<div class="space-y-1 p-3">
 				{#each listGroups as group (group.key)}
-					{@const isCollapsed = collapsedGroups.has(group.key)}
+					{@const isCollapsed = collapsedSet.has(group.key)}
 					<!-- Group header — plain, no background -->
 					<button
 						class="flex w-full items-center gap-1.5 px-1 py-1 text-left"
-						onclick={() => toggleGroupCollapse(group.key)}
+						onclick={() => toggleCollapsed(group.key)}
 					>
 						<ChevronDown size={10} class="shrink-0 text-muted/30 transition-transform duration-150 {isCollapsed ? '-rotate-90' : ''}" />
 						{#if group.color}
@@ -904,7 +794,7 @@
 		{:else}
 			<!-- Flat list -->
 			<div>
-				{#each (tagSelected.length > 0 ? taskStore.items.filter(passesTagFilter) : taskStore.items) as task (task.id)}
+				{#each (hasClientFilters ? taskStore.items.filter(passesClientFilters) : taskStore.items) as task (task.id)}
 					<TaskRow
 						{task}
 						selected={task.id === selectedTaskId}
@@ -943,47 +833,68 @@
 		<!-- BOARD VIEW -->
 		<div class="flex min-h-0 flex-1 gap-0 overflow-x-auto">
 			{#each boardColumns as col, colIndex (col.key)}
-				<div class="flex w-64 shrink-0 flex-col border-r border-surface-border/50 max-h-full last:border-r-0">
-					<!-- Column header -->
-					<div class="flex items-center gap-2 px-3 py-2">
-						{#if groupBy === 'project' && col.key !== '__none__'}
-							<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {col.color}"></span>
-						{/if}
-						<span class="text-sm font-medium text-muted truncate">{col.label}</span>
-						<span class="text-xs text-muted/30">{col.items.length}</span>
-					</div>
-
-					<!-- Cards container -->
-					<div
-						class="flex-1 overflow-y-auto px-2 pb-2 min-h-[60px] scrollbar-none"
-						style="-ms-overflow-style: none; scrollbar-width: none;"
-						use:dndzone={{ items: col.items, flipDurationMs: 200, dropTargetStyle: { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' } }}
-						onconsider={(e) => handleConsider(colIndex, e)}
-						onfinalize={(e) => handleFinalize(colIndex, col.key, e)}
-					>
-						{#each col.items as task (task.id)}
-							<TaskBoardCard
-								{task}
-								selected={selectedTaskId === task.id}
-								showProjectIdentifier={groupBy === 'status'}
-								showStatus={groupBy === 'project'}
-								onclick={() => selectTask(task.id)}
-							/>
-						{/each}
-
-						<!-- Create task inline -->
+				{@const collapsed = collapsedSet.has(col.key)}
+				<div class="flex {collapsed ? 'w-9' : 'w-64'} shrink-0 flex-col border-r border-surface-border/50 max-h-full last:border-r-0 transition-[width] duration-150">
+					<!-- Column header (click to collapse/expand) -->
+					{#if collapsed}
 						<button
-							class="mt-0.5 flex w-full items-center justify-center gap-1 rounded py-1.5 text-sm text-muted/30 transition-colors hover:bg-surface-hover/30 hover:text-muted"
-							onclick={() => {
-								createPrefill = groupBy === 'status'
-									? { status: col.key }
-									: { projectId: col.key !== '__none__' ? col.key : undefined };
-								createModalOpen = true;
-							}}
+							type="button"
+							class="flex flex-col items-center gap-2 px-2 py-2 text-left hover:bg-surface-hover/30 transition-colors cursor-pointer"
+							title="Expand {col.label}"
+							onclick={() => toggleCollapsed(col.key)}
 						>
-							<Plus size={11} />
+							{#if groupBy === 'project' && col.key !== '__none__'}
+								<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {col.color}"></span>
+							{/if}
+							<span class="text-sm font-medium text-muted truncate [writing-mode:vertical-rl]">{col.label}</span>
+							<span class="text-xs text-muted/30">{col.items.length}</span>
 						</button>
-					</div>
+					{:else}
+						<button
+							type="button"
+							class="flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-hover/30 transition-colors cursor-pointer"
+							title="Collapse {col.label}"
+							onclick={() => toggleCollapsed(col.key)}
+						>
+							{#if groupBy === 'project' && col.key !== '__none__'}
+								<span class="h-1.5 w-1.5 shrink-0 rounded-full" style="background-color: {col.color}"></span>
+							{/if}
+							<span class="text-sm font-medium text-muted truncate">{col.label}</span>
+							<span class="text-xs text-muted/30">{col.items.length}</span>
+						</button>
+
+						<!-- Cards container -->
+						<div
+							class="flex-1 overflow-y-auto px-2 pb-2 min-h-[60px] scrollbar-none"
+							style="-ms-overflow-style: none; scrollbar-width: none;"
+							use:dndzone={{ items: col.items, flipDurationMs: 200, dropTargetStyle: { outline: '2px solid var(--color-accent)', outlineOffset: '-2px' } }}
+							onconsider={(e) => handleConsider(colIndex, e)}
+							onfinalize={(e) => handleFinalize(colIndex, col.key, e)}
+						>
+							{#each col.items as task (task.id)}
+								<TaskBoardCard
+									{task}
+									selected={selectedTaskId === task.id}
+									showProjectIdentifier={groupBy === 'status'}
+									showStatus={groupBy === 'project'}
+									onclick={() => selectTask(task.id)}
+								/>
+							{/each}
+
+							<!-- Create task inline -->
+							<button
+								class="mt-0.5 flex w-full items-center justify-center gap-1 rounded py-1.5 text-sm text-muted/30 transition-colors hover:bg-surface-hover/30 hover:text-muted"
+								onclick={() => {
+									createPrefill = groupBy === 'status'
+										? { status: col.key }
+										: { projectId: col.key !== '__none__' ? col.key : undefined };
+									createModalOpen = true;
+								}}
+							>
+								<Plus size={11} />
+							</button>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>

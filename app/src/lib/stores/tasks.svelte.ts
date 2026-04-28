@@ -127,13 +127,17 @@ class TaskStore {
   }
 
   async update(taskId: string, values: Record<string, unknown>) {
+    // Optimistic local cache update; if the task is filtered out of the
+    // current list (e.g. its status no longer matches an active filter)
+    // we still need to call the server, so don't early-return on miss.
     const prev = this.items.find((t) => t.id === taskId);
-    if (!prev) return;
-    const snapshot = { ...prev };
+    const snapshot = prev ? { ...prev } : null;
 
-    this.items = this.items.map((t) =>
-      t.id === taskId ? { ...t, ...values } : t
-    );
+    if (prev) {
+      this.items = this.items.map((t) =>
+        t.id === taskId ? { ...t, ...values } : t
+      );
+    }
     if (this.activeTask?.id === taskId) {
       this.activeTask = { ...this.activeTask, ...values };
     }
@@ -145,13 +149,16 @@ class TaskStore {
         this.activeTask = updated;
       }
       return updated;
-    } catch {
-      this.items = this.items.map((t) =>
-        t.id === taskId ? snapshot : t
-      );
-      if (this.activeTask?.id === taskId) {
-        this.activeTask = snapshot;
+    } catch (e) {
+      if (snapshot) {
+        this.items = this.items.map((t) =>
+          t.id === taskId ? snapshot : t
+        );
+        if (this.activeTask?.id === taskId) {
+          this.activeTask = snapshot;
+        }
       }
+      throw e;
     }
   }
 

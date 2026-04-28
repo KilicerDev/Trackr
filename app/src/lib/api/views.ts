@@ -1,5 +1,7 @@
 import { getClient } from "./client";
 
+export type ViewScope = "tasks" | "tickets";
+
 export type SavedView = {
   id: string;
   user_id: string;
@@ -7,6 +9,8 @@ export type SavedView = {
   filters: Record<string, unknown>;
   view_mode: string;
   group_by: string;
+  scope: ViewScope;
+  project_id: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -17,14 +21,31 @@ export type CreateViewInput = {
   filters: Record<string, unknown>;
   view_mode: string;
   group_by: string;
+  scope: ViewScope;
+  project_id?: string | null;
 };
 
-export type UpdateViewInput = Partial<CreateViewInput> & { sort_order?: number };
+export type UpdateViewInput = Partial<Omit<CreateViewInput, "scope">> & {
+  sort_order?: number;
+};
 
-async function getAll(): Promise<SavedView[]> {
-  const { data, error } = await getClient()
+/**
+ * Pass `projectId` to filter to a single project's views.
+ * Pass `null` to fetch only un-scoped views (the default for /tasks).
+ * Omit it to fetch views regardless of project (e.g. /tickets).
+ */
+async function getAll(
+  scope: ViewScope,
+  projectId?: string | null
+): Promise<SavedView[]> {
+  let q = getClient()
     .from("saved_views")
     .select("*")
+    .eq("scope", scope);
+  if (projectId === null) q = q.is("project_id", null);
+  else if (projectId !== undefined) q = q.eq("project_id", projectId);
+
+  const { data, error } = await q
     .order("sort_order")
     .order("created_at");
   if (error) throw new Error(error.message);
