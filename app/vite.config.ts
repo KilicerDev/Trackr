@@ -17,7 +17,11 @@ export default defineConfig({
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
-			strategy: ['url', 'cookie', 'baseLocale']
+			// `cookie` first: the user's saved language (cookie, hydrated from
+			// users.locale by hooks.server.ts) wins over what the URL implies.
+			// URL stays in the chain so direct links like /de/foo still work and
+			// paraglide will redirect to the localized URL when they disagree.
+			strategy: ['cookie', 'url', 'baseLocale']
 		})
 	]
 });

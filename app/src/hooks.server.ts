@@ -1,6 +1,6 @@
 import { sequence } from "@sveltejs/kit/hooks";
 import { redirect, type Handle } from "@sveltejs/kit";
-import { getTextDirection } from "$lib/paraglide/runtime";
+import { getTextDirection, locales } from "$lib/paraglide/runtime";
 import { paraglideMiddleware } from "$lib/paraglide/server";
 import { createServerClient } from "@supabase/ssr";
 import {
@@ -74,7 +74,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
     const adminClient = getAdminClient();
     const { data: dbUser } = await adminClient
       .from("users")
-      .select("is_active, last_seen_at")
+      .select("is_active, last_seen_at, locale")
       .eq("id", user.id)
       .single();
 
@@ -91,6 +91,37 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
           .update({ last_seen_at: new Date().toISOString() })
           .eq("id", user.id)
           .then();
+      }
+
+      // Sync DB locale → paraglide cookie. Patch the request header too so the
+      // paraglide hook (which runs after this one) reads the up-to-date value
+      // on the same request — without this, cookies.set only takes effect on
+      // the *next* request, leaving the first render in the wrong language.
+      const dbLocale = dbUser.locale;
+      if (
+        dbLocale &&
+        (locales as readonly string[]).includes(dbLocale)
+      ) {
+        const cookieLocale = event.cookies.get("PARAGLIDE_LOCALE");
+        if (cookieLocale !== dbLocale) {
+          event.cookies.set("PARAGLIDE_LOCALE", dbLocale, {
+            path: "/",
+            maxAge: 60 * 60 * 24 * 400,
+            sameSite: "lax",
+          });
+
+          const existing = event.request.headers.get("cookie") ?? "";
+          const stripped = existing
+            .split(/;\s*/)
+            .filter((c) => c && !c.startsWith("PARAGLIDE_LOCALE="))
+            .join("; ");
+          const nextCookie = stripped
+            ? `${stripped}; PARAGLIDE_LOCALE=${dbLocale}`
+            : `PARAGLIDE_LOCALE=${dbLocale}`;
+          const headers = new Headers(event.request.headers);
+          headers.set("cookie", nextCookie);
+          event.request = new Request(event.request, { headers });
+        }
       }
     }
   }
@@ -117,4 +148,4 @@ const handleParaglide: Handle = ({ event, resolve }) =>
     });
   });
 
-export const handle = sequence(handleParaglide, handleSetup, handleSupabase);
+export const handle = sequence(handleSetup, handleSupabase, handleParaglide);
