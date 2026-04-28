@@ -22,6 +22,7 @@
 	let createName = $state('');
 	let createSlug = $state('');
 	let createDescription = $state('');
+	let createGlobal = $state(false);
 	let createSaving = $state(false);
 	let createError = $state<string | null>(null);
 
@@ -74,6 +75,7 @@
 		createName = '';
 		createSlug = '';
 		createDescription = '';
+		createGlobal = false;
 		createError = null;
 		createModalOpen = true;
 	}
@@ -86,7 +88,10 @@
 	}
 
 	async function createRole() {
-		if (!createName.trim() || !createSlug.trim() || !auth.organizationId) return;
+		if (!createName.trim() || !createSlug.trim()) return;
+		const wantGlobal = createGlobal && auth.isPlatformMember;
+		const orgIdForCreate = wantGlobal ? null : auth.organizationId;
+		if (!wantGlobal && !orgIdForCreate) return;
 		createSaving = true;
 		createError = null;
 		try {
@@ -94,9 +99,11 @@
 				name: createName.trim(),
 				slug: createSlug.trim(),
 				description: createDescription.trim() || null,
-				organization_id: auth.organizationId
+				organization_id: orgIdForCreate
 			});
-			roles = await api.roles.getAll(auth.organizationId);
+			if (auth.organizationId) {
+				roles = await api.roles.getAll(auth.organizationId);
+			}
 			createModalOpen = false;
 			const fresh = roles.find((r) => r.id === newRole.id) ?? newRole;
 			openPanel(fresh);
@@ -307,6 +314,8 @@
 							<td class="px-3 py-2">
 								{#if role.is_system}
 									<span class="text-xs font-medium text-accent">System</span>
+								{:else if role.organization_id === null}
+									<span class="text-xs font-medium text-accent">Global</span>
 								{:else}
 									<span class="text-xs font-medium text-muted">Custom</span>
 								{/if}
@@ -323,7 +332,8 @@
 
 <!-- Detail Panel -->
 {#if selectedRole}
-	{@const isEditable = !selectedRole.is_system && canManage}
+	{@const isGlobalRole = selectedRole.organization_id === null && !selectedRole.is_system}
+	{@const isEditable = !selectedRole.is_system && canManage && (!isGlobalRole || auth.isPlatformMember)}
 	<div class="fixed inset-0 z-[60]" role="presentation">
 		<button
 			transition:fade={{ duration: 150 }}
@@ -421,7 +431,7 @@
 							<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
 								<div>
 									<span class="text-muted/50">Type</span>
-									<p class="text-sidebar-text">{selectedRole.is_system ? 'System' : 'Custom'}</p>
+									<p class="text-sidebar-text">{selectedRole.is_system ? 'System' : isGlobalRole ? 'Global' : 'Custom'}</p>
 								</div>
 								<div>
 									<span class="text-muted/50">Permissions</span>
@@ -555,6 +565,20 @@
 					<textarea id="create-desc" bind:value={createDescription} rows="2"
 						class="{inputClass} resize-none" placeholder="What this role can do..."></textarea>
 				</div>
+
+				{#if auth.isPlatformMember}
+					<label class="flex cursor-pointer items-start gap-2.5 rounded-sm border border-surface-border/40 bg-surface-hover/30 px-2.5 py-2 text-sm text-sidebar-text">
+						<span class="mt-0.5 flex h-3 w-3 shrink-0 items-center justify-center rounded-sm border transition-all duration-150
+							{createGlobal ? 'border-accent bg-accent' : 'border-surface-border/60'}">
+							{#if createGlobal}{@html checkSvg}{/if}
+						</span>
+						<input type="checkbox" bind:checked={createGlobal} class="sr-only" />
+						<span class="flex flex-col gap-0.5">
+							<span>Available in all organizations</span>
+							<span class="text-xs text-muted/70">Other admins won't be able to edit or delete this role.</span>
+						</span>
+					</label>
+				{/if}
 
 				{#if createError}
 					<p class="text-sm text-red-400">{createError}</p>

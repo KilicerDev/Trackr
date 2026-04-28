@@ -31,7 +31,7 @@ export type CreateRoleInput = {
   name: string;
   slug: string;
   description?: string | null;
-  organization_id: string;
+  organization_id: string | null;
 };
 
 export type UpdateRoleInput = {
@@ -56,10 +56,32 @@ export const roles = {
     const { data, error } = await supabase
       .from("roles")
       .select(ROLE_SELECT)
-      .or(`is_system.eq.true,organization_id.eq.${orgId}`)
+      .or(`is_system.eq.true,organization_id.eq.${orgId},organization_id.is.null`)
       .order("is_system", { ascending: false })
       .order("name");
 
+    if (error) throw error;
+    return (data ?? []) as Role[];
+  },
+
+  async getForOrgs(orgIds: string[]) {
+    const supabase = getClient();
+    let query = supabase
+      .from("roles")
+      .select(ROLE_SELECT)
+      .order("is_system", { ascending: false })
+      .order("name");
+
+    if (orgIds.length > 0) {
+      const list = orgIds.map((id) => `"${id}"`).join(",");
+      query = query.or(
+        `is_system.eq.true,organization_id.in.(${list}),organization_id.is.null`
+      );
+    } else {
+      query = query.or("is_system.eq.true,organization_id.is.null");
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data ?? []) as Role[];
   },
