@@ -7,6 +7,9 @@ export const ALLOWED_MIME_TYPES = [
   'image/gif',
   'image/webp',
   'image/svg+xml',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -26,8 +29,13 @@ export function isPdfType(mime: string): boolean {
   return mime === 'application/pdf';
 }
 
+export function isVideoType(mime: string): boolean {
+  return mime.startsWith('video/');
+}
+
 export function getFileIcon(mime: string): string {
   if (isImageType(mime)) return 'image';
+  if (isVideoType(mime)) return 'video';
   if (isPdfType(mime)) return 'file-text';
   if (mime.includes('spreadsheet') || mime.includes('excel') || mime === 'text/csv') return 'table';
   if (mime.includes('presentation') || mime.includes('powerpoint')) return 'presentation';
@@ -43,4 +51,28 @@ export function formatFileSize(bytes: number): string {
 
 export function isAllowedMimeType(mime: string): boolean {
   return (ALLOWED_MIME_TYPES as readonly string[]).includes(mime);
+}
+
+export function validateAttachmentFiles(
+  files: File[],
+  maxFiles: number = MAX_ATTACHMENTS_PER_ENTITY,
+): { valid: File[]; error: string | null } {
+  let error: string | null = null;
+  const valid: File[] = [];
+  for (const file of files) {
+    if (!isAllowedMimeType(file.type)) {
+      error = `${file.name}: file type not allowed`;
+      continue;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      error = `${file.name}: exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`;
+      continue;
+    }
+    valid.push(file);
+  }
+  if (valid.length > maxFiles) {
+    error = `Maximum ${maxFiles} files allowed`;
+    return { valid: valid.slice(0, maxFiles), error };
+  }
+  return { valid, error };
 }

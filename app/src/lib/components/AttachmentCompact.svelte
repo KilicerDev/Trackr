@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Paperclip } from '@lucide/svelte';
 	import type { Attachment } from '$lib/api/attachments';
+	import { api } from '$lib/api';
 	import AttachmentPreview from './AttachmentPreview.svelte';
 
 	interface Props {
@@ -52,8 +53,9 @@
 
 {#if previewIndex !== null}
 	<AttachmentPreview
-		{attachments}
+		items={attachments.map((a) => ({ name: a.file_name, mime: a.mime_type }))}
 		currentIndex={previewIndex}
+		resolveUrl={(i) => api.attachments.getSignedUrl(attachments[i].storage_path)}
 		onClose={() => (previewIndex = null)}
 		onNavigate={(idx) => (previewIndex = idx)}
 	/>

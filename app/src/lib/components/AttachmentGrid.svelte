@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Download, Trash2, FileText, Image, Table, Presentation, File } from '@lucide/svelte';
-	import { isImageType, formatFileSize } from '$lib/config/attachments';
+	import { Download, Trash2, FileText, Image, Table, Presentation, Film, File } from '@lucide/svelte';
+	import { isImageType, isVideoType, formatFileSize } from '$lib/config/attachments';
 	import type { Attachment } from '$lib/api/attachments';
 	import { api } from '$lib/api';
 	import AttachmentPreview from './AttachmentPreview.svelte';
@@ -26,6 +26,7 @@
 
 	function getIcon(mime: string) {
 		if (isImageType(mime)) return Image;
+		if (isVideoType(mime)) return Film;
 		if (mime === 'application/pdf') return FileText;
 		if (mime.includes('spreadsheet') || mime.includes('excel') || mime === 'text/csv') return Table;
 		if (mime.includes('presentation') || mime.includes('powerpoint')) return Presentation;
@@ -109,8 +110,9 @@
 
 {#if previewIndex !== null}
 	<AttachmentPreview
-		{attachments}
+		items={attachments.map((a) => ({ name: a.file_name, mime: a.mime_type }))}
 		currentIndex={previewIndex}
+		resolveUrl={(i) => api.attachments.getSignedUrl(attachments[i].storage_path)}
 		onClose={() => (previewIndex = null)}
 		onNavigate={(idx) => (previewIndex = idx)}
 	/>

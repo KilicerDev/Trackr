@@ -1,45 +1,25 @@
 <script lang="ts">
 	import { Paperclip, Upload } from '@lucide/svelte';
-	import { isAllowedMimeType, formatFileSize, MAX_FILE_SIZE, ALLOWED_MIME_TYPES } from '$lib/config/attachments';
+	import { ALLOWED_MIME_TYPES, validateAttachmentFiles } from '$lib/config/attachments';
 
 	interface Props {
 		onFilesSelected: (files: File[]) => void;
 		disabled?: boolean;
 		maxFiles?: number;
-		compact?: boolean;
+		variant?: 'tile' | 'compact' | 'button';
 	}
 
-	let { onFilesSelected, disabled = false, maxFiles = 20, compact = false }: Props = $props();
+	let { onFilesSelected, disabled = false, maxFiles = 20, variant = 'tile' }: Props = $props();
 
 	let dragOver = $state(false);
 	let error = $state<string | null>(null);
 	let fileInput: HTMLInputElement | undefined = $state();
 
-	function validateFiles(files: File[]): File[] {
-		error = null;
-		const valid: File[] = [];
-		for (const file of files) {
-			if (!isAllowedMimeType(file.type)) {
-				error = `${file.name}: file type not allowed`;
-				continue;
-			}
-			if (file.size > MAX_FILE_SIZE) {
-				error = `${file.name}: exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`;
-				continue;
-			}
-			valid.push(file);
-		}
-		if (valid.length > maxFiles) {
-			error = `Maximum ${maxFiles} files allowed`;
-			return valid.slice(0, maxFiles);
-		}
-		return valid;
-	}
-
 	function handleFiles(fileList: FileList | null) {
 		if (!fileList || disabled) return;
-		const valid = validateFiles(Array.from(fileList));
-		if (valid.length > 0) onFilesSelected(valid);
+		const result = validateAttachmentFiles(Array.from(fileList), maxFiles);
+		error = result.error;
+		if (result.valid.length > 0) onFilesSelected(result.valid);
 	}
 
 	function handleDrop(e: DragEvent) {
@@ -69,8 +49,9 @@
 			}
 		}
 		if (files.length > 0) {
-			const valid = validateFiles(files);
-			if (valid.length > 0) onFilesSelected(valid);
+			const result = validateAttachmentFiles(files, maxFiles);
+			error = result.error;
+			if (result.valid.length > 0) onFilesSelected(result.valid);
 		}
 	}
 
@@ -92,7 +73,7 @@
 	onchange={(e) => handleFiles((e.target as HTMLInputElement).files)}
 />
 
-{#if compact}
+{#if variant === 'compact'}
 	<button
 		type="button"
 		class="flex flex-1 shrink-0 items-center justify-center rounded-sm border border-surface-border bg-surface px-3 text-sidebar-icon transition-colors hover:border-sidebar-icon/30 hover:text-accent disabled:opacity-50 focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:outline-none"
@@ -101,6 +82,15 @@
 		aria-label="Attach file"
 	>
 		<Paperclip size={14} />
+	</button>
+{:else if variant === 'button'}
+	<button
+		type="button"
+		class="text-sm text-sidebar-icon transition-colors hover:text-accent disabled:opacity-50"
+		{disabled}
+		onclick={openPicker}
+	>
+		+ Add
 	</button>
 {:else}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
